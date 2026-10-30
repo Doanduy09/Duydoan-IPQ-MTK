@@ -11,6 +11,9 @@ on:
         default: true
         type: boolean
 
+permissions:
+  contents: write
+
 env:
   REPO_URL: https://github.com/Doanduy09/JDCloud-RE-CS-02
   DEVICE_TARGET: qualcommax
@@ -84,6 +87,8 @@ jobs:
       - name: Create GitHub Release
         uses: softprops/action-gh-release@v2
         if: steps.organize.outputs.status == 'success' && (inputs.release == true || github.event_name == 'schedule')
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         with:
           tag_name: Duydoan-24.10-RE-CS-02-${{ env.BUILD_DATE }}
           name: Duydoan-24.10 JDCloud RE-CS-02 Release ${{ env.BUILD_DATE }}
