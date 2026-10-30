@@ -1,0 +1,91 @@
+#!/bin/sh /etc/rc.common
+# High Performance eMMC Storage Auto-Expander for JDCloud Athena AX6600 (RE-CS-02)
+# Copyright (C) 2026 Antigravity for Anh Duy (DOANDUY)
+
+START=95
+USE_PROCD=1
+
+auto_expand_emmc() {
+    # Check if mmcblk0 exists (Qualcomm IPQ6010 eMMC 64GB/128GB on RE-CS-02) and partition 27 is missing
+    if [ -b /dev/mmcblk0 ] && [ ! -b /dev/mmcblk0p27 ]; then
+        local total_sectors=$(cat /sys/class/block/mmcblk0/size 2>/dev/null)
+        # > 10,000,000 sectors * 512B ≈ 5.12 GB (RE-CS-02 has 64GB ~125M sectors, 128GB ~250M sectors)
+        if [ "$total_sectors" -gt 10000000 ]; then
+            logger -t athena_storage "Found unallocated space on /dev/mmcblk0 ($total_sectors sectors). Creating partition 27..."
+            # Create partition 27 using fdisk automatically (n -> default -> default -> default -> w)
+            printf 'n\n\n\n\nw\n' | fdisk /dev/mmcblk0 >/dev/null 2>&1
+            partx -a /dev/mmcblk0 2>/dev/null || blockdev --rereadpt /dev/mmcblk0 2>/dev/null
+            sleep 2
+
+            if [ -b /dev/mmcblk0p27 ]; then
+                logger -t athena_storage "Partition 27 created successfully. Formatting as F2FS/ext4..."
+                if [ -x /usr/sbin/mkfs.f2fs ]; then
+                    mkfs.f2fs -l AthenaStorage -f -O extra_attr,inode_checksum,sb_checksum /dev/mmcblk0p27 >/dev/null 2>&1
+                elif [ -x /usr/sbin/mkfs.ext4 ]; then
+                    mkfs.ext4 -F -L AthenaStorage /dev/mmcblk0p27 >/dev/null 2>&1
+                fi
+            fi
+        fi
+    fi
+}
+
+mount_storage() {
+    if [ -b /dev/mmcblk0p27 ]; then
+        local fs_type=$(blkid -s TYPE -o value /dev/mmcblk0p27 2>/dev/null)
+
+        # Format if not recognized
+        if [ "$fs_type" != "f2fs" ] && [ "$fs_type" != "ext4" ]; then
+            if [ -x /usr/sbin/mkfs.f2fs ]; then
+                mkfs.f2fs -l AthenaStorage -f -O extra_attr,inode_checksum,sb_checksum /dev/mmcblk0p27 >/dev/null 2>&1
+                fs_type="f2fs"
+            elif [ -x /usr/sbin/mkfs.ext4 ]; then
+                mkfs.ext4 -F -L AthenaStorage /dev/mmcblk0p27 >/dev/null 2>&1
+                fs_type="ext4"
+            fi
+        fi
+
+        mkdir -p /mnt/storage
+        if ! grep -qs '/mnt/storage' /proc/mounts; then
+            if [ "$fs_type" = "f2fs" ]; then
+                mount -t f2fs -o rw,noatime,nodiratime,flush_merge,alloc_mode=reuse /dev/mmcblk0p27 /mnt/storage 2>/dev/null
+            else
+                mount -t ext4 -o rw,noatime,nodiratime,commit=30,barrier=1,errors=remount-ro /dev/mmcblk0p27 /mnt/storage 2>/dev/null
+            fi
+        fi
+
+        # Optimize I/O Scheduler for high-speed eMMC flash
+        if [ -f /sys/block/mmcblk0/queue/scheduler ]; then
+            echo bfq > /sys/block/mmcblk0/queue/scheduler 2>/dev/null || echo deadline > /sys/block/mmcblk0/queue/scheduler 2>/dev/null
+        fi
+
+        # Create structured directories for massive user storage
+        mkdir -p /mnt/storage/data /mnt/storage/docker /mnt/storage/opt /mnt/storage/downloads
+
+        # Convenience symlink for /opt and /docker if not existing
+        [ ! -e /opt ] && ln -sf /mnt/storage/opt /opt
+        [ ! -e /docker ] && ln -sf /mnt/storage/docker /docker
+
+        # Auto-register in UCI fstab if not present
+        if ! uci -q show fstab | grep -q "/mnt/storage"; then
+            local uuid=$(blkid -s UUID -o value /dev/mmcblk0p27 2>/dev/null)
+            if [ -n "$uuid" ]; then
+                uci -q batch <<EOF
+add fstab mount
+set fstab.@mount[-1].uuid='$uuid'
+set fstab.@mount[-1].target='/mnt/storage'
+set fstab.@mount[-1].fstype='$fs_type'
+set fstab.@mount[-1].options='rw,noatime,nodiratime'
+set fstab.@mount[-1].enabled='1'
+set fstab.@mount[-1].enabled_fsck='0'
+commit fstab
+EOF
+            fi
+        fi
+        logger -t athena_storage "AthenaStorage mounted successfully at /mnt/storage"
+    fi
+}
+
+start() {
+    auto_expand_emmc
+    mount_storage
+}
