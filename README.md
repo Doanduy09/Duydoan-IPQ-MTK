@@ -1,32 +1,33 @@
-# ImmortalWrt 24.10 for JDCloud Athena AX6600 (Model: RE-CS-02) Full Power Edition
+# Duydoan-24.10 for JDCloud RE-CS-02 (Athena AX6600) Full Power Edition
 
 <div align="center">
 
-[![ImmortalWrt Version](https://img.shields.io/badge/ImmortalWrt-24.10%20LTS%20(Pinned)-007ec6.svg?style=for-the-badge&logo=openwrt)](https://github.com/Doanduy09/immortalwrt-24.10-jdc-ax6600-nss)
-[![Hardware Target](https://img.shields.io/badge/Target-Qualcomm%20IPQ6010%20AX6600-ff69b4.svg?style=for-the-badge&logo=qualcomm)](https://github.com/Doanduy09/immortalwrt-24.10-jdc-ax6600-nss)
-[![NSS Acceleration](https://img.shields.io/badge/NSS%20Offload-v12.5%20Hardware%20Max-brightgreen.svg?style=for-the-badge)](https://github.com/Doanduy09/immortalwrt-24.10-jdc-ax6600-nss)
-[![Storage](https://img.shields.io/badge/eMMC%20Storage-64GB%2F128GB%20F2FS%20Auto-orange.svg?style=for-the-badge)](https://github.com/Doanduy09/immortalwrt-24.10-jdc-ax6600-nss)
+[![Distro Version](https://img.shields.io/badge/Duydoan-24.10%20LTS%20(Pinned)-007ec6.svg?style=for-the-badge&logo=openwrt)](https://github.com/Doanduy09/JDCloud-RE-CS-02)
+[![Hardware Target](https://img.shields.io/badge/Target-JDCloud%20RE--CS--02-ff69b4.svg?style=for-the-badge&logo=qualcomm)](https://github.com/Doanduy09/JDCloud-RE-CS-02)
+[![NSS Acceleration](https://img.shields.io/badge/NSS%20Offload-v12.5%20Hardware%20Max-brightgreen.svg?style=for-the-badge)](https://github.com/Doanduy09/JDCloud-RE-CS-02)
+[![Storage](https://img.shields.io/badge/eMMC%20Storage-64GB%2F128GB%20F2FS%20Auto-orange.svg?style=for-the-badge)](https://github.com/Doanduy09/JDCloud-RE-CS-02)
+[![Daily Build](https://img.shields.io/badge/Auto%20Build-Daily%2007%3A00%20ICT-success.svg?style=for-the-badge&logo=githubactions)](https://github.com/Doanduy09/JDCloud-RE-CS-02/actions)
 [![Maintained By](https://img.shields.io/badge/Author-Doanduy09-blue.svg?style=for-the-badge&logo=github)](https://github.com/Doanduy09)
 
-**Bản phân phối mã nguồn mở ImmortalWrt 24.10 chuyên dụng khai phóng 100% năng lực phần cứng của router JDCloud Athena AX6600 (RE-CS-02).**  
+**Bản phân phối hệ điều hành Duydoan-24.10 chuyên dụng khai phóng 100% năng lực phần cứng của router JDCloud RE-CS-02 (Athena AX6600).**  
 *Được duy trì và phát triển bởi Anh Duy (DOANDUY).*
 
 </div>
 
 ---
 
-## 🔒 NGUYÊN TẮC CỐT LÕI: KHÓA CỨNG BẢN QUYỀN IMMORTALWRT 24.10 (IMMUTABLE BASE POLICY)
+## 🔒 NGUYÊN TẮC CỐT LÕI: KHÓA CỨNG NỀN TẢNG 24.10 (IMMUTABLE BASE POLICY)
 
 > [!IMPORTANT]
 > **Cam Kết Bất Biến Về Phiên Bản (Strict Version Pinning):**
-> Kho lưu trữ này được thiết kế và cố định **DUY NHẤT TRÊN NỀN TẢNG IMMORTALWRT 24.10 (Kernel 6.6 LTS)**.
+> Kho lưu trữ này được thiết kế và cố định **DUY NHẤT TRÊN NỀN TẢNG BẢN 24.10 (Kernel 6.6 LTS)**.
 > - **Tuyệt đối không nâng cấp hoặc thay đổi nhánh gốc (base branch)** sang 25.x, master hay các bản snapshot không tương thích làm mất tính ổn định của hệ thống driver Qualcomm NSS.
 > - **Mọi bản cập nhật trong tương lai chỉ tập trung tối ưu hóa các thành phần sau:**
 >   1. Tinh chỉnh driver tăng tốc phần cứng Qualcomm NSS 12.5 (`qca-nss-drv`, `qca-nss-ecm`, `qca-nss-dp`).
 >   2. Mở rộng hỗ trợ modem di động 4G/5G (`ARPHRD_RAWIP`, MBIM, QMI, XMM, ModemManager, Quectel, Fibocom).
 >   3. Tối ưu hóa phân vùng lưu trữ eMMC F2FS (`athena_storage`), Docker, Optware.
 >   4. Nâng cấp hiệu năng Wi-Fi 6 Tri-Band 160MHz (`ath11k`, `QCN9074`, caldata trích xuất `0:ART`).
->   5. Giao diện LuCI, quản lý màn hình LED (`athena_led`) và các tiện ích mạng chuyên sâu.
+>   5. Quản lý màn hình LED Athena (`luci-app-athena-led`) và các tiện ích mạng chuyên sâu.
 
 ---
 
@@ -43,17 +44,20 @@
 - Tích hợp dịch vụ khởi động tự hành `/etc/init.d/athena_storage` (`START=95`).
 - Tự động quét và phát hiện các sector chưa phân bổ của chip nhớ eMMC vượt ngoài 26 phân vùng gốc của JDCloud.
 - Tự động tạo phân vùng an toàn số 27 (`/dev/mmcblk0p27`).
-- Định dạng bằng tệp tin tối ưu cho bộ nhớ Flash **F2FS** (`AthenaStorage`) và mount vào `/mnt/storage`.
+- Định dạng bằng hệ thống tệp tối ưu cho Flash **F2FS** (`AthenaStorage`) và mount vào `/mnt/storage`.
 - Tự động tạo liên kết tượng trưng (symlinks):
   - `/opt -> /mnt/storage/opt`
   - `/docker -> /mnt/storage/docker`
-- **100% Khắc Phục Lỗi Reset:** Đảm bảo toàn bộ cấu hình hệ thống và overlay được bảo toàn nguyên vẹn sau mỗi lần khởi động lại router.
+- **Bảo toàn dữ liệu 100%:** Toàn bộ cấu hình hệ thống và overlay được bảo toàn nguyên vẹn sau mỗi lần khởi động lại router.
 
 ### 3. Tri-Band Wi-Fi 6 AX6600 Đạt Chuẩn Hiệu Năng Cao
 - **Băng tần 2.4GHz:** 2x2 MIMO 802.11ax (IPQ6010 tích hợp).
 - **Băng tần 5.2GHz (Low-Band):** 2x2 MIMO 802.11ax (IPQ6010 tích hợp).
 - **Băng tần 5.8GHz (High-Band):** 4x4 MIMO 802.11ax với độ rộng kênh **160MHz** (chipset chuyên dụng Qualcomm QCN9074).
 - Tích hợp caldata trích xuất trực tiếp từ phân vùng gốc `0:ART` (`ipq-wifi-jdcloud_re-cs-02`), đảm bảo công suất phát và khả năng roaming đạt chuẩn nhà sản xuất.
+
+### 4. Màn Hình LED Ma Trận Athena (Athena LED Screen)
+- Tích hợp gói ứng dụng `luci-app-athena-led` cho phép quản trị và tùy biến hiển thị tốc độ mạng, đồng hồ, nhiệt độ và trạng thái thiết bị trực tiếp trên màn hình LED ma trận mặt trước của router JDCloud RE-CS-02.
 
 ---
 
@@ -64,12 +68,11 @@
 ```bash
 # 1. Cài đặt các gói phụ thuộc
 sudo apt update -y
-sudo apt install -y build-essential clang flex bison g++ gawk gcc-multilib g++-multilib \
-  gettext git libncurses-dev libssl-dev python3-distutils rsync unzip zlib1g-dev file wget
+sudo apt install -y build-essential clang flex bison g++ gawk gcc-multilib g++-multilib   gettext git libncurses-dev libssl-dev python3-distutils rsync unzip zlib1g-dev file wget
 
 # 2. Clone repository của Anh Duy
-git clone https://github.com/Doanduy09/immortalwrt-24.10-jdc-ax6600-nss.git
-cd immortalwrt-24.10-jdc-ax6600-nss
+git clone https://github.com/Doanduy09/JDCloud-RE-CS-02.git
+cd JDCloud-RE-CS-02
 
 # 3. Cập nhật và cài đặt feeds
 ./scripts/feeds update -a
@@ -85,18 +88,17 @@ make -j$(nproc) || make -j1 V=s
 ```
 
 ### Biên dịch tự động qua GitHub Actions:
-- Vào tab **Actions** trên repository này.
-- Chọn workflow **Build ImmortalWrt 24.10 Athena AX6600 NSS**.
-- Bấm **Run workflow** để hệ thống tự động build trên GitHub Runner và tạo bản phát hành Release kèm file `.bin` tải về trực tiếp.
+- Workflow **Build Duydoan-24.10 JDCloud RE-CS-02** được thiết lập tự động kích hoạt vào lúc **07:00 sáng mỗi ngày** (Giờ Việt Nam / UTC+7, cron: `0 0 * * *`).
+- Có thể kích hoạt thủ công bất kỳ lúc nào từ tab **Actions** -> Chọn workflow -> Bấm **Run workflow**.
 
 ---
 
-## 📦 THÔNG TIN FILE FIRMWARE & SHA256 CHECKSUM
+## 📦 THÔNG TIN FILE FIRMWARE & FLASHING
 
-| Tên File | Chức Năng | SHA256 Checksum |
+| Tên File | Chức Năng | Mục Đích Sử Dụng |
 | :--- | :--- | :--- |
-| `immortalwrt-24.10-*-jdcloud_re-cs-02-squashfs-factory.bin` | Dùng nạp lần đầu từ U-Boot / Web cứu hộ | `8a8e57f4f6fcab1925723e4ca76b8ca017863b3af3857895f08e63575bc9e81a` |
-| `immortalwrt-24.10-*-jdcloud_re-cs-02-squashfs-sysupgrade.bin` | Dùng nâng cấp trực tiếp từ giao diện LuCI / SSH | `a65ee8b477f83f701a339d20b35e2a5d0423b604f087659b05d05cc5cce93435` |
+| `duydoan-24.10-*-jdcloud_re-cs-02-squashfs-factory.bin` | Cài đặt ban đầu | Dùng nạp lần đầu từ U-Boot / Web cứu hộ |
+| `duydoan-24.10-*-jdcloud_re-cs-02-squashfs-sysupgrade.bin` | Nâng cấp hệ điều hành | Dùng nâng cấp trực tiếp từ giao diện LuCI / SSH |
 
 ---
 

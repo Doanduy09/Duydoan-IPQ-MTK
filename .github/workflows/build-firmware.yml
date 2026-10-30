@@ -1,6 +1,8 @@
-name: Build ImmortalWrt 24.10 Athena AX6600 NSS
+name: Build Duydoan-24.10 JDCloud RE-CS-02
 
 on:
+  schedule:
+    - cron: '0 0 * * *'  # 7:00 AM Asia/Ho_Chi_Minh daily (00:00 UTC)
   workflow_dispatch:
     inputs:
       release:
@@ -10,7 +12,7 @@ on:
         type: boolean
 
 env:
-  REPO_URL: https://github.com/Doanduy09/immortalwrt-24.10-jdc-ax6600-nss
+  REPO_URL: https://github.com/Doanduy09/JDCloud-RE-CS-02
   DEVICE_TARGET: qualcommax
   DEVICE_SUBTARGET: ipq60xx
   DEVICE_PROFILE: DEVICE_jdcloud_re-cs-02
@@ -76,20 +78,22 @@ jobs:
         uses: actions/upload-artifact@v4
         if: steps.organize.outputs.status == 'success'
         with:
-          name: ImmortalWrt_24.10_Athena_AX6600_${{ env.BUILD_DATE }}
+          name: Duydoan-24.10_JDCloud_RE-CS-02_${{ env.BUILD_DATE }}
           path: ${{ env.FIRMWARE }}/*
 
       - name: Create GitHub Release
         uses: softprops/action-gh-release@v2
-        if: steps.organize.outputs.status == 'success' && inputs.release == true
+        if: steps.organize.outputs.status == 'success' && (inputs.release == true || github.event_name == 'schedule')
         with:
-          tag_name: Athena-AX6600-24.10-${{ env.BUILD_DATE }}
-          name: ImmortalWrt 24.10 Athena AX6600 NSS Release ${{ env.BUILD_DATE }}
+          tag_name: Duydoan-24.10-RE-CS-02-${{ env.BUILD_DATE }}
+          name: Duydoan-24.10 JDCloud RE-CS-02 Release ${{ env.BUILD_DATE }}
           body: |
-            ### ImmortalWrt 24.10 for JDCloud Athena AX6600 (RE-CS-02)
-            * **Base Version**: ImmortalWrt 24.10 (Locked LTS)
-            * **Qualcomm NSS**: Hardware Offload enabled for IPv4/IPv6, PPPoE, Bridge, VLAN, and Cellular Modems (MBIM, QMI, XMM, ModemManager).
+            ### Duydoan-24.10 for JDCloud RE-CS-02 (Athena AX6600)
+            * **Base Version**: Duydoan-24.10 (LTS Kernel 6.6)
+            * **Target Hardware**: JDCloud RE-CS-02 (Qualcomm IPQ6010 / IPQ6000)
+            * **Qualcomm NSS 12.5**: Hardware Offload for IPv4/IPv6, PPPoE, Bridge, VLAN, and Cellular Modems (MBIM, QMI, XMM, ModemManager).
             * **eMMC Storage**: Auto-expands partition 27 (64GB/128GB F2FS) to `/mnt/storage` with `/opt` and `/docker` links.
             * **Wi-Fi 6 Tri-Band**: 2.4G + 5.2G + 5.8G 160MHz (QCN9074).
-            * **SQM**: Completely removed to prevent bottlenecking NSS hardware acceleration.
+            * **LED Control**: Integrated `luci-app-athena-led` for Athena LED matrix screen control.
+            * **SQM**: Removed to guarantee zero latency and full NSS hardware acceleration.
           files: ${{ env.FIRMWARE }}/*

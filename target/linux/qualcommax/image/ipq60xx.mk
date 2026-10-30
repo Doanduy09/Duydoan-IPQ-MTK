@@ -60,7 +60,7 @@ define Device/jdcloud_re-cs-02
 	KERNEL_SIZE := 6144k
 	SOC := ipq6010
 	DEVICE_DTS_CONFIG := config@cp03-c3
-	DEVICE_PACKAGES := ipq-wifi-jdcloud_re-cs-02 ath11k-firmware-qcn9074 kmod-ath11k-pci kmod-fs-f2fs f2fs-tools kmod-fs-ext4 fdisk partx-utils block-mount kmod-qca-nss-drv kmod-qca-nss-ecm nss-firmware-ipq60xx
+	DEVICE_PACKAGES := ipq-wifi-jdcloud_re-cs-02 ath11k-firmware-qcn9074 kmod-ath11k-pci kmod-fs-f2fs f2fs-tools kmod-fs-ext4 fdisk partx-utils block-mount kmod-qca-nss-drv kmod-qca-nss-ecm nss-firmware-ipq60xx luci-app-athena-led
 	IMAGE/factory.bin := append-kernel | pad-to $$(KERNEL_SIZE) | append-rootfs | append-metadata
 endef
 TARGET_DEVICES += jdcloud_re-cs-02
