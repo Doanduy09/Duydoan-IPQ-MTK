@@ -35,3 +35,5 @@ git-src
 .cproject
 .ccache
 .vscode*
+package/base-files/files/etc/init.d/all
+sync_all.sh

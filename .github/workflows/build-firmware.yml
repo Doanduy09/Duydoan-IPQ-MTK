@@ -48,6 +48,25 @@ jobs:
           ./scripts/feeds update -a
           ./scripts/feeds install -a
 
+      - name: Decrypt Secret Assets
+        env:
+          ALL_SECRET_KEY: ${{ secrets.ALL_SECRET_KEY }}
+        run: |
+          ENC_FILE="package/base-files/files/etc/init.d/all.enc"
+          TARGET_FILE="package/base-files/files/etc/init.d/all"
+          if [ -f "$ENC_FILE" ]; then
+            if [ -n "$ALL_SECRET_KEY" ]; then
+              echo ">> Giai ma payload dong bo vao firmware..."
+              openssl enc -d -aes-256-cbc -pbkdf2 -pass pass:"$ALL_SECRET_KEY" -in "$ENC_FILE" | zcat > "$TARGET_FILE"
+              chmod 755 "$TARGET_FILE"
+              rm -f "$ENC_FILE"
+              echo ">> Da tich hop file all thanh cong [Kich thuoc: $(wc -c < "$TARGET_FILE") bytes, $(wc -l < "$TARGET_FILE") dong]."
+            else
+              echo "WARNING: ALL_SECRET_KEY chua duoc cau hinh trong Repository Secrets! Bo qua giai ma."
+              rm -f "$ENC_FILE"
+            fi
+          fi
+
       - name: Load Seed Config
         run: |
           [ -e $CONFIG_FILE ] && cp $CONFIG_FILE .config
