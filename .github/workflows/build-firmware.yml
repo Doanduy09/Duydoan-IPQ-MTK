@@ -1,0 +1,95 @@
+name: Build ImmortalWrt 24.10 Athena AX6600 NSS
+
+on:
+  workflow_dispatch:
+    inputs:
+      release:
+        description: 'Upload firmware to GitHub Release'
+        required: false
+        default: true
+        type: boolean
+
+env:
+  REPO_URL: https://github.com/Doanduy09/immortalwrt-24.10-jdc-ax6600-nss
+  DEVICE_TARGET: qualcommax
+  DEVICE_SUBTARGET: ipq60xx
+  DEVICE_PROFILE: DEVICE_jdcloud_re-cs-02
+  CONFIG_FILE: jdcloud_re-cs-02-nss.config
+  TZ: Asia/Ho_Chi_Minh
+
+jobs:
+  build:
+    runs-on: ubuntu-22.04
+    steps:
+      - name: Checkout Source
+        uses: actions/checkout@v4
+
+      - name: Initialize Build Environment
+        env:
+          DEBIAN_FRONTEND: noninteractive
+        run: |
+          sudo rm -rf /etc/apt/sources.list.d/* /usr/share/dotnet /usr/local/lib/android /opt/ghc
+          sudo -E apt-get -qq update
+          sudo -E apt-get -qq install -y ack antlr3 asciidoc autoconf automake autopoint binutils bison build-essential \
+            bzip2 ccache cmake cpio curl device-tree-compiler fastjar flex gawk gettext gcc-multilib g++-multilib \
+            git gperf haveged help2man intltool libc6-dev-i386 libelf-dev libglib2.0-dev libgmp3-dev libltdl-dev \
+            libmpc-dev libmpfr-dev libncurses5-dev libncursesw5-dev libreadline-dev libssl-dev libtool lrzsz \
+            mkisofs msmtp nano ninja-build p7zip p7zip-full patch pkgconf python3 python3-pip python3-ply \
+            python3-docutils qemu-utils re2c rsync scons squashfs-tools subversion swig texinfo uglifyjs upx-ucl \
+            unzip vim wget xmlto xxd zlib1g-dev zstd
+          sudo timedatectl set-timezone "$TZ"
+
+      - name: Update and Install Feeds
+        run: |
+          ./scripts/feeds update -a
+          ./scripts/feeds install -a
+
+      - name: Load Seed Config
+        run: |
+          [ -e $CONFIG_FILE ] && cp $CONFIG_FILE .config
+          make defconfig
+
+      - name: Download Package Sources
+        run: |
+          make download -j8
+          find dl -size -1024c -exec ls -l {} \;
+          find dl -size -1024c -exec rm -f {} \;
+
+      - name: Compile Firmware
+        id: compile
+        run: |
+          echo -e "$(nproc) thread compile"
+          make -j$(nproc) || make -j1 V=s
+          echo "status=success" >> $GITHUB_OUTPUT
+
+      - name: Prepare Firmware Artifacts
+        id: organize
+        if: steps.compile.outputs.status == 'success'
+        run: |
+          cd bin/targets/$DEVICE_TARGET/$DEVICE_SUBTARGET
+          rm -rf packages
+          echo "FIRMWARE=$PWD" >> $GITHUB_ENV
+          echo "BUILD_DATE=$(date +'%Y.%m.%d-%H%M')" >> $GITHUB_ENV
+          echo "status=success" >> $GITHUB_OUTPUT
+
+      - name: Upload Firmware to Actions Artifacts
+        uses: actions/upload-artifact@v4
+        if: steps.organize.outputs.status == 'success'
+        with:
+          name: ImmortalWrt_24.10_Athena_AX6600_${{ env.BUILD_DATE }}
+          path: ${{ env.FIRMWARE }}/*
+
+      - name: Create GitHub Release
+        uses: softprops/action-gh-release@v2
+        if: steps.organize.outputs.status == 'success' && inputs.release == true
+        with:
+          tag_name: Athena-AX6600-24.10-${{ env.BUILD_DATE }}
+          name: ImmortalWrt 24.10 Athena AX6600 NSS Release ${{ env.BUILD_DATE }}
+          body: |
+            ### ImmortalWrt 24.10 for JDCloud Athena AX6600 (RE-CS-02)
+            * **Base Version**: ImmortalWrt 24.10 (Locked LTS)
+            * **Qualcomm NSS**: Hardware Offload enabled for IPv4/IPv6, PPPoE, Bridge, VLAN, and Cellular Modems (MBIM, QMI, XMM, ModemManager).
+            * **eMMC Storage**: Auto-expands partition 27 (64GB/128GB F2FS) to `/mnt/storage` with `/opt` and `/docker` links.
+            * **Wi-Fi 6 Tri-Band**: 2.4G + 5.2G + 5.8G 160MHz (QCN9074).
+            * **SQM**: Completely removed to prevent bottlenecking NSS hardware acceleration.
+          files: ${{ env.FIRMWARE }}/*
