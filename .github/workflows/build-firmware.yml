@@ -11,8 +11,7 @@ on:
         default: true
         type: boolean
 
-permissions:
-  contents: write
+permissions: write-all
 
 env:
   REPO_URL: https://github.com/Doanduy09/JDCloud-RE-CS-02
@@ -83,6 +82,15 @@ jobs:
         with:
           name: Duydoan-24.10_JDCloud_RE-CS-02_${{ env.BUILD_DATE }}
           path: ${{ env.FIRMWARE }}/*
+
+      - name: Delete Old Releases Before Publishing
+        uses: ophub/delete-releases-workflows@main
+        if: steps.organize.outputs.status == 'success' && (inputs.release == true || github.event_name == 'schedule')
+        with:
+          gh_token: ${{ secrets.GITHUB_TOKEN }}
+          delete_releases: true
+          releases_keep_latest: 0
+          delete_tags: true
 
       - name: Create GitHub Release
         uses: softprops/action-gh-release@v2
