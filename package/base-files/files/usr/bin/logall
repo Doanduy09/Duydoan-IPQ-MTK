@@ -1,0 +1,11 @@
+#!/bin/sh
+# Wrapper script for logall
+if [ -x /usr/bin/smart_modem_watchdog.sh ]; then
+    exec /usr/bin/smart_modem_watchdog.sh monitor
+elif [ -x /usr/bin/sysfixtine ]; then
+    exec /usr/bin/sysfixtine status
+else
+    echo "Modem watchdog script not found!"
+    exit 1
+fi
+
