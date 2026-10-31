@@ -1,122 +1,55 @@
-# Duydoan-24.10 for JDCloud RE-CS-02 (Athena AX6600) Full Power Edition
+# Duydoan ImmortalWrt 24.10 LTS & 25.12 Multi-Platform CI/CD Firmware Suite
 
 <div align="center">
 
-[![Distro Version](https://img.shields.io/badge/Duydoan-24.10%20LTS%20(Pinned)-007ec6.svg?style=for-the-badge&logo=openwrt)](https://github.com/Doanduy09/JDCloud-RE-CS-02)
-[![Hardware Target](https://img.shields.io/badge/Target-JDCloud%20RE--CS--02-ff69b4.svg?style=for-the-badge&logo=qualcomm)](https://github.com/Doanduy09/JDCloud-RE-CS-02)
-[![NSS Acceleration](https://img.shields.io/badge/NSS%20Offload-v12.5%20Hardware%20Max-brightgreen.svg?style=for-the-badge)](https://github.com/Doanduy09/JDCloud-RE-CS-02)
-[![Storage](https://img.shields.io/badge/eMMC%20Storage-64GB%2F128GB%20F2FS%20Auto-orange.svg?style=for-the-badge)](https://github.com/Doanduy09/JDCloud-RE-CS-02)
-[![Daily Build](https://img.shields.io/badge/Auto%20Build-Daily%2007%3A00%20ICT-success.svg?style=for-the-badge&logo=githubactions)](https://github.com/Doanduy09/JDCloud-RE-CS-02/actions)
+[![Distro Version](https://img.shields.io/badge/Duydoan-24.10%20LTS%20%26%2025.12-007ec6.svg?style=for-the-badge&logo=openwrt)](https://github.com/Doanduy09/JDCloud-RE-CS-02)
+[![Qualcomm NSS](https://img.shields.io/badge/Qualcomm-NSS%2012.5%20Hardware%20Max-brightgreen.svg?style=for-the-badge&logo=qualcomm)](https://github.com/Doanduy09/JDCloud-RE-CS-02)
+[![MediaTek HNAT](https://img.shields.io/badge/MediaTek-PPE%20%2B%20WED%20HNAT%20Max-ff69b4.svg?style=for-the-badge)](https://github.com/Doanduy09/JDCloud-RE-CS-02)
+[![Crypto Accel](https://img.shields.io/badge/Crypto-SafeXcel%20EIP--97-orange.svg?style=for-the-badge)](https://github.com/Doanduy09/JDCloud-RE-CS-02)
+[![Daily Build](https://img.shields.io/badge/Auto%20Build-Daily%2006%3A00%20ICT-success.svg?style=for-the-badge&logo=githubactions)](https://github.com/Doanduy09/JDCloud-RE-CS-02/actions)
 [![Maintained By](https://img.shields.io/badge/Author-Doanduy09-blue.svg?style=for-the-badge&logo=github)](https://github.com/Doanduy09)
 
-**Bản phân phối hệ điều hành Duydoan-24.10 chuyên dụng khai phóng 100% năng lực phần cứng của router JDCloud RE-CS-02 (Athena AX6600).**  
+**Hệ thống biên dịch và phát hành firmware tự động tối ưu hóa kịch trần năng lực phần cứng cho các dòng Router cao cấp Qualcomm & MediaTek.**  
 *Được duy trì và phát triển bởi Anh Duy (DOANDUY).*
 
 </div>
 
 ---
 
-## 🔒 NGUYÊN TẮC CỐT LÕI: KHÓA CỨNG NỀN TẢNG 24.10 (IMMUTABLE BASE POLICY)
+## 📌 DANH MỤC THIẾT BỊ HỖ TRỢ CHÍNH THỨC
 
-> [!IMPORTANT]
-> **Cam Kết Bất Biến Về Phiên Bản (Strict Version Pinning):**
-> Kho lưu trữ này được thiết kế và cố định **DUY NHẤT TRÊN NỀN TẢNG BẢN 24.10 (Kernel 6.6 LTS)**.
-> - **Tuyệt đối không nâng cấp hoặc thay đổi nhánh gốc (base branch)** sang 25.x, master hay các bản snapshot không tương thích làm mất tính ổn định của hệ thống driver Qualcomm NSS.
-> - **Mọi bản cập nhật trong tương lai chỉ tập trung tối ưu hóa các thành phần sau:**
->   1. Tinh chỉnh driver tăng tốc phần cứng Qualcomm NSS 12.5 (`qca-nss-drv`, `qca-nss-ecm`, `qca-nss-dp`).
->   2. Mở rộng hỗ trợ modem di động 4G/5G (`ARPHRD_RAWIP`, MBIM, QMI, XMM, ModemManager, Quectel, Fibocom).
->   3. Tối ưu hóa phân vùng lưu trữ eMMC F2FS (`athena_storage`), Docker, Optware.
->   4. Nâng cấp hiệu năng Wi-Fi 6 Tri-Band 160MHz (`ath11k`, `QCN9074`, caldata trích xuất `0:ART`).
->   5. Quản lý màn hình LED Athena (`luci-app-athena-led`) và các tiện ích mạng chuyên sâu.
+| Thiết Bị | Kiến Trúc Vi Xử Lý | Bộ Tăng Tốc Phần Cứng | Đóng Gói Cấu Hình Đặc Biệt |
+| :--- | :--- | :--- | :--- |
+| **JDCloud Athena AX6600 (RE-CS-02)** | Qualcomm IPQ6010 (4x 1.2 GHz) | **Qualcomm NSS 12.5 + ECM + ath11k** | eMMC 128GB F2FS, Modem 5G Sierra, Màn hình LED Athena |
+| **ASUS TUF Gaming AX6000** | MediaTek MT7986A Filogic 830 (4x 2.0 GHz) | **MediaTek HNAT (PPE + WED) + SafeXcel EIP-97** | Dual 2.5Gbps WAN/LAN, Wi-Fi 6 4x4 AX6000, Full App Suite |
+| **ASUS TUF Gaming AX4200** | MediaTek MT7986A Filogic 830 (4x 2.0 GHz) | **MediaTek HNAT (PPE + WED) + SafeXcel EIP-97** | 2.5Gbps WAN/LAN, Wi-Fi 6 AX4200, Full App Suite |
 
 ---
 
-## 🚀 CÁC TÍNH NĂNG VÀ ĐỘT PHÁ CÔNG NGHỆ CHÍNH
+## 🌿 CẤU TRÚC PHÂN NHÁNH HỆ THỐNG
 
-### 1. Qualcomm NSS 12.5 Hardware Acceleration (Tăng Tốc Phần Cứng Cực Hạn)
-- **Zero-Bottleneck Architecture:** Đã gỡ bỏ triệt để `luci-app-sqm`, `sqm-scripts` và các qdisc can thiệp phần mềm để luồng dữ liệu đạt tốc độ tối đa không độ trễ.
-- **Tăng Tốc Modem Di Động Toàn Diện (Cellular Modem Hardware Offload):**
-  - Tích hợp cờ đặc biệt `ECM_INTERFACE_RAWIP_ENABLE=y` cho phép NSS can thiệp tăng tốc trực tiếp các giao thức `ARPHRD_RAWIP` của modem di động.
-  - Tương thích tối đa với: **MBIM**, **QMI (RAW-IP)**, **XMM**, **ModemManager**, **ECM**, **RNDIS**, **CDC-NCM**.
-- **Tăng tốc mạng toàn diện:** Hỗ trợ PPPoE offload, Bridge offload, VLAN Manager, SKB Recycler, và bypass phần mềm firewall để truyền trực tiếp vào NSS Engine.
-
-### 2. Tự Động Khởi Tạo & Mở Full Flash eMMC (64GB / 128GB F2FS)
-- Tích hợp dịch vụ khởi động tự hành `/etc/init.d/athena_storage` (`START=95`).
-- Tự động quét và phát hiện các sector chưa phân bổ của chip nhớ eMMC vượt ngoài 26 phân vùng gốc của JDCloud.
-- Tự động tạo phân vùng an toàn số 27 (`/dev/mmcblk0p27`).
-- Định dạng bằng hệ thống tệp tối ưu cho Flash **F2FS** (`AthenaStorage`) và mount vào `/mnt/storage`.
-- Tự động tạo liên kết tượng trưng (symlinks):
-  - `/opt -> /mnt/storage/opt`
-  - `/docker -> /mnt/storage/docker`
-- **Bảo toàn dữ liệu 100%:** Toàn bộ cấu hình hệ thống và overlay được bảo toàn nguyên vẹn sau mỗi lần khởi động lại router.
-
-### 3. Tri-Band Wi-Fi 6 AX6600 Đạt Chuẩn Hiệu Năng Cao
-- **Băng tần 2.4GHz:** 2x2 MIMO 802.11ax (IPQ6010 tích hợp).
-- **Băng tần 5.2GHz (Low-Band):** 2x2 MIMO 802.11ax (IPQ6010 tích hợp).
-- **Băng tần 5.8GHz (High-Band):** 4x4 MIMO 802.11ax với độ rộng kênh **160MHz** (chipset chuyên dụng Qualcomm QCN9074).
-- Tích hợp caldata trích xuất trực tiếp từ phân vùng gốc `0:ART` (`ipq-wifi-jdcloud_re-cs-02`), đảm bảo công suất phát và khả năng roaming đạt chuẩn nhà sản xuất.
-
-### 4. Màn Hình LED Ma Trận Athena (Athena LED Screen)
-- Tích hợp gói ứng dụng `luci-app-athena-led` cho phép quản trị và tùy biến hiển thị tốc độ mạng, đồng hồ, nhiệt độ và trạng thái thiết bị trực tiếp trên màn hình LED ma trận mặt trước của router JDCloud RE-CS-02.
+1. **Nhánh `main` — Bản 24.10 LTS Siêu Ổn Định**:
+   - Sử dụng nhân **Linux Kernel 6.6 LTS**.
+   - Cố định độ ổn định cao nhất phục vụ nhu cầu chạy mạng sản xuất 24/7.
+   - Hỗ trợ tối ưu phần cứng Qualcomm NSS và MediaTek HNAT.
+2. **Nhánh `openwrt-25` — Bản 25.12 Bleeding Edge (Công Nghệ Mới)**:
+   - Sử dụng nhân **Linux Kernel 6.12**.
+   - **Tự Động Đồng Bộ Upstream (Auto-Sync)**: Mỗi sáng lúc 6h15 sẽ tự động kéo các commit mới nhất từ kho gốc `immortalwrt/immortalwrt` (nhánh `openwrt-25.12`), tự động giải quyết xung đột và bảo lưu 100% cấu hình router của Anh Duy.
 
 ---
 
-## 🛠️ HƯỚNG DẪN TỰ BIÊN DỊCH (BUILD INSTRUCTIONS)
+## 🚀 TIẾN TRÌNH BIÊN DỊCH TỰ ĐỘNG HẰNG NGÀY (GITHUB ACTIONS)
 
-### Biên dịch thủ công trên máy chủ / máy ảo Debian/Ubuntu:
-
-```bash
-# 1. Cài đặt các gói phụ thuộc
-sudo apt update -y
-sudo apt install -y build-essential clang flex bison g++ gawk gcc-multilib g++-multilib   gettext git libncurses-dev libssl-dev python3-distutils rsync unzip zlib1g-dev file wget
-
-# 2. Clone repository của Anh Duy
-git clone https://github.com/Doanduy09/JDCloud-RE-CS-02.git
-cd JDCloud-RE-CS-02
-
-# 3. Cập nhật và cài đặt feeds
-./scripts/feeds update -a
-./scripts/feeds install -a
-
-# 4. Nạp cấu hình tối ưu sẵn có cho RE-CS-02
-cp jdcloud_re-cs-02-nss.config .config
-make defconfig
-
-# 5. Tải mã nguồn các gói và bắt đầu biên dịch
-make download -j8
-make -j$(nproc) || make -j1 V=s
-```
-
-### Biên dịch tự động qua GitHub Actions:
-- Workflow **Build Duydoan-24.10 JDCloud RE-CS-02** được thiết lập tự động kích hoạt vào lúc **07:00 sáng mỗi ngày** (Giờ Việt Nam / UTC+7, cron: `0 0 * * *`).
-- Có thể kích hoạt thủ công bất kỳ lúc nào từ tab **Actions** -> Chọn workflow -> Bấm **Run workflow**.
+- **06:00 AM (ICT)**: `Build Duydoan-24.10 JDCloud RE-CS-02` (Qualcomm NSS)
+- **06:10 AM (ICT)**: `Build Duydoan-24.10 ASUS TUF Gaming (All Devices)` (Song song AX6000 & AX4200)
+- **06:15 AM (ICT)**: `Build Duydoan-25.12 JDCloud RE-CS-02 (Bleeding Edge)` (Qualcomm NSS + Auto-Sync)
+- **06:25 AM (ICT)**: `Build Duydoan-25.12 ASUS TUF Gaming (All Devices - Bleeding Edge)` (MediaTek HNAT + Auto-Sync)
+- **Cơ chế dọn dẹp (Self-Cleaning)**: Tự động xóa các bản phát hành cũ của từng router trước khi tạo bản mới, bảo đảm không bao giờ bị trùng lặp hoặc tốn dung lượng GitHub.
 
 ---
 
-## 📦 THÔNG TIN FILE FIRMWARE & FLASHING
-
-| Tên File | Chức Năng | Mục Đích Sử Dụng |
-| :--- | :--- | :--- |
-| `duydoan-24.10-*-jdcloud_re-cs-02-squashfs-factory.bin` | Cài đặt ban đầu | Dùng nạp lần đầu từ U-Boot / Web cứu hộ |
-| `duydoan-24.10-*-jdcloud_re-cs-02-squashfs-sysupgrade.bin` | Nâng cấp hệ điều hành | Dùng nâng cấp trực tiếp từ giao diện LuCI / SSH |
-
----
-
-## 🔍 KIỂM TRA TRẠNG THÁI SAU KHI FLASH
-
-```bash
-# Kiểm tra tải trọng và trạng thái nhân tăng tốc phần cứng NSS:
-cat /sys/kernel/debug/qca-nss-drv/stats/cpu_load_ubi
-
-# Kiểm tra phân vùng ổ đĩa F2FS 64GB/128GB:
-df -h /mnt/storage
-
-# Kiểm tra bảng chuyển tiếp phần cứng ECM:
-cat /sys/kernel/debug/ecm/ecm_db/dump
-
-# Kiểm tra 3 băng tần Wi-Fi:
-iwinfo
-```
-
----
-*Bản quyền & duy trì bởi [Doanduy09](https://github.com/Doanduy09) - Hỗ trợ kỹ thuật bởi Antigravity Multi-Agent Council.*
+## 🛠️ TÍNH NĂNG MẠNG TÍCH HỢP SẴN
+- **Định tuyến phần cứng**: Qualcomm NSS Hardware Flow Offloading & MediaTek PPE/WED Hardware NAT.
+- **Tăng tốc mã hóa**: Qualcomm Crypto Engine & MediaTek SafeXcel EIP-97.
+- **Ứng dụng mạng cao cấp**: PassWall, SSR-Plus, Bypass, dae, TTYD Web Terminal, BBR Congestion Control.
+- **Hỗ trợ kết nối WAN**: PPPoE, DHCP, Dual-WAN Load Balancing (mwan3), Modem di động 4G/5G qua giao thức MBIM/QMI/ECM.
