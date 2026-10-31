@@ -30,6 +30,25 @@ jobs:
         uses: actions/checkout@v4
         with:
           ref: openwrt-25
+          fetch-depth: 0
+
+      - name: Auto-Sync Upstream ImmortalWrt 25.12
+        run: |
+          git config user.name "Doanduy09-Bot"
+          git config user.email "doanduy09@gmail.com"
+          git remote add upstream https://github.com/immortalwrt/immortalwrt.git || true
+          git fetch upstream openwrt-25.12 --depth=50
+          echo ">> Đang kiểm tra và tự động kéo cập nhật mới nhất từ upstream immortalwrt:openwrt-25.12..."
+          if git merge upstream/openwrt-25.12 -m "sync: auto-merge upstream immortalwrt:openwrt-25.12 daily updates"; then
+            echo ">> Hợp nhất commit mới thành công!"
+            git push origin openwrt-25 || true
+          else
+            echo ">> Phát hiện xung đột, tự động bảo lưu 100% cấu hình tối ưu JDCloud Athena AX6600..."
+            git checkout --ours target/linux/qualcommax/image/ipq60xx.mk package/firmware/ipq-wifi/Makefile feeds.conf.default
+            git add -A
+            git commit -m "sync: resolve merge conflicts preserving Athena AX6600 hardware" || true
+            git push origin openwrt-25 || true
+          fi
 
       - name: Initialize Build Environment
         env:
