@@ -14,7 +14,7 @@ on:
 permissions: write-all
 
 env:
-  REPO_URL: https://github.com/Doanduy09/JDCloud-RE-CS-02
+  REPO_URL: https://github.com/Doanduy09/Duydoan-ImmortalWrt
   REPO_BRANCH: openwrt-25
   DEVICE_TARGET: qualcommax
   DEVICE_SUBTARGET: ipq60xx
