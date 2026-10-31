@@ -108,6 +108,7 @@ jobs:
         with:
           gh_token: ${{ secrets.GITHUB_TOKEN }}
           delete_releases: true
+          delete_tag_pattern: '^Duydoan-24\\.10-RE-CS-02-'
           releases_keep_latest: 0
           delete_tags: true
 
