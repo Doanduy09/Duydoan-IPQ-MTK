@@ -5,7 +5,7 @@ name: Auto-Clean
 
 on:
   schedule:
-    - cron: '30 23 * * *'  # 06:30 AM Asia/Ho_Chi_Minh (23:30 UTC), 30 mins before 07:00 daily build
+    - cron: '30 22 * * *'  # 05:30 AM Asia/Ho_Chi_Minh (22:30 UTC), 30 mins before 06:00 AM daily build
   workflow_dispatch:
 
 permissions: write-all
