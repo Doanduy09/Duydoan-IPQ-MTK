@@ -86,6 +86,12 @@ jobs:
           [ -e "$CONFIG_FILE" ] && cp "$CONFIG_FILE" .config
           make defconfig
 
+      - name: Patch Kernel 6.12 DTS Labels
+        run: |
+          echo ">> [DTS PATCH] Dam bao sdhc tuong thich Kernel 6.12 tren OpenWrt 25..."
+          sed -i 's/sdhc_1 {/sdhc {/g' target/linux/qualcommax/files/arch/arm64/boot/dts/qcom/ipq6010-re-cs.dtsi 2>/dev/null || true
+          sed -i 's/sdhc_1 {/sdhc {/g' target/linux/qualcommax/dts/ipq6010-re-cs.dtsi 2>/dev/null || true
+
       - name: Download Package Sources
         run: |
           make download -j8

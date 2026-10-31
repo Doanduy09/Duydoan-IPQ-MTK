@@ -87,8 +87,8 @@
 	status = "disabled";
 };
 
-/* Đã sửa: sdhc → sdhc_1 cho tương thích ImmortalWrt 24 */
-&sdhc_1 {
+/* Đã sửa: sdhc → sdhc_1 cho tương thích ImmortalWrt 25 (Kernel 6.12) */
+&sdhc {
 	bus-width = <8>;
 	mmc-ddr-1_8v;
 	mmc-hs200-1_8v;
