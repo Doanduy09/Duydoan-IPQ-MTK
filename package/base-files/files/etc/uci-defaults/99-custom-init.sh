@@ -25,10 +25,22 @@ uci -q set firewall.@defaults[0].flow_offloading='1'
 uci -q set firewall.@defaults[0].flow_offloading_hw='1'
 uci commit firewall 2>/dev/null
 
-# 4. Enable Master / all service
+# 4. Silence distant camera 802.11 unacknowledged frame log flooding
+uci -q set wireless.radio0.log_level='3'
+uci -q set wireless.radio0.log_80211='0'
+uci -q set wireless.radio1.log_level='3'
+uci -q set wireless.radio1.log_80211='0'
+uci -q set wireless.radio2.log_level='3'
+uci -q set wireless.radio2.log_80211='0'
+uci commit wireless 2>/dev/null
+
+# 5. Set WWAN0 delay 5s for stable MBIM initialization
+uci -q set network.wwan0.delay='5'
+uci commit network 2>/dev/null
+
+# 6. Enable Master / all service
 if [ -f /etc/init.d/all ]; then
     /etc/init.d/all enable 2>/dev/null
 fi
 
 exit 0
-
