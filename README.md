@@ -2,11 +2,11 @@
 
 <div align="center">
 
-[![Distro Version](https://img.shields.io/badge/Duydoan-24.10%20LTS%20%26%2025.12-007ec6.svg?style=for-the-badge&logo=openwrt)](https://github.com/Doanduy09/JDCloud-RE-CS-02)
-[![Qualcomm NSS](https://img.shields.io/badge/Qualcomm-NSS%2012.5%20Hardware%20Max-brightgreen.svg?style=for-the-badge&logo=qualcomm)](https://github.com/Doanduy09/JDCloud-RE-CS-02)
-[![MediaTek HNAT](https://img.shields.io/badge/MediaTek-PPE%20%2B%20WED%20HNAT%20Max-ff69b4.svg?style=for-the-badge)](https://github.com/Doanduy09/JDCloud-RE-CS-02)
-[![Crypto Accel](https://img.shields.io/badge/Crypto-SafeXcel%20EIP--97-orange.svg?style=for-the-badge)](https://github.com/Doanduy09/JDCloud-RE-CS-02)
-[![Daily Build](https://img.shields.io/badge/Auto%20Build-Daily%2006%3A00%20ICT-success.svg?style=for-the-badge&logo=githubactions)](https://github.com/Doanduy09/JDCloud-RE-CS-02/actions)
+[![Distro Version](https://img.shields.io/badge/Duydoan-24.10%20LTS%20%26%2025.12-007ec6.svg?style=for-the-badge&logo=openwrt)](https://github.com/Doanduy09/Duydoan-ImmortalWrt)
+[![Qualcomm NSS](https://img.shields.io/badge/Qualcomm-NSS%2012.5%20Hardware%20Max-brightgreen.svg?style=for-the-badge&logo=qualcomm)](https://github.com/Doanduy09/Duydoan-ImmortalWrt)
+[![MediaTek HNAT](https://img.shields.io/badge/MediaTek-PPE%20%2B%20WED%20HNAT%20Max-ff69b4.svg?style=for-the-badge)](https://github.com/Doanduy09/Duydoan-ImmortalWrt)
+[![Crypto Accel](https://img.shields.io/badge/Crypto-SafeXcel%20EIP--97-orange.svg?style=for-the-badge)](https://github.com/Doanduy09/Duydoan-ImmortalWrt)
+[![Daily Build](https://img.shields.io/badge/Auto%20Build-Daily%2006%3A00%20ICT-success.svg?style=for-the-badge&logo=githubactions)](https://github.com/Doanduy09/Duydoan-ImmortalWrt/actions)
 [![Maintained By](https://img.shields.io/badge/Author-Doanduy09-blue.svg?style=for-the-badge&logo=github)](https://github.com/Doanduy09)
 
 **Hệ thống biên dịch và phát hành firmware tự động tối ưu hóa kịch trần năng lực phần cứng cho các dòng Router cao cấp Qualcomm & MediaTek.**  
