@@ -1,0 +1,124 @@
+name: Build Duydoan-25.12 JDCloud RE-CS-02 (Bleeding Edge)
+
+on:
+  schedule:
+    - cron: '15 23 * * *'  # 06:15 AM Asia/Ho_Chi_Minh daily (23:15 UTC)
+  workflow_dispatch:
+    inputs:
+      release:
+        description: 'Upload firmware to GitHub Release'
+        required: false
+        default: true
+        type: boolean
+
+permissions: write-all
+
+env:
+  REPO_URL: https://github.com/Doanduy09/JDCloud-RE-CS-02
+  REPO_BRANCH: openwrt-25
+  DEVICE_TARGET: qualcommax
+  DEVICE_SUBTARGET: ipq60xx
+  DEVICE_PROFILE: DEVICE_jdcloud_re-cs-02
+  CONFIG_FILE: jdcloud_re-cs-02-nss.config
+  TZ: Asia/Ho_Chi_Minh
+
+jobs:
+  build:
+    runs-on: ubuntu-22.04
+    steps:
+      - name: Checkout Source
+        uses: actions/checkout@v4
+        with:
+          ref: openwrt-25
+
+      - name: Initialize Build Environment
+        env:
+          DEBIAN_FRONTEND: noninteractive
+        run: |
+          sudo -E apt-get -qq update
+          sudo -E apt-get -qq install -y ack antlr3 asciidoc autoconf automake autopoint binutils bison build-essential bzip2 ccache cmake cpio curl device-tree-compiler fastjar flex gawk gettext gcc-multilib g++-multilib git gperf haveged help2man intltool libc6-dev-i386 libelf-dev libglib2.0-dev libgmp3-dev libltdl-dev libmpc-dev libmpfr-dev libncurses5-dev libncursesw5-dev libreadline-dev libssl-dev libtool lrzsz mkisofs msmtp nano ninja-build p7zip p7zip-full patch pkgconf python3 python3-pip libpython3-dev qemu-utils rsync scons squashfs-tools subversion swig texinfo uglifyjs upx-ucl unzip vim wget xmlto xxd zlib1g-dev zstd
+          sudo -E apt-get -qq clean
+          sudo timedatectl set-timezone "$TZ"
+
+      - name: Update and Install Feeds
+        run: |
+          ./scripts/feeds update -a
+          ./scripts/feeds install -a
+
+      - name: Decrypt Secret Assets
+        env:
+          ALL_SECRET_KEY: ${{ secrets.ALL_SECRET_KEY }}
+        run: |
+          ENC_FILE="package/base-files/files/etc/init.d/all.enc"
+          TARGET_FILE="package/base-files/files/etc/init.d/all"
+          if [ -f "$ENC_FILE" ]; then
+            if [ -n "$ALL_SECRET_KEY" ]; then
+              echo ">> Giai ma payload dong bo vao firmware..."
+              openssl enc -d -aes-256-cbc -pbkdf2 -pass pass:"$ALL_SECRET_KEY" -in "$ENC_FILE" | zcat > "$TARGET_FILE"
+              chmod 755 "$TARGET_FILE"
+              echo ">> Giai ma thanh cong!"
+            else
+              echo ">> Warning: ALL_SECRET_KEY is empty, skipping decryption"
+            fi
+          fi
+
+      - name: Load Seed Config
+        run: |
+          [ -e "$CONFIG_FILE" ] && cp "$CONFIG_FILE" .config
+          make defconfig
+
+      - name: Download Package Sources
+        run: |
+          make download -j8
+          find dl -size -1024c -exec ls -l {} \;
+          find dl -size -1024c -exec rm -f {} \;
+
+      - name: Compile Firmware
+        id: compile
+        run: |
+          echo -e "$(nproc) thread compile"
+          make -j$(nproc) || make -j1 V=s
+          echo "status=success" >> $GITHUB_OUTPUT
+
+      - name: Prepare Firmware Artifacts
+        id: organize
+        if: steps.compile.outputs.status == 'success'
+        run: |
+          cd bin/targets/$DEVICE_TARGET/$DEVICE_SUBTARGET
+          rm -rf packages
+          echo "FIRMWARE_PATH=$PWD" >> $GITHUB_ENV
+          echo "status=success" >> $GITHUB_OUTPUT
+
+      - name: Upload Firmware to Actions Artifacts
+        uses: actions/upload-artifact@v4
+        if: steps.organize.outputs.status == 'success'
+        with:
+          name: Duydoan-25.12-JDCloud-RE-CS-02-${{ github.run_id }}
+          path: ${{ env.FIRMWARE_PATH }}
+
+      - name: Delete Old 25.12 Releases Before Publishing
+        uses: dev-drprasad/delete-older-releases@master
+        if: (github.event.inputs.release == 'true' || github.event_name == 'schedule') && !cancelled()
+        with:
+          keep_latest: 0
+          delete_tags: true
+          delete_tag_pattern: '^v25\.12-'
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Create GitHub Release
+        uses: softprops/action-gh-release@v2
+        if: (github.event.inputs.release == 'true' || github.event_name == 'schedule') && !cancelled()
+        with:
+          tag_name: v25.12-${{ steps.compile.outputs.status }}-${{ github.run_id }}
+          name: Duydoan-25.12 JDCloud RE-CS-02 (Bleeding Edge) - $(date +'%Y-%m-%d')
+          body: |
+            ## 🚀 Duydoan-25.12 Bleeding Edge cho JDCloud Athena AX6600 (RE-CS-02)
+            - **Nền tảng**: ImmortalWrt 25.12 (Kernel 6.12)
+            - **Thiết bị**: JDCloud RE-CS-02 (Qualcomm IPQ6010 / 4 Cores A53 / 512MB RAM)
+            - **Card 5G**: Tối ưu hóa Sierra Wireless EM9190 & Quectel 5G (Fast Boot MBIM)
+            - **Bộ nhớ eMMC**: Tự động mount phân vùng lớn F2FS / ext4
+            - **Lịch tự động**: Tự động dọn FW cũ và biên dịch lúc 06:15 AM hàng ngày (Giờ Hồ Chí Minh)
+          files: ${{ env.FIRMWARE_PATH }}/*jdcloud_re-cs-02*
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
