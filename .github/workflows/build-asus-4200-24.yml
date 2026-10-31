@@ -1,0 +1,114 @@
+name: Build Duydoan-24.10 ASUS TUF-AX4200
+
+on:
+  schedule:
+    - cron: '35 23 * * *'  # 06:35 AM Asia/Ho_Chi_Minh daily (23:35 UTC)
+  workflow_dispatch:
+    inputs:
+      release:
+        description: 'Upload firmware to GitHub Release'
+        required: false
+        default: true
+        type: boolean
+
+permissions: write-all
+
+env:
+  REPO_URL: https://github.com/Doanduy09/JDCloud-RE-CS-02
+  DEVICE_TARGET: mediatek
+  DEVICE_SUBTARGET: filogic
+  DEVICE_PROFILE: DEVICE_asus_tuf-ax4200
+  CONFIG_FILE: asus_tuf-ax4200.config
+  TZ: Asia/Ho_Chi_Minh
+
+jobs:
+  build:
+    runs-on: ubuntu-22.04
+    steps:
+      - name: Checkout Source
+        uses: actions/checkout@v4
+        with:
+          ref: main
+
+      - name: Initialize Build Environment
+        env:
+          DEBIAN_FRONTEND: noninteractive
+        run: |
+          sudo rm -rf /etc/apt/sources.list.d/* /usr/share/dotnet /usr/local/lib/android /opt/ghc
+          sudo -E apt-get -qq update
+          sudo -E apt-get -qq install -y ack antlr3 asciidoc autoconf automake autopoint binutils bison build-essential \
+            bzip2 ccache cmake cpio curl device-tree-compiler fastjar flex gawk gettext gcc-multilib g++-multilib \
+            git gperf haveged help2man intltool libc6-dev-i386 libelf-dev libglib2.0-dev libgmp3-dev libltdl-dev \
+            libmpc-dev libmpfr-dev libncurses5-dev libncursesw5-dev libreadline-dev libssl-dev libtool lrzsz \
+            mkisofs msmtp nano ninja-build p7zip p7zip-full patch pkgconf python3 python3-pip python3-ply \
+            python3-docutils qemu-utils re2c rsync scons squashfs-tools subversion swig texinfo uglifyjs upx-ucl \
+            unzip vim wget xmlto xxd zlib1g-dev zstd
+          sudo timedatectl set-timezone "$TZ"
+
+      - name: Update and Install Feeds
+        run: |
+          ./scripts/feeds update -a
+          ./scripts/feeds install -a
+
+      - name: Load Seed Config
+        run: |
+          [ -e $CONFIG_FILE ] && cp $CONFIG_FILE .config
+          make defconfig
+
+      - name: Download Package Sources
+        run: |
+          make download -j8
+          find dl -size -1024c -exec ls -l {} \;
+          find dl -size -1024c -exec rm -f {} \;
+
+      - name: Compile Firmware
+        id: compile
+        run: |
+          echo -e "$(nproc) thread compile"
+          make -j$(nproc) || make -j1 V=s
+          echo "status=success" >> $GITHUB_OUTPUT
+
+      - name: Prepare Firmware Artifacts
+        id: organize
+        if: steps.compile.outputs.status == 'success'
+        run: |
+          cd bin/targets/$DEVICE_TARGET/$DEVICE_SUBTARGET
+          rm -rf packages
+          echo "FIRMWARE=$PWD" >> $GITHUB_ENV
+          echo "BUILD_DATE=$(date +'%Y.%m.%d-%H%M')" >> $GITHUB_ENV
+          echo "status=success" >> $GITHUB_OUTPUT
+
+      - name: Upload Firmware to Actions Artifacts
+        uses: actions/upload-artifact@v4
+        if: steps.organize.outputs.status == 'success'
+        with:
+          name: Duydoan-24.10_ASUS_TUF-AX4200_${{ env.BUILD_DATE }}
+          path: ${{ env.FIRMWARE }}/*
+
+      - name: Delete Old ASUS 24.10 Releases Before Publishing
+        uses: ophub/delete-releases-workflows@main
+        if: steps.organize.outputs.status == 'success' && (inputs.release == true || github.event_name == 'schedule')
+        with:
+          gh_token: ${{ secrets.GITHUB_TOKEN }}
+          delete_releases: true
+          delete_tag_pattern: '^Duydoan-24\\.10-ASUS-AX4200-'
+          releases_keep_latest: 0
+          delete_tags: true
+
+      - name: Create GitHub Release
+        uses: softprops/action-gh-release@v2
+        if: steps.organize.outputs.status == 'success' && (inputs.release == true || github.event_name == 'schedule')
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          tag_name: Duydoan-24.10-ASUS-AX4200-${{ env.BUILD_DATE }}
+          name: Duydoan-24.10 ASUS TUF-AX4200 Release ${{ env.BUILD_DATE }}
+          body: |
+            ### Duydoan-24.10 for ASUS TUF Gaming AX4200
+            * **Base Version**: Duydoan-24.10 (LTS Kernel 6.6)
+            * **Target Hardware**: ASUS TUF Gaming AX4200 (MediaTek MT7986A Filogic 830, 4x Cortex-A53 @ 2.0 GHz)
+            * **MediaTek HNAT (PPE + WED)**: Dedicated Hardware Flow Offloading for 2.5Gbps WAN/LAN and Wi-Fi 6 AX4200 with near-zero CPU usage.
+            * **SafeXcel Crypto Engine**: Hardware-accelerated cryptographic processing for WireGuard, IPsec, and TLS.
+            * **Wi-Fi 6 AX4200**: 2.4GHz 2x2 (574Mbps) + 5GHz 3x3/4x4 (3603Mbps).
+            * **Full Application Suite**: Integrated PassWall, SSR-Plus, Bypass, dae, TurboACC, TTYD, and BBR congestion control.
+          files: ${{ env.FIRMWARE }}/*
