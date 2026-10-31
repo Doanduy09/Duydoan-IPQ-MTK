@@ -29,6 +29,7 @@ endef
 ALLWIFIBOARDS:= \
 	8devices_kiwi \
 	8devices_mango \
+	jdcloud_re-cs-02 \
 	alfa-network_ap120c-ax \
 	aliyun_ap8220 \
 	arcadyan_aw1000 \
@@ -296,4 +297,5 @@ $(eval $(call generate-ipq-wifi-package,zyxel_nbg7815,Zyxel NBG7815))
 $(eval $(call generate-ipq-wifi-package,zyxel_nwa210ax,Zyxel NWA210AX))
 $(eval $(call generate-ipq-wifi-package,zyxel_scr50axe,Zyxel SCR50AXE))
 
+$(eval $(call generate-ipq-wifi-package,jdcloud_re-cs-02,JDCloud RE-CS-02))
 $(foreach PACKAGE,$(ALLWIFIPACKAGES),$(eval $(call BuildPackage,$(PACKAGE))))

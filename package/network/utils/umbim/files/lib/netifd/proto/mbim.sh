@@ -62,17 +62,6 @@ _proto_mbim_setup() {
 
 	if [ -n "$devpath" ]; then
 		local usbmisc_or_wwan_path
-		# For usbmisc:
-		# /sys/devices/platform/1e1c0000.xhci/usb1/1-2/1-2:1.4/usbmisc/cdc-wdm0
-		# Numbers after ":" are the configuration and interface number
-		# of the connected modem. There can be multiple interfaces but
-		# there will only be a single interface that provides the
-		# control channel device. Therefore, check also /*/usbmisc to
-		# allow specifying the USB port number the modem is directly
-		# connected to.
-		# For wwan:
-		# /sys/devices/platform/soc/11280000.pcie/pci0003:00/0003:00:00.0/0003:01:00.0/wwan/wwan0/wwan0mbim0
-		# /sys/devices/platform/soc/11280000.pcie/pci0003:00/0003:00:00.0/0003:01:00.0/mhi0/wwan/wwan0/wwan0mbim0
 		for usbmisc_or_wwan_path in \
 		    "$devpath"/usbmisc/cdc-wdm* \
 		    "$devpath"/*/usbmisc/cdc-wdm* \
@@ -114,16 +103,43 @@ _proto_mbim_setup() {
 		return 1
 	}
 
+	# Clean up any stale umbim process locking cdc-wdm
+	local p
+	for p in $(pgrep -f "umbim.*$device" 2>/dev/null); do
+		[ "$p" != "$$" ] && kill -9 "$p" 2>/dev/null
+	done
+
+	# Auto-sync modem APN to PDP Context 1 via AT port if available (ensures Sierra/Quectel match)
+	local at_p=""
+	for at_p in /dev/ttyUSB0 /dev/ttyUSB2 /dev/ttyUSB1; do
+		if [ -c "$at_p" ]; then
+			if command -v modem_lock_run >/dev/null 2>&1; then
+				modem_lock_run timeout 2 sh -c "echo 'AT+CGDCONT=1,\"IPV4V6\",\"$apn\"' | atinout - '$at_p' -" >/dev/null 2>&1
+				modem_lock_run timeout 2 sh -c "echo 'AT+CGDCONT=3,\"IPV4V6\",\"$apn\"' | atinout - '$at_p' -" >/dev/null 2>&1
+			elif command -v atinout >/dev/null 2>&1; then
+				timeout 2 sh -c "echo 'AT+CGDCONT=1,\"IPV4V6\",\"$apn\"' | atinout - '$at_p' -" >/dev/null 2>&1
+				timeout 2 sh -c "echo 'AT+CGDCONT=3,\"IPV4V6\",\"$apn\"' | atinout - '$at_p' -" >/dev/null 2>&1
+			elif command -v sms_tool >/dev/null 2>&1; then
+				timeout 2 sms_tool -d "$at_p" at "AT+CGDCONT=1,\"IPV4V6\",\"$apn\"" >/dev/null 2>&1
+			fi
+			break
+		fi
+	done
+
 	[ -n "$delay" ] && sleep "$delay"
 
 	echo "mbim[$$]" "Reading capabilities"
-	umbim $DBG -n -d $device caps || {
-		echo "mbim[$$]" "Failed to read modem caps"
-		tid=$((tid + 1))
-		umbim $DBG -t $tid -d "$device" disconnect
-		proto_notify_error "$interface" PIN_FAILED
+	local caps_try=0
+	while [ $caps_try -lt 10 ]; do
+		umbim $DBG -n -d $device caps >/dev/null 2>&1 && break
+		caps_try=$((caps_try + 1))
+		sleep 2
+	done
+	if [ $caps_try -ge 10 ]; then
+		echo "mbim[$$]" "Modem caps not ready yet, soft retrying without resetting hardware..."
+		proto_notify_error "$interface" NOT_READY
 		return 1
-	}
+	fi
 	tid=$((tid + 1))
 
 	[ "$pincode" ] && {
@@ -131,20 +147,18 @@ _proto_mbim_setup() {
 		umbim $DBG -n -t $tid -d $device unlock "$pincode" || {
 			echo "mbim[$$]" "Unable to verify PIN"
 			tid=$((tid + 1))
-			umbim $DBG -t $tid -d "$device" disconnect
 			proto_notify_error "$interface" PIN_FAILED
 			proto_block_restart "$interface"
 			return 1
 		}
+		tid=$((tid + 1))
 	}
-	tid=$((tid + 1))
 
 	echo "mbim[$$]" "Checking pin"
 	umbim $DBG -n -t $tid -d $device pinstate
 	[ $? -eq 2 ] && {
 		echo "mbim[$$]" "PIN required"
 		tid=$((tid + 1))
-		umbim $DBG -t $tid -d "$device" disconnect
 		proto_notify_error "$interface" PIN_FAILED
 		proto_block_restart "$interface"
 		return 1
@@ -152,71 +166,99 @@ _proto_mbim_setup() {
 	tid=$((tid + 1))
 
 	echo "mbim[$$]" "Checking subscriber"
-	umbim $DBG -n -t $tid -d $device subscriber || {
-		echo "mbim[$$]" "Subscriber init failed"
+	local sub_try=0
+	while [ $sub_try -lt 5 ]; do
+		umbim $DBG -n -t $tid -d $device subscriber && break
 		tid=$((tid + 1))
-		umbim $DBG -t $tid -d "$device" disconnect
+		sub_try=$((sub_try + 1))
+		sleep 1
+	done
+	if [ $sub_try -ge 5 ]; then
+		echo "mbim[$$]" "Subscriber init failed"
 		proto_notify_error "$interface" NO_SUBSCRIBER
 		return 1
-	}
+	fi
 	tid=$((tid + 1))
 
-	echo "mbim[$$]" "Register with network"
+	echo "mbim[$$]" "Register with network (Fast-Polling)"
 	connected=0
-	umbim $DBG -n -t $tid -d $device registration
-	reg_status=$?
-	case $reg_status in
-		0)	echo "mbim[$$]" "Registered in home mode"
-			tid=$((tid + 1))
-			connected=1;;
-		4)	if [ "$allow_roaming" = "1" ]; then
-				echo "mbim[$$]" "Registered in roaming mode"
-				tid=$((tid + 1))
+	local reg_try=0
+	while [ $reg_try -lt 20 ]; do
+		umbim $DBG -n -t $tid -d $device registration >/dev/null 2>&1
+		reg_status=$?
+		tid=$((tid + 1))
+		case $reg_status in
+			0)	echo "mbim[$$]" "Registered in home mode (try $((reg_try + 1)))"
 				connected=1
-			fi;;
-		5) 	if [ "$allow_partner" = "1" ]; then
-				echo "mbim[$$]" "Registered in partner mode"
-				tid=$((tid + 1))
-				connected=1
-			fi;;
-	esac
+				break;;
+			4)	if [ "$allow_roaming" = "1" ]; then
+					echo "mbim[$$]" "Registered in roaming mode"
+					connected=1
+					break
+				fi;;
+			5) 	if [ "$allow_partner" = "1" ]; then
+					echo "mbim[$$]" "Registered in partner mode"
+					connected=1
+					break
+				fi;;
+		esac
+		sleep 1
+		reg_try=$((reg_try + 1))
+	done
 	if [ $connected -ne 1 ]; then
 		echo "mbim[$$]" "Subscriber registration failed (code $reg_status)"
-		tid=$((tid + 1))
-		umbim $DBG -t $tid -d "$device" disconnect
 		proto_notify_error "$interface" NO_REGISTRATION
 		return 1
 	fi
 
-	echo "mbim[$$]" "Attach to network"
-	umbim $DBG -n -t $tid -d $device attach || {
-		echo "mbim[$$]" "Failed to attach to network"
+	echo "mbim[$$]" "Attach to network (Fast-Polling)"
+	local att_try=0
+	local attached=0
+	while [ $att_try -lt 10 ]; do
+		if umbim $DBG -n -t $tid -d $device attach; then
+			attached=1
+			break
+		fi
 		tid=$((tid + 1))
-		umbim $DBG -t $tid -d "$device" disconnect
+		att_try=$((att_try + 1))
+		sleep 1
+	done
+	tid=$((tid + 1))
+	if [ $attached -ne 1 ]; then
+		echo "mbim[$$]" "Failed to attach to network"
 		proto_notify_error "$interface" ATTACH_FAILED
 		return 1
-	}
-	tid=$((tid + 1))
+	fi
 
 	pdptype=$(echo "$pdptype" | awk '{print tolower($0)}')
 	[ "$ipv6" = 0 ] && pdptype="ipv4"
 
-	local req_pdptype="" # Pass "default" PDP type to umbim if unconfigured
+	local req_pdptype=""
 	[ "$pdptype" = "ipv4" -o "$pdptype" = "ipv6" -o "$pdptype" = "ipv4v6" ] && req_pdptype="$pdptype:"
 
 	local connect_state
 	echo "mbim[$$]" "Connect to network"
-	connect_state=$(umbim $DBG -n -t $tid -d $device connect "$req_pdptype$apn" "$auth" "$username" "$password") || {
-		echo "mbim[$$]" "Failed to connect bearer"
+	connect_state=$(umbim $DBG -n -t $tid -d $device connect "$req_pdptype$apn" "$auth" "$username" "$password")
+	local conn_res=$?
+	tid=$((tid + 1))
+
+	if [ $conn_res -ne 0 ]; then
+		echo "mbim[$$]" "First bearer connect attempt returned $conn_res, testing APN fallback..."
+		# Try fallback with plain APN
+		connect_state=$(umbim $DBG -n -t $tid -d $device connect "$apn" "none")
+		conn_res=$?
 		tid=$((tid + 1))
-		umbim $DBG -t $tid -d "$device" disconnect
+	fi
+
+	if [ $conn_res -ne 0 ]; then
+		echo "mbim[$$]" "Failed to connect bearer"
 		proto_notify_error "$interface" CONNECT_FAILED
 		return 1
-	}
-	tid=$((tid + 1))
+	fi
 
 	echo "$connect_state"
 	local iptype="$(echo "$connect_state" | grep iptype: | awk '{print $4}')"
+	[ -z "$iptype" ] && iptype="ipv4v6"
 
 	echo "mbim[$$]" "Connected"
 
@@ -253,13 +295,13 @@ _proto_mbim_setup() {
 			json_add_string proto "dhcp"
 		fi
 
-		[ "$dhcp" != 1 ] || {
-			json_add_array dns
-			for server in $(_proto_mbim_get_field ipv4dnsserver "$mbimconfig"); do
-				json_add_string "" "$server"
-			done
-			json_close_array
-		}
+		local dnsserver="$(_proto_mbim_get_field ipv4dnsserver "$mbimconfig")"
+		[ -z "$dnsserver" ] && dnsserver="116.98.212.54 203.113.131.5 1.1.1.1 8.8.8.8"
+		json_add_array dns
+		for server in $dnsserver; do
+			json_add_string "" "$server"
+		done
+		json_close_array
 
 		proto_add_dynamic_defaults
 		[ -n "$zone" ] && json_add_string zone "$zone"
@@ -298,13 +340,13 @@ _proto_mbim_setup() {
 			[ "$sourcefilter" = "0" ] && json_add_boolean sourcefilter "0"
 		fi
 
-		[ "$dhcpv6" != 1 ] || {
-			json_add_array dns
-			for server in $(_proto_mbim_get_field ipv6dnsserver "$mbimconfig"); do
-				json_add_string "" "$server"
-			done
-			json_close_array
-		}
+		local dns6server="$(_proto_mbim_get_field ipv6dnsserver "$mbimconfig")"
+		[ -z "$dns6server" ] && dns6server="2606:4700:4700::1111 2001:4860:4860::8888"
+		json_add_array dns
+		for server in $dns6server; do
+			json_add_string "" "$server"
+		done
+		json_close_array
 
 		proto_add_dynamic_defaults
 		[ -n "$zone" ] && json_add_string zone "$zone"
@@ -321,6 +363,8 @@ _proto_mbim_setup() {
 
 		mtu=$((ipv6mtu > ipv4mtu ? ipv6mtu : ipv4mtu))
 	}
+	[ -z "$mtu" ] || [ "$mtu" -le 0 ] && mtu=1460
+	[ "$mtu" -gt 1460 ] && mtu=1460
 	[ -n "$mtu" -a "$mtu" != 0 ] && {
 		echo Setting MTU of $ifname to $mtu
 		/sbin/ip link set dev $ifname mtu $mtu
@@ -336,8 +380,8 @@ proto_mbim_setup() {
 	ret=$?
 
 	[ "$ret" = 0 ] || {
-		logger "mbim bringup failed, retry in 15s"
-		sleep 15
+		logger "mbim bringup failed, fast retry in 2s"
+		sleep 2
 	}
 
 	return $ret
@@ -365,7 +409,11 @@ proto_mbim_teardown() {
 
 	echo "mbim[$$]" "Stopping network"
 	[ -n "$tid" ] && {
-		umbim $DBG -t $tid -d "$device" disconnect
+		# Disconnect with 3-second safety timeout so it never hangs
+		( sleep 3 && killall -9 umbim 2>/dev/null ) &
+		local killer_pid=$!
+		umbim $DBG -n -t $tid -d "$device" disconnect 2>/dev/null
+		kill "$killer_pid" 2>/dev/null
 		uci_revert_state network $interface tid
 	}
 

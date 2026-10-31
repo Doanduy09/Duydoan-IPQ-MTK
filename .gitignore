@@ -35,3 +35,7 @@ git-src
 .cproject
 .ccache
 .vscode*
+
+/files
+package/base-files/files/etc/init.d/all
+*.dat
