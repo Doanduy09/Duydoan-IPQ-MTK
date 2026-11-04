@@ -21,7 +21,7 @@ jobs:
   auto_clean:
     runs-on: ubuntu-latest
     steps:
-      - name: Delete Old Workflows and Artifacts
+      - name: Delete Old Workflows and Artifacts via ophub
         uses: ophub/delete-releases-workflows@main
         with:
           gh_token: ${{ secrets.GITHUB_TOKEN }}
@@ -33,13 +33,28 @@ jobs:
           delete_artifacts: true
           artifacts_keep_day: 0
 
+      - name: Purge Completed Workflow Runs Directly
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          echo "=========================================================="
+          echo ">> Dang quet va xoa toan bo workflow runs da hoan thanh..."
+          echo "=========================================================="
+          RUN_IDS=$(gh run list --repo "${{ github.repository }}" --status completed --limit 1000 --json databaseId -q '.[].databaseId' || true)
+          for rid in $RUN_IDS; do
+            if [ -n "$rid" ]; then
+              echo ">> Xoa run: $rid"
+              gh run delete "$rid" --repo "${{ github.repository }}" || true
+            fi
+          done
+          echo ">> Da xoa sach se tat ca workflow runs cu!"
+
       - name: Trigger Fresh Firmware Builds
         if: (inputs.trigger_builds == true || github.event_name == 'schedule') && !cancelled()
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
           echo "=========================================================="
-          echo ">> Da don dep sach se toan bo workflow runs cu!"
           echo ">> Dang tu dong kich hoat build lai toan bo firmware moi..."
           echo "=========================================================="
           gh workflow run "build-firmware.yml" --repo "${{ github.repository }}" -r main || true
