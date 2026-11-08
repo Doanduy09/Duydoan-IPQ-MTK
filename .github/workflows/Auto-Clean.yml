@@ -1,13 +1,19 @@
 # SPDX-License-Identifier: MIT
-# Automated maintenance workflow: Cleans old workflow runs and artifacts daily
+# Automated maintenance workflow: Cleans old releases, tags, workflow runs and automatically triggers fresh builds
 
 name: Auto-Clean
 
 on:
   schedule:
-    # 05:30 AM Asia/Ho_Chi_Minh (22:30 UTC), 30 mins before 06:00 AM daily build
-    - cron: '30 22 * * *'
+    # 05:00 AM Asia/Ho_Chi_Minh daily (22:00 UTC)
+    - cron: '0 22 * * *'
   workflow_dispatch:
+    inputs:
+      trigger_builds:
+        description: 'Tu dong kich hoat build lai toan bo firmware sau khi don sach'
+        required: false
+        default: true
+        type: boolean
 
 permissions: write-all
 
@@ -15,14 +21,56 @@ jobs:
   auto_clean:
     runs-on: ubuntu-latest
     steps:
-      - name: Delete Old Workflows and Artifacts
-        uses: ophub/delete-releases-workflows@main
-        with:
-          gh_token: ${{ secrets.GITHUB_TOKEN }}
-          delete_releases: false
-          releases_keep_latest: 1
-          delete_tags: false
-          delete_workflows: true
-          workflows_keep_day: 1
-          delete_artifacts: true
-          artifacts_keep_day: 1
+      - name: Purge Old Releases and Tags
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          echo "=========================================================="
+          echo ">> Dang quet va xoa toan bo Releases va Tags cu..."
+          echo "=========================================================="
+          RELEASES=$(gh release list --repo "${{ github.repository }}" --limit 100 --json tagName -q '.[].tagName' || true)
+          for tag in $RELEASES; do
+            if [ -n "$tag" ]; then
+              echo ">> Xoa release va tag: $tag"
+              gh release delete "$tag" --repo "${{ github.repository }}" -y --cleanup-tag || true
+            fi
+          done
+          TAGS=$(gh api "repos/${{ github.repository }}/git/refs/tags" --jq '.[].ref' 2>/dev/null || true)
+          for ref in $TAGS; do
+            if [ -n "$ref" ]; then
+              tag_name=${ref#refs/tags/}
+              echo ">> Xoa tag con sot: $tag_name"
+              gh api -X DELETE "repos/${{ github.repository }}/git/refs/tags/$tag_name" || true
+            fi
+          done
+          echo ">> Da don dep sach se Releases va Tags cu!"
+
+      - name: Purge Completed Workflow Runs Directly
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          echo "=========================================================="
+          echo ">> Dang quet va xoa toan bo workflow runs da hoan thanh..."
+          echo "=========================================================="
+          RUN_IDS=$(gh run list --repo "${{ github.repository }}" --status completed --limit 1000 --json databaseId -q '.[].databaseId' || true)
+          for rid in $RUN_IDS; do
+            if [ -n "$rid" ]; then
+              echo ">> Xoa run: $rid"
+              gh run delete "$rid" --repo "${{ github.repository }}" || true
+            fi
+          done
+          echo ">> Da xoa sach se tat ca workflow runs cu!"
+
+      - name: Trigger Fresh Firmware Builds
+        if: (inputs.trigger_builds == true || github.event_name == 'schedule') && !cancelled()
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          echo "=========================================================="
+          echo ">> Dang tu dong kich hoat build lai toan bo firmware moi..."
+          echo "=========================================================="
+          gh workflow run "build-firmware.yml" --repo "${{ github.repository }}" -r main || true
+          gh workflow run "build-25-firmware.yml" --repo "${{ github.repository }}" -r main || true
+          gh workflow run "build-asus-24.yml" --repo "${{ github.repository }}" -r main || true
+          gh workflow run "build-asus-25.yml" --repo "${{ github.repository }}" -r main || true
+          echo ">> Da gui yeu cau build toan bo firmware moi thanh cong!"
