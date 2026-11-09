@@ -39,6 +39,7 @@ jobs:
         run: |
           git config user.name "Doanduy09-Bot"
           git config user.email "doanduy09@gmail.com"
+          git checkout -B openwrt-25 origin/openwrt-25
           git remote add upstream https://github.com/immortalwrt/immortalwrt.git || true
           git fetch upstream openwrt-25.12 --depth=50
           echo ">> Dang kiem tra va tu dong keo cap nhat moi nhat tu upstream immortalwrt:openwrt-25.12..."

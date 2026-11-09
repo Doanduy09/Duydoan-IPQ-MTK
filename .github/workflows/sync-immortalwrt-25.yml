@@ -1,0 +1,84 @@
+# SPDX-License-Identifier: MIT
+# Automated Upstream Sync Workflow: Monitors upstream ImmortalWrt 25.12 and auto-merges into openwrt-25
+
+name: Sync Upstream ImmortalWrt 25.12
+
+on:
+  schedule:
+    # Kiem tra dinh ky moi 6 tieng (00:00, 06:00, 12:00, 18:00 UTC)
+    - cron: '0 */6 * * *'
+  workflow_dispatch:
+    inputs:
+      force_build:
+        description: 'Ep buoc kich hoat build firmware 25 du khong co commit moi'
+        required: false
+        default: false
+        type: boolean
+
+permissions: write-all
+
+jobs:
+  sync_and_update:
+    name: Sync openwrt-25 with upstream immortalwrt:openwrt-25.12
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout Source Branch openwrt-25
+        uses: actions/checkout@v4
+        with:
+          ref: openwrt-25
+          fetch-depth: 0
+
+      - name: Configure Git Identity
+        run: |
+          git config user.name "Doanduy09-Bot"
+          git config user.email "doanduy09@gmail.com"
+          git checkout -B openwrt-25 origin/openwrt-25
+
+      - name: Check and Sync Upstream ImmortalWrt 25.12
+        id: sync_check
+        run: |
+          echo "=========================================================="
+          echo ">> Ket noi toi upstream chinh thuc ImmortalWrt 25.12..."
+          echo "=========================================================="
+          git remote add upstream https://github.com/immortalwrt/immortalwrt.git || git remote set-url upstream https://github.com/immortalwrt/immortalwrt.git
+          git fetch upstream openwrt-25.12 --depth=100
+
+          UPSTREAM_SHA=$(git rev-parse upstream/openwrt-25.12)
+          LOCAL_SHA=$(git rev-parse HEAD)
+          echo "Upstream latest commit: $UPSTREAM_SHA"
+          echo "Local openwrt-25 commit: $LOCAL_SHA"
+
+          if git merge-base --is-ancestor upstream/openwrt-25.12 HEAD; then
+            echo ">> [ALREADY UP-TO-DATE] Nhanh openwrt-25 da dong bo hoan toan voi commit moi nhat cua ImmortalWrt ($UPSTREAM_SHA)."
+            echo "has_updates=false" >> "$GITHUB_OUTPUT"
+          else
+            echo ">> [NEW UPDATES DETECTED] Phat hien commit moi tu upstream ImmortalWrt!"
+            echo "has_updates=true" >> "$GITHUB_OUTPUT"
+
+            echo ">> Tien hanh hop nhat upstream/openwrt-25.12..."
+            if git merge upstream/openwrt-25.12 -m "sync: auto-merge upstream immortalwrt:openwrt-25.12 ($UPSTREAM_SHA)"; then
+              echo ">> Hop nhat commit moi thanh cong khong xung dot!"
+            else
+              echo ">> Phat hien xung dot, tu dong bao luu 100% cau hinh thiet bi Doanduy..."
+              git checkout --ours asus_tuf-ax4200.config asus_tuf-ax6000.config jdcloud_re-cs-02-nss.config feeds.conf.default 2>/dev/null || true
+              [ -d "target/linux/qualcommax" ] && git checkout --ours target/linux/qualcommax/image/ipq60xx.mk package/firmware/ipq-wifi/Makefile 2>/dev/null || true
+              git add -A
+              git commit -m "sync: resolve merge conflicts preserving Doanduy hardware configurations" || true
+            fi
+
+            echo ">> Day commit dong bo moi len GitHub nhanh openwrt-25..."
+            git push origin openwrt-25
+            echo ">> Da day cap nhat thanh cong len branch openwrt-25!"
+          fi
+
+      - name: Trigger Build Firmware 25 (When New Updates Exist)
+        if: (steps.sync_check.outputs.has_updates == 'true' || inputs.force_build == true) && !cancelled()
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          echo "=========================================================="
+          echo ">> Kich hoat tu dong bien dich firmware moi cho ban 25..."
+          echo "=========================================================="
+          gh workflow run "build-25-firmware.yml" --repo "${{ github.repository }}" -r openwrt-25 || true
+          gh workflow run "build-asus-25.yml" --repo "${{ github.repository }}" -r openwrt-25 || true
+          echo ">> Da gui yeu cau build firmware 25 thanh cong!"
