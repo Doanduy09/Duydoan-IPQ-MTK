@@ -1,0 +1,94 @@
+name: Build Duydoan-24.10 Viettel NR3053
+
+on:
+  workflow_dispatch:
+    inputs:
+      release:
+        description: 'Upload firmware to GitHub Release'
+        required: false
+        default: true
+        type: boolean
+
+permissions: write-all
+
+jobs:
+  build:
+    name: Build Viettel NR3053
+    runs-on: ubuntu-22.04
+    steps:
+      - name: Checkout Source
+        uses: actions/checkout@v4
+        with:
+          ref: main
+
+      - name: Initialize Build Environment
+        env:
+          DEBIAN_FRONTEND: noninteractive
+        run: |
+          sudo rm -rf /etc/apt/sources.list.d/* /usr/share/dotnet /usr/local/lib/android /opt/ghc
+          sudo -E apt-get -qq update
+          sudo -E apt-get -qq install -y ack antlr3 asciidoc autoconf automake autopoint binutils bison build-essential \
+            bzip2 ccache cmake cpio curl device-tree-compiler fastjar flex gawk gettext gcc-multilib g++-multilib \
+            git gperf haveged help2man intltool libc6-dev-i386 libelf-dev libglib2.0-dev libgmp3-dev libltdl-dev \
+            libmpc-dev libmpfr-dev libncurses5-dev libncursesw5-dev libreadline-dev libssl-dev libtool lrzsz \
+            mkisofs msmtp nano ninja-build p7zip p7zip-full patch pkgconf python3 python3-pip python3-ply \
+            python3-docutils qemu-utils re2c rsync scons squashfs-tools subversion swig texinfo uglifyjs upx-ucl \
+            unzip vim wget xmlto xxd zlib1g-dev zstd
+          sudo timedatectl set-timezone "Asia/Ho_Chi_Minh"
+
+      - name: Update and Install Feeds
+        run: |
+          ./scripts/feeds update -a
+          ./scripts/feeds install -a
+
+      - name: Load Seed Config
+        run: |
+          cp viettel_nr3053.config .config
+          make defconfig
+
+      - name: Download Package Sources
+        run: |
+          make download -j8
+          find dl -size -1024c -exec ls -l {} \;
+          find dl -size -1024c -exec rm -f {} \;
+
+      - name: Compile Firmware
+        id: compile
+        run: |
+          echo -e "$(nproc) thread compile for Viettel NR3053"
+          make -j$(nproc) || make -j1 V=s
+          echo "status=success" >> $GITHUB_OUTPUT
+
+      - name: Prepare Firmware Artifacts
+        id: organize
+        if: steps.compile.outputs.status == 'success'
+        run: |
+          cd bin/targets/mediatek/filogic
+          rm -rf packages
+          echo "FIRMWARE=$PWD" >> $GITHUB_ENV
+          echo "BUILD_DATE=$(date +'%Y.%m.%d-%H%M')" >> $GITHUB_ENV
+          echo "status=success" >> $GITHUB_OUTPUT
+
+      - name: Upload Firmware to Actions Artifacts
+        uses: actions/upload-artifact@v4
+        if: steps.organize.outputs.status == 'success'
+        with:
+          name: Duydoan-24.10_Viettel_NR3053_${{ env.BUILD_DATE }}
+          path: ${{ env.FIRMWARE }}/*
+
+      - name: Create GitHub Release
+        uses: softprops/action-gh-release@v2
+        if: steps.organize.outputs.status == 'success' && (inputs.release != false)
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          tag_name: Duydoan-24.10-Viettel-NR3053-${{ env.BUILD_DATE }}
+          name: Duydoan-24.10 Viettel NR3053 Release ${{ env.BUILD_DATE }}
+          body: |
+            ### 🚀 Duydoan-24.10 for Viettel NR3053
+            * **Base Version**: Duydoan-24.10 (LTS Kernel 6.6)
+            * **Target Hardware**: Viettel NR3053 (MediaTek MT7981B Filogic 820, DDR3 512MB, SPI-NAND 256MB)
+            * **USB 3.0 Support**: xHCI controller & USB PHY enabled (Hardware mod ready)
+            * **Network**: 1x WAN, 3x LAN (MT7531 switch) + 2x2 Wi-Fi 6 AX3000
+            * **Offloading**: MediaTek HNAT (PPE + WED) hardware flow offload
+          files: ${{ env.FIRMWARE }}/*
