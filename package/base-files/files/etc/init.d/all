@@ -27032,6 +27032,26 @@ setup_node_client() {
     [ -n "$target_key" ] && uci set wireless.mesh_sta.key="$target_key"
     uci set wireless.mesh_sta.wds='1'
     uci set wireless.mesh_sta.disabled='0'
+
+    # Đồng bộ Wi-Fi phát cho khách (User AP) trên Router Phụ:
+    uci -q set wireless.default_radio0.ssid='TPT Lam'
+    uci -q set wireless.default_radio0.key='TPTlam011205@!'
+    uci -q set wireless.default_radio0.encryption='psk2'
+    uci -q set wireless.default_radio0.disabled='0'
+
+    uci -q set wireless.default_radio1.ssid='TPT Lam 5G'
+    uci -q set wireless.default_radio1.key='TPTlam011205@!'
+    uci -q set wireless.default_radio1.encryption='psk2'
+    uci -q set wireless.default_radio1.disabled='0'
+    uci -q set wireless.default_radio1.ieee80211r='1'
+    uci -q set wireless.default_radio1.mobility_domain='e4a1'
+    uci -q set wireless.default_radio1.ft_psk_generate_local='1'
+    uci -q set wireless.default_radio1.pmk_r1_push='1'
+    uci -q set wireless.default_radio1.ieee80211k='1'
+    uci -q set wireless.default_radio1.ieee80211v='1'
+    uci -q set wireless.default_radio1.bss_transition='1'
+    uci -q set wireless.default_radio1.wnm_sleep_mode='1'
+
     uci commit wireless
 
     # Tắt DHCP
@@ -27069,15 +27089,13 @@ cmd_auto() {
     #    - Đã được cấu hình cứng role='node'
     # 3. Ngoài các trường hợp trên: Giữ nguyên ROUTER CHÍNH / ĐỘC LẬP (192.168.1.1, DHCP BẬT) để người dùng không bao giờ mất kết nối!
     if [ "$has_net" = "1" ]; then
+        # Router CÓ MẠNG -> Tự động trở thành Router Phát Chính (Controller 192.168.1.1)
         cmd_set_controller
-        return 0
-    elif [ -f "$PAIR_PID_FILE" ] || [ -f "$STATUS_FILE" ] || [ "$forced_role" = "node" ]; then
-        local target_mesh_ssid="$DEFAULT_MESH_ID"
-        cmd_connect "$target_mesh_ssid" "$DEFAULT_MESH_KEY" "192.168.1.10"
         return 0
     else
-        # Mặc định an toàn: Chưa có mạng nhưng không ghép nối -> Duy trì vai trò Controller / Standalone
-        cmd_set_controller
+        # Router KHÔNG CÓ MẠNG -> Tự động trở thành Router Phụ (Node) kết nối vào Router Chính!
+        local target_mesh_ssid="$DEFAULT_MESH_ID"
+        cmd_connect "$target_mesh_ssid" "$DEFAULT_MESH_KEY" "192.168.1.10"
         return 0
     fi
 }
@@ -27314,8 +27332,8 @@ cmd_refresh_cache() {
     local now_sec=$(date +%s)
     local mesh_timeout_left=0
 
-    # Watchdog 15 Phút Không Có Kết Nối:
-    # Nếu đang bật Mesh (is_active == true) nhưng KHÔNG CÓ THIẾT BỊ NÀO GHÉP NỐI (peer_count == 0) quá 15 phút (900s) -> Tự động tắt Mesh!
+    # Watchdog 5 Phút Không Có Kết Nối:
+    # Nếu đang bật Mesh (is_active == true) nhưng KHÔNG CÓ THIẾT BỊ NÀO GHÉP NỐI (peer_count == 0) quá 5 phút (300s) -> Tự động tắt Mesh!
     if [ "$is_active" = "true" ]; then
         if [ "${peer_count:-0}" -eq 0 ]; then
             if [ ! -f /tmp/mesh_alone_since_ts ]; then
@@ -27323,16 +27341,16 @@ cmd_refresh_cache() {
             fi
             local alone_first=$(cat /tmp/mesh_alone_since_ts 2>/dev/null || echo "$now_sec")
             local alone_diff=$((now_sec - alone_first))
-            if [ "$alone_diff" -ge 900 ]; then
-                logger -t auto_mesh "Mesh đã bật 15 phút nhưng không có thiết bị ghép nối nào (peer_count=0). Tự động tắt Mesh để giải phóng sóng Wi-Fi!"
+            if [ "$alone_diff" -ge 300 ]; then
+                logger -t auto_mesh "Mesh đã bật 5 phút nhưng không có thiết bị ghép nối nào (peer_count=0). Tự động tắt Mesh để giải phóng sóng Wi-Fi!"
                 rm -f /tmp/mesh_alone_since_ts
                 cmd_unmesh >/dev/null 2>&1
                 is_active=false
                 role="standalone"
-                role_display="ROUTER ĐỘC LẬP (ĐÃ TỰ TẮT MESH DO QUÁ 15 PHÚT KHÔNG CÓ KẾT NỐI)"
+                role_display="ROUTER ĐỘC LẬP (ĐÃ TỰ TẮT MESH DO QUÁ 5 PHÚT KHÔNG CÓ KẾT NỐI)"
                 mesh_timeout_left=0
             else
-                mesh_timeout_left=$((900 - alone_diff))
+                mesh_timeout_left=$((300 - alone_diff))
             fi
         else
             # Đang có thiết bị ghép nối (peer_count >= 1) -> Hủy đếm ngược 15 phút
@@ -27546,26 +27564,19 @@ cmd_connect() {
     date +%s > /tmp/mesh_alone_since_ts 2>/dev/null
 
     uci set network.lan.ipaddr="$target_ip"
+    uci set network.lan.netmask='255.255.255.0'
+    uci set network.lan.gateway='192.168.1.1'
+    uci set network.lan.dns='192.168.1.1'
     uci set network.lan.force_link='1'
-    uci -q delete network.lan.gateway
-    uci -q delete network.lan.dns
-    
-    # Cấu hình IP Cứu Hộ tĩnh lan_rescue (192.168.1.254)
-    uci -q set network.lan_rescue=interface
-    uci -q set network.lan_rescue.device='br-lan'
-    uci -q set network.lan_rescue.proto='static'
-    uci -q set network.lan_rescue.ipaddr='192.168.1.254'
-    uci -q set network.lan_rescue.netmask='255.255.255.0'
-    uci -q set network.lan_rescue.force_link='1'
+    uci -q delete network.lan_rescue
     uci commit network
 
     uci set dhcp.lan.ignore='1'
     uci commit dhcp
     /etc/init.d/dnsmasq restart >/dev/null 2>&1
 
+    ip addr flush dev br-lan 2>/dev/null || true
     ip addr add "${target_ip}/24" dev br-lan 2>/dev/null || true
-    ip addr add "192.168.1.2/24" dev br-lan 2>/dev/null || true
-    ip addr add "192.168.1.254/24" dev br-lan 2>/dev/null || true
     ip route replace default via 192.168.1.1 dev br-lan metric 50 2>/dev/null || true
 
     # Mở cổng SSH Dropbear trên mọi IP
@@ -27598,21 +27609,19 @@ cmd_set_controller() {
     uci set network.lan.ipaddr='192.168.1.1'
     uci set network.lan.force_link='1'
     
-    # Cấu hình IP Cứu Hộ tĩnh lan_rescue (192.168.1.254)
-    uci -q set network.lan_rescue=interface
-    uci -q set network.lan_rescue.device='br-lan'
-    uci -q set network.lan_rescue.proto='static'
-    uci -q set network.lan_rescue.ipaddr='192.168.1.254'
-    uci -q set network.lan_rescue.netmask='255.255.255.0'
-    uci -q set network.lan_rescue.force_link='1'
+    uci set network.lan.ipaddr='192.168.1.1'
+    uci set network.lan.netmask='255.255.255.0'
+    uci -q delete network.lan.gateway
+    uci -q delete network.lan.dns
+    uci -q delete network.lan_rescue
     uci commit network
 
     uci set dhcp.lan.ignore='0'
     uci commit dhcp
 
     # Gán IP ngay lập tức
+    ip addr flush dev br-lan 2>/dev/null || true
     ip addr add 192.168.1.1/24 dev br-lan 2>/dev/null || true
-    ip addr add "192.168.1.254/24" dev br-lan 2>/dev/null || true
     ip route del default dev br-lan 2>/dev/null || true
 
     uci -q delete dropbear.main.Interface
@@ -28323,16 +28332,15 @@ case "$1" in
         echo "$$" > "$WD_PID_FILE"
         trap 'rm -f "$WD_PID_FILE" 2>/dev/null; exit 0' EXIT INT TERM
 
-        # Khởi động an toàn khi thiết bị bật lên: Chờ mạng khởi động ổn định 25s
-        sleep 25
-        rm -f /tmp/mesh_15m_auto_off /tmp/mesh_alone_since_ts /tmp/node_lost_master_ts 2>/dev/null
-        local boot_role=$(uci -q get sysfixtine.mesh.role)
-        local boot_en=$(uci -q get sysfixtine.mesh.enabled)
-        # CHỈ tự động chạy nếu người dùng đã bật Mesh và lưu vai trò rõ ràng trước đó!
-        if [ "$boot_en" = "1" ] && [ "$boot_role" = "node" ]; then
-            cmd_connect >/dev/null 2>&1
-        elif [ "$boot_en" = "1" ] && [ "$boot_role" = "controller" ]; then
-            cmd_set_controller >/dev/null 2>&1
+        # Khởi động an toàn khi thiết bị bật lên: Chờ mạng và Wi-Fi khởi động ổn định 20s
+        sleep 20
+        rm -f /tmp/mesh_5m_auto_off /tmp/mesh_alone_since_ts /tmp/node_lost_master_ts 2>/dev/null
+
+        # TỰ ĐỘNG PHÂN VAI VÀ TỰ MESH KHI KHỞI ĐỘNG (Auto-Mesh on boot):
+        # Có mạng = Router Chính (Controller) | Không có mạng = Router Phụ (Node)
+        local is_disabled=$(uci -q get sysfixtine.mesh.enabled)
+        if [ "$is_disabled" != "0" ]; then
+            cmd_auto >/dev/null 2>&1
         fi
 
         local loop_c=0
@@ -28356,14 +28364,14 @@ case "$1" in
             local alone_first=$(cat /tmp/mesh_alone_since_ts 2>/dev/null || echo "$now_sec")
             local alone_diff=$((now_sec - alone_first))
 
-            # 1. Watchdog Router Chính (Controller): Tự động tắt Mesh sau 15 phút (900s) nếu không có Router Phụ nào kết nối
-            if [ "$cur_r" = "controller" ] && [ "$alone_diff" -ge 900 ] && [ ! -f "/tmp/mesh_15m_auto_off" ]; then
+            # 1. Watchdog Router Chính (Controller): Tự động tắt Mesh sau 5 phút (300s) nếu không có Router Phụ nào kết nối
+            if [ "$cur_r" = "controller" ] && [ "$alone_diff" -ge 300 ] && [ ! -f "/tmp/mesh_5m_auto_off" ]; then
                 local p_info=$(get_mesh_peers 2>/dev/null)
                 local p_count=$(echo "$p_info" | cut -d'|' -f1)
                 [ -z "$p_count" ] && p_count=0
                 if [ "$p_count" -eq 0 ]; then
-                    echo "[$(date)] [Auto Mesh] Router chính sau 15 phút không có Node nào ghép nối (peer_count=0). Tự động tắt Mesh để tối ưu 100% băng thông Wi-Fi!" >> /tmp/auto_mesh.log
-                    touch /tmp/mesh_15m_auto_off
+                    echo "[$(date)] [Auto Mesh] Router chính sau 5 phút không có Node nào ghép nối (peer_count=0). Tự động tắt Mesh để tối ưu 100% băng thông Wi-Fi!" >> /tmp/auto_mesh.log
+                    touch /tmp/mesh_5m_auto_off
                     cmd_unmesh >/dev/null 2>&1
                 else
                     # Đang có Router phụ kết nối -> reset đếm ngược
