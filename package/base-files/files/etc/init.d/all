@@ -6921,6 +6921,7 @@ get_physical_lan_ports() {
     for iface in /sys/class/net/*; do
         [ -d "$iface" ] || continue
         local dev_name=$(basename "$iface")
+        [ -d "$iface/dsa" ] && continue
         case "$dev_name" in
             lan*|eth[0-9]|enp*|eth1|eth2)
                 # Loại trừ bridge, wireless và modem
