@@ -3724,7 +3724,7 @@ define Device/viettel_nr3053
   BLOCKSIZE := 128k
   PAGESIZE := 2048
   IMAGE_SIZE := 229376k
-  DEVICE_PACKAGES := kmod-mt7915e kmod-mt7981-firmware mt7981-wo-firmware
+  DEVICE_PACKAGES := kmod-usb3 kmod-mt7915e kmod-mt7981-firmware mt7981-wo-firmware automount
   KERNEL_IN_UBI := 1
   UBOOTENV_IN_UBI := 1
   IMAGES := sysupgrade.itb
@@ -3758,7 +3758,7 @@ define Device/sdmc_mt3053
   IMAGE/sysupgrade.bin := sysupgrade-tar | append-metadata
   ARTIFACTS := factory.ubi
   ARTIFACT/factory.ubi := append-image-stage initramfs-kernel.bin | ubinize-kernel
-  DEVICE_PACKAGES := kmod-mt7915e kmod-mt7981-firmware mt7981-wo-firmware
+  DEVICE_PACKAGES := kmod-usb3 kmod-mt7915e kmod-mt7981-firmware mt7981-wo-firmware automount
 endef
 TARGET_DEVICES += sdmc_mt3053
 

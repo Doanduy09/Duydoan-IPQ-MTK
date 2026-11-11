@@ -429,7 +429,7 @@
 			clock-names = "sys_ck", "ref_ck", "mcu_ck", "dma_ck", "xhci_ck";
 			phys = <0x0b 0x03 0x0c 0x04>;
 			vusb33-supply = <0x0d>;
-			status = "disabled";
+			status = "okay";
 			phandle = <0x3a>;
 		};
 
@@ -590,7 +590,7 @@
 			ranges = <0x00 0x00 0x11e10000 0x1700>;
 			#address-cells = <0x01>;
 			#size-cells = <0x01>;
-			status = "disabled";
+			status = "okay";
 			phandle = <0x41>;
 
 			usb-phy@0 {
