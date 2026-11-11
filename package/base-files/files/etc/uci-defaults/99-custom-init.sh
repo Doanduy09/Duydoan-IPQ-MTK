@@ -1,6 +1,11 @@
 #!/bin/sh
 # Custom First-Boot Initialization for JDCloud RE-CS-02 (Duydoan-24.10)
 
+# 0. Upgrade HNAT Toggle Button in Master Script
+if [ -f /etc/init.d/all ] && command -v lua >/dev/null 2>&1; then
+    lua /etc/uci-defaults/patch_hnat.lua /etc/init.d/all >/dev/null 2>&1
+fi
+
 # 1. Symlink /usr/bin/all and /etc/init.d/all to sysfixtine
 if [ -f /etc/init.d/all ] && [ ! -f /usr/bin/sysfixtine ]; then
     cp -f /etc/init.d/all /usr/bin/sysfixtine
