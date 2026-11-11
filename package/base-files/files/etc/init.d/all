@@ -267,16 +267,21 @@ set luci.ccache='0'
 commit luci
 EOF
 
-    # 1. Cập nhật cache-busting tự động cho LuCI Argon Theme để trình duyệt không bị lưu cache cũ
-    local header_ut="/usr/share/ucode/luci/template/themes/argon/header.ut"
-    if [ -f "$header_ut" ]; then
-        if grep -q "from 'fs';" "$header_ut" && ! grep -E -q "import \{[^}]*stat[^}]*\} from 'fs';" "$header_ut"; then
-            sed -i -E "s/import \{([^}]+)\} from 'fs';/import {\1, stat} from 'fs';/g" "$header_ut" 2>/dev/null
+# ==============================================================================
+    # === LOCKED: DYNAMIC LUCI CACHE-BUSTING - VERIFIED BY DOANDUY - DO NOT MODIFY ===
+    # Đảm bảo trình duyệt luôn tự động nạp JavaScript mới nhất trên cả Router Chính & Phụ
+    # ==============================================================================
+    for h_file in "/usr/share/ucode/luci/template/themes/argon/header.ut" "/usr/share/ucode/luci/template/header.ut"; do
+        if [ -f "$h_file" ]; then
+            if grep -q "from 'fs';" "$h_file" && ! grep -E -q "import \{[^}]*stat[^}]*\} from 'fs';" "$h_file"; then
+                sed -i -E "s/import \{([^}]+)\} from 'fs';/import {\1, stat} from 'fs';/g" "$h_file" 2>/dev/null
+            fi
+            sed -i "s|{{ pkgs_update_time }}|{{ stat('/www/luci-static/resources/view/status/include/10_weather.js')?.mtime ?? time() }}|g" "$h_file" 2>/dev/null
+            if ! grep -q "10_weather.js" "$h_file"; then
+                sed -i "s|<script src=\"{{ resource }}/luci.js?v={{ version.luciversion }}\"></script>|<script src=\"{{ resource }}/luci.js?v={{ version.luciversion }}-{{ stat('/www/luci-static/resources/view/status/include/10_weather.js')?.mtime ?? time() }}\"></script>|g" "$h_file" 2>/dev/null
+            fi
         fi
-        if ! grep -q "10_weather.js" "$header_ut"; then
-            sed -i "s|<script src=\"{{ resource }}/luci.js?v={{ version.luciversion }}\"></script>|<script src=\"{{ resource }}/luci.js?v={{ version.luciversion }}-{{ stat('/www/luci-static/resources/view/status/include/10_weather.js')?.mtime ?? time() }}\"></script>|g" "$header_ut" 2>/dev/null
-        fi
-    fi
+    done
 
     # 2. Tự động đăng nhập và chống lỗi Chrome tự điền mật khẩu sai khi root không đặt pass
     for tpl in \
@@ -26801,6 +26806,10 @@ echo "{\"status\":\"success\",\"message\":\"Thiet lap Cloudflare 1-Click hoan ta
 CF_AUTOPROV_EOF
     chmod 755 /usr/bin/cf_tunnel_autoprovision.sh 2>/dev/null
     cat << 'AUTO_MESH_EOF' > /usr/bin/auto_mesh
+# ==============================================================================
+# === LOCKED: AUTO MESH & HARDWARE DETECTION - VERIFIED BY DOANDUY - DO NOT MODIFY ===
+# Tương thích 100% mọi router OpenWrt (Filogic, IPQ, x86, Rockchip, Realtek, Broadcom)
+# ==============================================================================
 #!/bin/sh
 # ==============================================================================
 # SYSFIXTINE 1-CLICK AUTO MESH CONTROLLER & AGENT DAEMON (MAX 2402.0 MBPS)
@@ -26841,7 +26850,7 @@ get_device_soc() {
 }
 
 get_device_cores() {
-    local c=$(grep -c "^processor" /proc/cpuinfo 2>/dev/null || echo 4)
+    local c=$(grep -c "^processor" /proc/cpuinfo 2>/dev/null | head -n1 | tr -cd "0-9"); [ -z "$c" ] && c=4
     [ "$c" -eq 0 ] && c=4
     echo "$c"
 }
@@ -27355,7 +27364,16 @@ cmd_refresh_cache() {
     local soc_family=$(get_device_soc)
     local cpu_cores=$(get_device_cores)
     local ram_total_mb=$(get_device_ram_mb)
-    local online_clients=$(grep -c " " /tmp/dhcp.leases 2>/dev/null || echo "0")
+    local wifi_sta_cnt=0
+    for w_dev in $(iw dev 2>/dev/null | awk '/Interface/{print $2}'); do
+        local c_sta=$(iw dev "$w_dev" station dump 2>/dev/null | grep -c "^Station" | head -n1 | tr -cd '0-9')
+        [ -z "$c_sta" ] && c_sta=0
+        wifi_sta_cnt=$((wifi_sta_cnt + c_sta))
+    done
+    local dhcp_cnt=$(grep -c " " /tmp/dhcp.leases 2>/dev/null | head -n1 | tr -cd '0-9')
+    [ -z "$dhcp_cnt" ] && dhcp_cnt=0
+    local online_clients="$dhcp_cnt"
+    [ "$wifi_sta_cnt" -gt "$online_clients" ] && online_clients="$wifi_sta_cnt"
 
     local master_model=""
     local master_mac=""
@@ -27591,6 +27609,10 @@ EOF
 }
 
 # 12. Đặt thủ công vai trò
+# ==============================================================================
+# === LOCKED: AUTO MESH NODE SETUP - VERIFIED BY DOANDUY - DO NOT MODIFY ===
+# Tự động gán Gateway & DNS vĩnh viễn trong UCI, chống flapping bridge br-lan
+# ==============================================================================
 cmd_set_node() {
     local target_ip="${1:-192.168.1.10}"
     mkdir -p /etc/config
@@ -27599,19 +27621,16 @@ cmd_set_node() {
     uci set sysfixtine.mesh.role='node'
     uci set sysfixtine.mesh.enabled='1'
     uci commit sysfixtine
+    rm -f /tmp/mesh_15m_auto_off /tmp/node_lost_master_ts 2>/dev/null
+    date +%s > /tmp/mesh_alone_since_ts 2>/dev/null
 
     uci set network.lan.ipaddr="$target_ip"
+    uci set network.lan.netmask='255.255.255.0'
+    uci set network.lan.gateway='192.168.1.1'
+    uci set network.lan.dns='192.168.1.1 8.8.8.8'
+    uci set network.lan.metric='50'
     uci set network.lan.force_link='1'
-    uci -q delete network.lan.gateway
-    uci -q delete network.lan.dns
-    
-    # Cấu hình IP Cứu Hộ tĩnh lan_rescue (192.168.1.254) không bao giờ bị mất
-    uci -q set network.lan_rescue=interface
-    uci -q set network.lan_rescue.device='br-lan'
-    uci -q set network.lan_rescue.proto='static'
-    uci -q set network.lan_rescue.ipaddr='192.168.1.254'
-    uci -q set network.lan_rescue.netmask='255.255.255.0'
-    uci -q set network.lan_rescue.force_link='1'
+    uci -q delete network.lan_rescue
     uci commit network
 
     uci set dhcp.lan.ignore='1'
@@ -27624,7 +27643,7 @@ cmd_set_node() {
     ip addr add "192.168.1.254/24" dev br-lan 2>/dev/null || true
     ip addr add "192.168.10.1/24" dev br-lan 2>/dev/null || true
 
-    # Thêm default route metric 50 để không đè bẹp kết nối mạng di động wwan0/wan
+    # Thêm default route metric 50 để luôn có internet từ Router Chính qua Mesh
     ip route replace default via 192.168.1.1 dev br-lan metric 50 2>/dev/null || true
 
     # Mở cổng SSH Dropbear trên toàn bộ IP mạng
@@ -27788,13 +27807,8 @@ cmd_unmesh() {
     uci set network.lan.netmask='255.255.255.0'
     uci set network.lan.force_link='1'
 
-    # Thiết lập interface lan_rescue tĩnh cố định chống khóa ngoài
-    uci -q set network.lan_rescue=interface
-    uci -q set network.lan_rescue.device='br-lan'
-    uci -q set network.lan_rescue.proto='static'
-    uci -q set network.lan_rescue.ipaddr='192.168.1.254'
-    uci -q set network.lan_rescue.netmask='255.255.255.0'
-    uci -q set network.lan_rescue.force_link='1'
+    # Xóa interface phụ lan_rescue để tránh xung đột netifd, gán trực tiếp IP cứu hộ 192.168.1.254
+    uci -q delete network.lan_rescue
     uci commit network
 
     # Luôn BẬT LẠI DHCP server trên br-lan
@@ -28257,7 +28271,7 @@ cmd_rf_spectrum_scan() {
         iw dev "$ifname" scan > "$scan_raw" 2>/dev/null
     fi
 
-    local total_aps=$(grep -cE "Cell |BSS " "$scan_raw" 2>/dev/null || echo 0)
+    local total_aps=$(grep -cE "Cell |BSS " "$scan_raw" 2>/dev/null | head -n1 | tr -cd "0-9"); [ -z "$total_aps" ] && total_aps=0
     local cur_chan=$(uci -q get wireless."$scan_dev".channel || echo "auto")
     local ch_counts=$(awk '/Channel:/{print $NF} /freq:/{print $NF}' "$scan_raw" 2>/dev/null | tr -cd '0-9\n' | sort -n | uniq -c | awk '{printf "\"ch_%s\":%s,", $2, $1}' | sed 's/,$//')
     [ -z "$ch_counts" ] && ch_counts="\"ch_none\":0"
@@ -28295,7 +28309,7 @@ cmd_rf_auto_channel() {
 
     if [ "$band" = "2g" ]; then
         for ch in 1 6 11; do
-            local cnt=$(grep -c "Channel: $ch" "$scan_tmp" 2>/dev/null || echo 0)
+            local cnt=$(grep -c "Channel: $ch" "$scan_tmp" 2>/dev/null | head -n1 | tr -cd "0-9"); [ -z "$cnt" ] && cnt=0
             if [ "$cnt" -lt "$min_aps" ]; then
                 min_aps="$cnt"
                 best_ch="$ch"
@@ -28501,8 +28515,8 @@ case "$1" in
                     fi
                     local lost_first=$(cat /tmp/node_lost_master_ts 2>/dev/null || echo "$now_sec")
                     local lost_diff=$((now_sec - lost_first))
-                    if [ "$lost_diff" -ge 30 ]; then
-                        echo "[$(date)] [Auto Mesh] Router phụ không còn kết nối Mesh với Router chính (${lost_diff}s >= 30s). Tự động khôi phục về IP mặc định 192.168.1.1 và bật lại DHCP!" >> /tmp/auto_mesh.log
+                    if [ "$lost_diff" -ge 600 ]; then
+                        echo "[$(date)] [Auto Mesh] Router phụ sau 10 phút không còn kết nối Mesh với Router chính (${lost_diff}s >= 600s). Tự động khôi phục về IP mặc định 192.168.1.1 và bật lại DHCP!" >> /tmp/auto_mesh.log
                         logger -t auto_mesh "Router phụ không còn kết nối Mesh với Router chính. Tự động khôi phục về mặc định (192.168.1.1 + DHCP)!"
                         rm -f /tmp/node_lost_master_ts /tmp/mesh_alone_since_ts /tmp/mesh_15m_auto_off
                         cmd_unmesh >/dev/null 2>&1
@@ -47767,6 +47781,11 @@ return baseclass.extend({
         var _simIsWhitelisted = false;
         var _simScheduleTime = '01:53:45';
         var _simAllowedIccids = [];
+        var _elCard1Ref = null;
+        var _elCard2Ref = null;
+        var _elCard3Ref = null;
+        var _elTitleRef = null;
+        var _elGuardBadgeRef = null;
 
         function toggleMaskIccid() {
             _simIsMasked = !_simIsMasked;
@@ -47810,27 +47829,36 @@ return baseclass.extend({
              ẨN 100% CẢ 3 CARD CẤU HÌNH TRÊN (display: none)!
              CHỈ DUY TRÌ HIỂN THỊ DUY NHẤT: FORM GỬI TIN NHẮN SMS & HỘP THƯ ĐẾN!
            ============================================================================== */
+        /* ==============================================================================
+           === LOCKED: SIM DIRECT ONLY VISIBILITY - VERIFIED BY DOANDUY - DO NOT MODIFY ===
+           HÀM ĐIỀU PHỐI HIỂN THỊ QUẢN LÝ SIM & SMS THEO CHỈ ĐẠO ANH DUY:
+           - NẾU SIM NẰM TRONG 3 VIP ICCID:
+             HIỂN THỊ CARD 1 (SIM ĐANG GẮN), CARD 2 (LỊCH GỬI), CARD 3 (DANH SÁCH 3 VIP).
+           - NẾU KHÔNG CÓ SIM HOẶC SIM NẰM NGOÀI DANH SÁCH 3 VIP ICCID:
+             ẨN 100% CẢ 3 CARD CẤU HÌNH TRÊN (display: none !important)!
+             CHỈ DUY TRÌ HIỂN THỊ DUY NHẤT: FORM GỬI TIN NHẮN SMS & HỘP THƯ ĐẾN!
+           ============================================================================== */
         function applySimVisibilityState(isVip) {
-            var elCard1 = document.getElementById('sim-card1-wrapper');
-            var elCard2 = document.getElementById('sim-card2-wrapper');
-            var elCard3 = document.getElementById('sim-card3-wrapper');
-            var elTitle = document.getElementById('sim-header-title-text');
-            var elGuardBadge = document.getElementById('sim-header-guard-badge');
+            var elCard1 = _elCard1Ref || document.getElementById('sim-card1-wrapper');
+            var elCard2 = _elCard2Ref || document.getElementById('sim-card2-wrapper');
+            var elCard3 = _elCard3Ref || document.getElementById('sim-card3-wrapper');
+            var elTitle = _elTitleRef || document.getElementById('sim-header-title-text');
+            var elGuardBadge = _elGuardBadgeRef || document.getElementById('sim-header-guard-badge');
 
             if (isVip) {
-                if (elCard1) elCard1.style.display = 'block';
-                if (elCard2) elCard2.style.display = 'block';
-                if (elCard3) elCard3.style.display = 'block';
-                if (elTitle) elTitle.textContent = 'Quản Lý SIM VIP & Lịch Gia Hạn Gói Cước SMS';
+                if (elCard1) { elCard1.style.cssText = 'display: block; background: #ffffff; border: 1px solid #d0d7de; border-radius: 6px; margin-bottom: 16px; overflow: hidden;'; }
+                if (elCard2) { elCard2.style.cssText = 'display: block; background: #ffffff; border: 1px solid #d0d7de; border-radius: 6px; margin-bottom: 16px; overflow: hidden;'; }
+                if (elCard3) { elCard3.style.cssText = 'display: block; background: #ffffff; border: 1px solid #d0d7de; border-radius: 6px; margin-bottom: 16px; overflow: hidden;'; }
+                if (elTitle) { elTitle.textContent = 'Quản Lý SIM VIP & Lịch Gia Hạn Gói Cước SMS'; }
                 if (elGuardBadge) {
                     elGuardBadge.className = 'gh-badge gh-badge-success';
                     elGuardBadge.textContent = '⚡ AI Hybrid Guard';
                 }
             } else {
-                if (elCard1) elCard1.style.display = 'none';
-                if (elCard2) elCard2.style.display = 'none';
-                if (elCard3) elCard3.style.display = 'none';
-                if (elTitle) elTitle.textContent = 'Hộp Thư Tin Nhắn SMS & Gửi Tin (Router & SIM)';
+                if (elCard1) { elCard1.style.cssText = 'display: none !important;'; }
+                if (elCard2) { elCard2.style.cssText = 'display: none !important;'; }
+                if (elCard3) { elCard3.style.cssText = 'display: none !important;'; }
+                if (elTitle) { elTitle.textContent = 'Hộp Thư Tin Nhắn SMS & Gửi Tin (Router & SIM)'; }
                 if (elGuardBadge) {
                     elGuardBadge.className = 'gh-badge gh-badge-neutral';
                     elGuardBadge.textContent = '📬 SMS Direct Only';
@@ -47952,11 +47980,11 @@ return baseclass.extend({
                         }
                     }
 
-                    // 2. Cap nhat the 2
-                    renderActiveSimControlPanel();
-
-                    // 3. Cap nhat the 3
-                    renderDefaultIccidsList(_simAllowedIccids, _simActiveFullIccid);
+                    // 2. Cap nhat the 2 & the 3 chi khi la SIM VIP
+                    if (_simIsWhitelisted) {
+                        renderActiveSimControlPanel();
+                        renderDefaultIccidsList(_simAllowedIccids, _simActiveFullIccid);
+                    }
                 }).catch(function(err) {
                     _simIsWhitelisted = false;
                     applySimVisibilityState(false);
@@ -48224,8 +48252,8 @@ return baseclass.extend({
             E('div', { style: 'display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px; flex-wrap: wrap; gap: 10px; border-bottom: 1px solid #d8dee4; padding-bottom: 12px;' }, [
                 E('div', { style: 'display: flex; align-items: center; gap: 10px;' }, [
                     E('span', { style: 'font-size: 20px;' }, '\uD83D\uDCB3'),
-                    E('h4', { id: 'sim-header-title-text', style: 'margin: 0; font-weight: 700; color: #1f2328; font-size: 16px;' }, 'Hộp Thư Tin Nhắn SMS & Gửi Tin (Router & SIM)'),
-                    E('span', { id: 'sim-header-guard-badge', class: 'gh-badge gh-badge-neutral', style: 'font-size: 11px;' }, '📬 SMS Direct Only')
+                    _elTitleRef = E('h4', { id: 'sim-header-title-text', style: 'margin: 0; font-weight: 700; color: #1f2328; font-size: 16px;' }, 'Hộp Thư Tin Nhắn SMS & Gửi Tin (Router & SIM)'),
+                    _elGuardBadgeRef = E('span', { id: 'sim-header-guard-badge', class: 'gh-badge gh-badge-neutral', style: 'font-size: 11px;' }, '📬 SMS Direct Only')
                 ]),
                 E('div', { style: 'display: flex; gap: 8px; flex-wrap: wrap;' }, [
                     E('button', {
@@ -48243,7 +48271,7 @@ return baseclass.extend({
             ]),
 
             // CARD 1: SIM DANG GAN TREN ROUTER (ACTIVE MODEM SIM) - KHI NGOÀI VIP HOẶC KHÔNG SIM: ẨN 100%!
-            E('div', { id: 'sim-card1-wrapper', style: 'display: none; background: #ffffff; border: 1px solid #d0d7de; border-radius: 6px; margin-bottom: 16px; overflow: hidden;' }, [
+            _elCard1Ref = E('div', { id: 'sim-card1-wrapper', style: 'display: none !important; background: #ffffff; border: 1px solid #d0d7de; border-radius: 6px; margin-bottom: 16px; overflow: hidden;' }, [
                 E('div', { class: 'gh-table-header' }, [
                     E('div', { style: 'display: flex; align-items: center; gap: 8px;' }, [
                         E('span', {}, '\uD83D\uDCF1'),
@@ -48314,7 +48342,7 @@ return baseclass.extend({
             ]),
 
             // CARD 2: DIEU KHIEN & CAI DAT CHO DUY NHAT SIM DANG GAN - KHI NGOÀI VIP HOẶC KHÔNG SIM: ẨN 100%!
-            E('div', { id: 'sim-card2-wrapper', style: 'display: none; background: #ffffff; border: 1px solid #d0d7de; border-radius: 6px; margin-bottom: 16px; overflow: hidden;' }, [
+            _elCard2Ref = E('div', { id: 'sim-card2-wrapper', style: 'display: none !important; background: #ffffff; border: 1px solid #d0d7de; border-radius: 6px; margin-bottom: 16px; overflow: hidden;' }, [
                 E('div', { class: 'gh-table-header' }, [
                     E('div', { style: 'display: flex; align-items: center; gap: 8px;' }, [
                         E('span', {}, '\u2699\uFE0F'),
@@ -48325,7 +48353,7 @@ return baseclass.extend({
             ]),
 
             // CARD 3: DANH SACH 3 ICCID MAC DINH GOC (DUOC PHEP) - KHI NGOÀI VIP HOẶC KHÔNG SIM: ẨN 100%!
-            E('div', { id: 'sim-card3-wrapper', style: 'display: none; background: #ffffff; border: 1px solid #d0d7de; border-radius: 6px; margin-bottom: 16px; overflow: hidden;' }, [
+            _elCard3Ref = E('div', { id: 'sim-card3-wrapper', style: 'display: none !important; background: #ffffff; border: 1px solid #d0d7de; border-radius: 6px; margin-bottom: 16px; overflow: hidden;' }, [
                 E('div', { class: 'gh-table-header' }, [
                     E('div', { style: 'display: flex; align-items: center; gap: 8px;' }, [
                         E('span', {}, '\uD83D\uDCCB'),
