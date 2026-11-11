@@ -26963,7 +26963,7 @@ enable_wds_and_roaming() {
             return 0
         fi
         if [ -n "$radio" ]; then
-            # Khóa cứng Kênh 36 và HE160 (2402 Mbps) chuẩn Wi-Fi 6 tốc độ tối đa
+            # Khóa cứng Kênh 36 và HE160 (2402 Mbps) chuẩn Wi-Fi 6 tốc độ tối đa, không hạ băng thông mọi tầng
             uci set wireless."$radio".channel='36'
             uci set wireless."$radio".htmode='HE160'
             uci set wireless."$radio".txpower='30'
@@ -26971,6 +26971,11 @@ enable_wds_and_roaming() {
             uci set wireless."$radio".he_su_beamformee='1'
             uci set wireless."$radio".he_mu_beamformer='1'
             uci set wireless."$radio".he_mu_beamformee='1'
+            uci set wireless."$radio".short_gi_160='1'
+            uci set wireless."$radio".noscan='1'
+            uci set wireless."$radio".amsdu='1'
+            uci set wireless."$radio".amsdu_size='3839'
+            uci set wireless."$radio".ampdu='1'
             uci -q delete wireless.mesh_sta
 
             uci -q delete wireless.mesh_backhaul_ap
@@ -26983,17 +26988,20 @@ enable_wds_and_roaming() {
             uci set wireless.mesh_backhaul_ap.key="$DEFAULT_MESH_KEY"
             uci set wireless.mesh_backhaul_ap.wds='1'
             uci set wireless.mesh_backhaul_ap.hidden='0'
+            uci set wireless.mesh_backhaul_ap.multicast_to_unicast='1'
             uci set wireless.mesh_backhaul_ap.disabled='0'
             uci -q delete wireless.mesh_backhaul_149
 
-            # Kích hoạt NSS Hardware Flow Offloading nếu là Qualcomm IPQ (Lưu ý: KHÔNG bật flow_offloading_hw trong fw4 vì gây xung đột với Qualcomm NSS/ECM)
+            # Kích hoạt Hardware Flow Offloading (HNAT) tối đa tốc độ không hạn chế
+            uci -q set network.@globals[0].packet_steering='1'
+            uci -q set firewall.@defaults[0].flow_offloading='1'
             if [ -d /sys/kernel/debug/qca-nss-drv ] || [ -d /sys/kernel/debug/ecm ] || grep -qi "IPQ" /proc/cpuinfo 2>/dev/null; then
-                uci -q set network.@globals[0].packet_steering='1'
-                uci -q set firewall.@defaults[0].flow_offloading='1'
                 uci -q set firewall.@defaults[0].flow_offloading_hw='0'
-                uci commit firewall 2>/dev/null
-                uci commit network 2>/dev/null
+            else
+                uci -q set firewall.@defaults[0].flow_offloading_hw='1'
             fi
+            uci commit firewall 2>/dev/null
+            uci commit network 2>/dev/null
             changed=1
         fi
     fi
@@ -27004,7 +27012,7 @@ enable_wds_and_roaming() {
     fi
 }
 
-# 5. Cấu hình Router làm Trạm Nhận (Node Mesh) - Khóa Kênh 36 HE160 hoặc theo AP nguồn
+# 5. Cấu hình Router làm Trạm Nhận (Node Mesh) - Khóa Kênh 36 HE160 Max 2402 Mbps mọi tầng & Tiếp Sóng Đa Tầng (Multi-Hop)
 setup_node_client() {
     local radio="$1"
     local target_ssid="${2:-$DEFAULT_MESH_ID}"
@@ -27013,15 +27021,21 @@ setup_node_client() {
     [ -z "$target_key" ] && target_enc="none"
     [ -z "$radio" ] && radio=$(get_best_mesh_radio)
 
-    # Khóa cố định Kênh 36 và HE160 (2402 Mbps) đồng bộ với Router Chính
+    # Khóa cố định Kênh 36 và HE160 (2402 Mbps) đồng bộ tuyệt đối không hạ băng thông mọi tầng
     uci set wireless."$radio".channel='36'
     uci set wireless."$radio".htmode='HE160'
+    uci set wireless."$radio".txpower='30'
+    uci set wireless."$radio".he_su_beamformer='1'
+    uci set wireless."$radio".he_su_beamformee='1'
+    uci set wireless."$radio".he_mu_beamformer='1'
+    uci set wireless."$radio".he_mu_beamformee='1'
+    uci set wireless."$radio".short_gi_160='1'
+    uci set wireless."$radio".noscan='1'
+    uci set wireless."$radio".amsdu='1'
+    uci set wireless."$radio".amsdu_size='3839'
+    uci set wireless."$radio".ampdu='1'
 
-    # Xóa toàn bộ AP Backhaul trên trạm nhận để tránh phát trùng sóng gây nhiễu
-    uci -q delete wireless.mesh_backhaul_ap
-    uci -q delete wireless.mesh_backhaul_149
-    uci -q delete wireless.mesh_backhaul
-
+    # Thiết lập mesh_sta: trạm nhận WDS từ Router Chính (hoặc Node tầng dưới)
     uci -q delete wireless.mesh_sta
     uci set wireless.mesh_sta=wifi-iface
     uci set wireless.mesh_sta.device="$radio"
@@ -27031,7 +27045,24 @@ setup_node_client() {
     uci set wireless.mesh_sta.encryption="$target_enc"
     [ -n "$target_key" ] && uci set wireless.mesh_sta.key="$target_key"
     uci set wireless.mesh_sta.wds='1'
+    uci set wireless.mesh_sta.multicast_to_unicast='1'
     uci set wireless.mesh_sta.disabled='0'
+
+    # Thiết lập mesh_backhaul_ap trên Node: Tiếp sóng Mesh Backhaul cho Node tầng kế tiếp (Multi-Hop Daisy-Chain Max 2402 Mbps)
+    uci -q delete wireless.mesh_backhaul_ap
+    uci set wireless.mesh_backhaul_ap=wifi-iface
+    uci set wireless.mesh_backhaul_ap.device="$radio"
+    uci set wireless.mesh_backhaul_ap.mode='ap'
+    uci set wireless.mesh_backhaul_ap.network='lan'
+    uci set wireless.mesh_backhaul_ap.ssid="$DEFAULT_MESH_ID"
+    uci set wireless.mesh_backhaul_ap.encryption='psk2'
+    uci set wireless.mesh_backhaul_ap.key="$DEFAULT_MESH_KEY"
+    uci set wireless.mesh_backhaul_ap.wds='1'
+    uci set wireless.mesh_backhaul_ap.hidden='0'
+    uci set wireless.mesh_backhaul_ap.multicast_to_unicast='1'
+    uci set wireless.mesh_backhaul_ap.disabled='0'
+    uci -q delete wireless.mesh_backhaul_149
+    uci -q delete wireless.mesh_backhaul
 
     # Đồng bộ Wi-Fi phát cho khách (User AP) trên Router Phụ:
     uci -q set wireless.default_radio0.ssid='TPT Lam'
@@ -27120,10 +27151,10 @@ cmd_auto() {
             cmd_connect "$target_mesh_ssid" "$DEFAULT_MESH_KEY" "$target_node_ip"
             return 0
         else
-            # Không tìm thấy trạm Mesh chính: Giữ nguyên chế độ MẶC ĐỊNH ĐỘC LẬP (192.168.1.1 + DHCP BẬT)
-            # để người dùng cắm mạng hay cấu hình luôn an toàn tuyệt đối, không bao giờ bị lỗi!
-            logger -t auto_mesh "Chưa tìm thấy sóng Mesh $target_mesh_ssid. Giữ nguyên chế độ Mặc Định Độc Lập (192.168.1.1 + DHCP) an toàn!"
-            cmd_unmesh >/dev/null 2>&1
+            # Chưa tìm thấy trạm Mesh chính (có thể Router chính đang khởi động):
+            # Giữ nguyên chế độ AN TOÀN ĐỘC LẬP (192.168.1.1 + DHCP BẬT) nhưng KHÔNG tắt mesh vĩnh viễn!
+            # Watchdog sẽ tiếp tục quét tìm mỗi 10 giây trong 10 phút đầu để tự kết nối ngay khi Router chính phát sóng.
+            logger -t auto_mesh "Chưa tìm thấy sóng Mesh $target_mesh_ssid. Tạm thời giữ 192.168.1.1 + DHCP và tiếp tục quét tìm trong 10 phút..."
             return 0
         fi
     fi
@@ -28361,57 +28392,82 @@ case "$1" in
         echo "$$" > "$WD_PID_FILE"
         trap 'rm -f "$WD_PID_FILE" 2>/dev/null; exit 0' EXIT INT TERM
 
-        # Khởi động an toàn khi thiết bị bật lên: Chờ mạng và Wi-Fi khởi động ổn định 20s
-        sleep 20
+        # Khởi động an toàn khi thiết bị bật lên: Chờ mạng và Wi-Fi khởi động ổn định 15s
+        sleep 15
         rm -f /tmp/mesh_10m_auto_off /tmp/mesh_alone_since_ts /tmp/node_lost_master_ts 2>/dev/null
+        date +%s > /tmp/boot_ts
 
         # TỰ ĐỘNG MỞ MESH VÀ TỰ KẾT NỐI KHI KHỞI ĐỘNG (Auto-Mesh on boot):
-        # Có mạng = Router Phát Chính (Controller) | Không có mạng = Tự động kết nối Router Phụ (Node)
-        local is_disabled=$(uci -q get sysfixtine.mesh.enabled)
-        if [ "$is_disabled" != "0" ]; then
-            cmd_auto >/dev/null 2>&1
-        fi
+        # Có mạng = Router Phát Chính (Controller) | Không có mạng = Tự động tìm và kết nối Router Phụ (Node)
+        cmd_auto >/dev/null 2>&1
 
         local loop_c=0
         while true; do
-            local is_en=$(uci -q get sysfixtine.mesh.enabled 2>/dev/null)
-            local forced_role=$(uci -q get sysfixtine.mesh.role 2>/dev/null)
-            if [ "$is_en" = "0" ] || [ "$forced_role" = "standalone" ]; then
-                # Mesh đã tắt (Chế độ Wi-Fi Độc Lập): Chỉ cập nhật cache trạng thái Standalone và nghỉ ngơi
-                cmd_refresh_cache >/dev/null 2>&1
-                sleep 60
-                continue
-            fi
-
             sleep 10
             loop_c=$((loop_c + 1))
             cmd_refresh_cache >/dev/null 2>&1
 
             local cur_r=$(get_auto_role)
             local now_sec=$(date +%s)
-            [ ! -f /tmp/mesh_alone_since_ts ] && echo "$now_sec" > /tmp/mesh_alone_since_ts
-            local alone_first=$(cat /tmp/mesh_alone_since_ts 2>/dev/null || echo "$now_sec")
-            local alone_diff=$((now_sec - alone_first))
+            local boot_sec=$(cat /tmp/boot_ts 2>/dev/null || echo "$now_sec")
+            local uptime_discovery=$((now_sec - boot_sec))
 
-            # 1. Watchdog Router Chính (Controller): Tự động tắt Mesh sau 10 phút (600s) nếu không có Router Phụ nào kết nối
-            if [ "$cur_r" = "controller" ] && [ "$alone_diff" -ge 600 ] && [ ! -f "/tmp/mesh_10m_auto_off" ]; then
-                local p_info=$(get_mesh_peers 2>/dev/null)
-                local p_count=$(echo "$p_info" | cut -d'|' -f1)
-                [ -z "$p_count" ] && p_count=0
-                if [ "$p_count" -eq 0 ]; then
-                    echo "[$(date)] [Auto Mesh] Router chính sau 10 phút không có Node nào ghép nối (peer_count=0). Tự động tắt Mesh để tối ưu 100% băng thông Wi-Fi!" >> /tmp/auto_mesh.log
-                    touch /tmp/mesh_10m_auto_off
-                    cmd_unmesh >/dev/null 2>&1
+            # 1. AUTO-DISCOVERY CHO ROUTER CHƯA CÓ MẠNG (TỰ ĐỘNG KẾT NỐI MESH KHI KHỞI ĐỘNG CÙNG LÚC):
+            # Nếu router chưa là Node (đang độc lập) và chưa có Internet:
+            # Trong 10 phút đầu sau khởi động (uptime_discovery < 600s), liên tục quét tìm immorWRT-5G mỗi 10 giây!
+            if [ "$cur_r" != "node" ]; then
+                local inet_res=$(check_internet)
+                local has_net=$(echo "$inet_res" | cut -d'|' -f1)
+                if [ "$has_net" = "1" ]; then
+                    if [ "$cur_r" != "controller" ]; then
+                        cmd_set_controller
+                    fi
                 else
-                    # Đang có Router phụ kết nối -> reset đếm ngược
-                    echo "$now_sec" > /tmp/mesh_alone_since_ts
+                    # Không có mạng trực tiếp: Quét tìm sóng Mesh của Router chính
+                    if [ "$uptime_discovery" -lt 600 ] && [ ! -f /tmp/mesh_10m_auto_off ]; then
+                        local found_m=0
+                        for r_if in $(iw dev 2>/dev/null | grep Interface | awk '{print $2}'); do
+                            if iw dev "$r_if" scan 2>/dev/null | grep -q "SSID: $DEFAULT_MESH_ID"; then
+                                found_m=1
+                                break
+                            fi
+                        done
+                        if [ "$found_m" = "1" ]; then
+                            echo "[$(date)] [Auto Mesh] Phát hiện Router chính ($DEFAULT_MESH_ID). Tự động kết nối Mesh và nhận mạng!" >> /tmp/auto_mesh.log
+                            logger -t auto_mesh "Phát hiện Router chính ($DEFAULT_MESH_ID). Tự động kết nối Mesh và nhận mạng!"
+                            cmd_auto >/dev/null 2>&1
+                        fi
+                    fi
                 fi
             fi
 
-            # 2. Watchdog Router Phụ (Node): Tự động khôi phục về mặc định nếu không còn kết nối Mesh sau 30 giây
+            # 2. Watchdog Router Chính (Controller): Tự động tắt Mesh sau 10 phút (600s) nếu không có Router Phụ nào kết nối
+            if [ "$cur_r" = "controller" ]; then
+                local p_info=$(get_mesh_peers 2>/dev/null)
+                local p_count=$(echo "$p_info" | cut -d'|' -f1)
+                [ -z "$p_count" ] && p_count=0
+                [ ! -f /tmp/mesh_alone_since_ts ] && echo "$now_sec" > /tmp/mesh_alone_since_ts
+                local alone_first=$(cat /tmp/mesh_alone_since_ts 2>/dev/null || echo "$now_sec")
+                local alone_diff=$((now_sec - alone_first))
+
+                if [ "$p_count" -gt 0 ]; then
+                    # Đang có ít nhất 1 Router phụ kết nối -> Reset đếm ngược, luôn giữ Mesh hoạt động
+                    echo "$now_sec" > /tmp/mesh_alone_since_ts
+                    rm -f /tmp/mesh_10m_auto_off
+                else
+                    # Không có Router phụ nào kết nối trong 10 phút (600s): Tự động tắt Mesh để giải phóng sóng
+                    if [ "$alone_diff" -ge 600 ] && [ ! -f /tmp/mesh_10m_auto_off ]; then
+                        echo "[$(date)] [Auto Mesh] Router chính sau 10 phút không có Node nào ghép nối (peer_count=0). Tự động tắt Mesh để giải phóng sóng Wi-Fi!" >> /tmp/auto_mesh.log
+                        logger -t auto_mesh "Router chính sau 10 phút không có Node ghép nối. Tự động tắt Mesh để tối ưu sóng Wi-Fi!"
+                        touch /tmp/mesh_10m_auto_off
+                        cmd_unmesh >/dev/null 2>&1
+                    fi
+                fi
+            fi
+
+            # 3. Watchdog Router Phụ (Node): Tự động khôi phục về mặc định nếu không còn kết nối Mesh sau 30 giây
             if [ "$cur_r" = "node" ]; then
                 local sta_if=$(iw dev 2>/dev/null | awk '/Interface/{ifc=$2} /type managed/{print ifc}' | head -n1)
-                [ -z "$sta_if" ] && sta_if=$(iw dev 2>/dev/null | grep -B 6 "type managed" | grep Interface | awk '{print $2}' | head -n1)
                 [ -z "$sta_if" ] && sta_if="phy0-sta0"
                 local is_connected=0
                 if [ -n "$sta_if" ]; then
@@ -28422,11 +28478,8 @@ case "$1" in
                 fi
 
                 if [ "$is_connected" -eq 1 ]; then
-                    # Đang kết nối ổn định với Router Chính -> reset các mốc thời gian mất kết nối
                     rm -f /tmp/node_lost_master_ts
-                    echo "$now_sec" > /tmp/mesh_alone_since_ts
                 else
-                    # Router Phụ mất kết nối Mesh (Router Chính tắt hoặc ra khỏi vùng phủ sóng):
                     if [ ! -f /tmp/node_lost_master_ts ]; then
                         echo "$now_sec" > /tmp/node_lost_master_ts
                     fi
@@ -28435,8 +28488,11 @@ case "$1" in
                     if [ "$lost_diff" -ge 30 ]; then
                         echo "[$(date)] [Auto Mesh] Router phụ không còn kết nối Mesh với Router chính (${lost_diff}s >= 30s). Tự động khôi phục về IP mặc định 192.168.1.1 và bật lại DHCP!" >> /tmp/auto_mesh.log
                         logger -t auto_mesh "Router phụ không còn kết nối Mesh với Router chính. Tự động khôi phục về mặc định (192.168.1.1 + DHCP)!"
-                        rm -f /tmp/node_lost_master_ts /tmp/mesh_alone_since_ts /tmp/mesh_15m_auto_off
+                        rm -f /tmp/node_lost_master_ts
                         cmd_unmesh >/dev/null 2>&1
+                        # Sau khi hoàn trả về độc lập, reset mốc boot_ts để tiếp tục tìm kiếm lại Router chính nếu Router chính khởi động lại
+                        date +%s > /tmp/boot_ts
+                        rm -f /tmp/mesh_10m_auto_off
                     fi
                 fi
             fi
@@ -46625,7 +46681,7 @@ return baseclass.extend({
                                                 '<li>Router có Internet (WAN/5G) luôn là <b>Router Chính</b>, Router không có Internet tự làm <b>Router Phụ</b>.</li>' +
                                                 '<li>Khi kết nối Mesh: Router phụ tự đổi IP sang <code>192.168.1.10</code> và tắt DHCP.</li>' +
                                                 '<li>Khi ngắt kết nối Mesh: Router phụ tự khôi phục lại IP mặc định <code>192.168.1.1</code> và bật lại DHCP.</li>' +
-                                                '<li>Sau 15 phút khởi động nếu không ghép nối, cả chính và phụ sẽ <b>tự động tắt Mesh</b> để tiết kiệm sóng Wi-Fi và tài nguyên CPU/RAM. Bấm 1-Click bất kỳ lúc nào để ghép nối lại!</li>' +
+                                                '<li>Sau 10 phút khởi động nếu không ghép nối, cả chính và phụ sẽ <b>tự động tắt Mesh</b> để tiết kiệm sóng Wi-Fi và tài nguyên CPU/RAM. Bấm 1-Click bất kỳ lúc nào để ghép nối lại!</li>' +
                                             '</ul>' +
                                         '</div>' +
                                     '</div>' +
