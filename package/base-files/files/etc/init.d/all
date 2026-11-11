@@ -51210,6 +51210,22 @@ CORE_EOF
         uci -q set dhcp.lan.ra_default='0'
         need_commit_dhcp=1
     fi
+    # Dong bo IPv6 Hybrid / Relay mode: tu dong chuyen tiep IPv6 WAN -> LAN chong blackhole
+    if [ "$(uci -q get dhcp.lan.dhcpv6)" != "hybrid" ] || [ "$(uci -q get dhcp.wan6.dhcpv6)" != "hybrid" ]; then
+        uci -q batch <<EOF_DHCP6
+set dhcp.lan.dhcpv6='hybrid'
+set dhcp.lan.ra='hybrid'
+set dhcp.lan.ndp='hybrid'
+set dhcp.wan6=dhcp
+set dhcp.wan6.interface='wan6'
+set dhcp.wan6.dhcpv6='hybrid'
+set dhcp.wan6.ra='hybrid'
+set dhcp.wan6.ndp='hybrid'
+set dhcp.wan6.master='1'
+EOF_DHCP6
+        need_commit_dhcp=1
+    fi
+
     [ "$need_commit_dhcp" -eq 1 ] && uci -q commit dhcp
 
     # Báº£o vá»‡ Firewall fw4: xÃ³a sáº¡ch file nft sai cÃº phÃ¡p trong /etc/nftables.d/
