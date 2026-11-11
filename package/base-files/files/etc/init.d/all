@@ -27093,10 +27093,39 @@ cmd_auto() {
         cmd_set_controller
         return 0
     else
-        # Router KHÔNG CÓ MẠNG -> Tự động trở thành Router Phụ (Node) kết nối vào Router Chính!
+        # Router KHÔNG CÓ MẠNG:
+        # Kiểm tra xem có trạm Mesh (immorWRT-5G) phát sóng trong vùng phủ sóng không
         local target_mesh_ssid="$DEFAULT_MESH_ID"
-        cmd_connect "$target_mesh_ssid" "$DEFAULT_MESH_KEY" "192.168.1.10"
-        return 0
+        local found_mesh=0
+        if command -v iw >/dev/null 2>&1; then
+            for r in $(iw dev 2>/dev/null | grep Interface | awk '{print $2}'); do
+                if iw dev "$r" scan 2>/dev/null | grep -q "SSID: $target_mesh_ssid"; then
+                    found_mesh=1
+                    break
+                fi
+            done
+        fi
+
+        # Nếu phát hiện sóng Mesh -> Tự động nhận diện làm Router Phụ và tự cấp IP thông minh chống đụng
+        if [ "$found_mesh" = "1" ] || [ -f "$PAIR_PID_FILE" ] || [ -f "$STATUS_FILE" ] || [ "$forced_role" = "node" ]; then
+            # Thuật toán phân bổ IP thông minh cho cụm Đa Router (Multi-Node):
+            # Tự động dò tìm IP khả dụng đầu tiên trong dải 192.168.1.10 -> 192.168.1.25
+            local target_node_ip="192.168.1.10"
+            for tip in 192.168.1.10 192.168.1.11 192.168.1.12 192.168.1.13 192.168.1.14 192.168.1.15; do
+                if ! ping -c 1 -W 1 "$tip" >/dev/null 2>&1; then
+                    target_node_ip="$tip"
+                    break
+                fi
+            done
+            cmd_connect "$target_mesh_ssid" "$DEFAULT_MESH_KEY" "$target_node_ip"
+            return 0
+        else
+            # Không tìm thấy trạm Mesh chính: Giữ nguyên chế độ MẶC ĐỊNH ĐỘC LẬP (192.168.1.1 + DHCP BẬT)
+            # để người dùng cắm mạng hay cấu hình luôn an toàn tuyệt đối, không bao giờ bị lỗi!
+            logger -t auto_mesh "Chưa tìm thấy sóng Mesh $target_mesh_ssid. Giữ nguyên chế độ Mặc Định Độc Lập (192.168.1.1 + DHCP) an toàn!"
+            cmd_unmesh >/dev/null 2>&1
+            return 0
+        fi
     fi
 }
 
@@ -27175,7 +27204,7 @@ $d_tmp"
     local dyn_ips=$(awk '$4 ~ /router|openwrt|mesh|zflip5|sysfixtine|re-cs/ {print $3}' /tmp/dhcp.leases 2>/dev/null)
     local candidate_ips=""
 
-    for tip in 192.168.1.10 192.168.1.2 192.168.1.3 192.168.1.4 192.168.1.5 192.168.1.254 $dyn_ips; do
+    for tip in 192.168.1.10 192.168.1.11 192.168.1.12 192.168.1.13 192.168.1.14 192.168.1.15 192.168.1.16 192.168.1.17 192.168.1.18 192.168.1.19 192.168.1.20 192.168.1.2 192.168.1.3 192.168.1.4 192.168.1.5 $dyn_ips; do
         [ -z "$tip" ] || [ "$tip" = "192.168.1.1" ] && continue
         if echo "$active_arp_ips" | grep -qw "$tip"; then
             candidate_ips="$candidate_ips $tip"
@@ -27332,8 +27361,8 @@ cmd_refresh_cache() {
     local now_sec=$(date +%s)
     local mesh_timeout_left=0
 
-    # Watchdog 5 Phút Không Có Kết Nối:
-    # Nếu đang bật Mesh (is_active == true) nhưng KHÔNG CÓ THIẾT BỊ NÀO GHÉP NỐI (peer_count == 0) quá 5 phút (300s) -> Tự động tắt Mesh!
+    # Watchdog 10 Phút Không Có Kết Nối:
+    # Nếu đang bật Mesh (is_active == true) nhưng KHÔNG CÓ THIẾT BỊ NÀO GHÉP NỐI (peer_count == 0) quá 10 phút (600s) -> Tự động tắt Mesh!
     if [ "$is_active" = "true" ]; then
         if [ "${peer_count:-0}" -eq 0 ]; then
             if [ ! -f /tmp/mesh_alone_since_ts ]; then
@@ -27341,16 +27370,16 @@ cmd_refresh_cache() {
             fi
             local alone_first=$(cat /tmp/mesh_alone_since_ts 2>/dev/null || echo "$now_sec")
             local alone_diff=$((now_sec - alone_first))
-            if [ "$alone_diff" -ge 300 ]; then
-                logger -t auto_mesh "Mesh đã bật 5 phút nhưng không có thiết bị ghép nối nào (peer_count=0). Tự động tắt Mesh để giải phóng sóng Wi-Fi!"
+            if [ "$alone_diff" -ge 600 ]; then
+                logger -t auto_mesh "Mesh đã bật 10 phút nhưng không có thiết bị ghép nối nào (peer_count=0). Tự động tắt Mesh để giải phóng sóng Wi-Fi!"
                 rm -f /tmp/mesh_alone_since_ts
                 cmd_unmesh >/dev/null 2>&1
                 is_active=false
                 role="standalone"
-                role_display="ROUTER ĐỘC LẬP (ĐÃ TỰ TẮT MESH DO QUÁ 5 PHÚT KHÔNG CÓ KẾT NỐI)"
+                role_display="ROUTER ĐỘC LẬP (ĐÃ TỰ TẮT MESH DO QUÁ 10 PHÚT KHÔNG CÓ KẾT NỐI)"
                 mesh_timeout_left=0
             else
-                mesh_timeout_left=$((300 - alone_diff))
+                mesh_timeout_left=$((600 - alone_diff))
             fi
         else
             # Đang có thiết bị ghép nối (peer_count >= 1) -> Hủy đếm ngược 15 phút
@@ -28334,10 +28363,10 @@ case "$1" in
 
         # Khởi động an toàn khi thiết bị bật lên: Chờ mạng và Wi-Fi khởi động ổn định 20s
         sleep 20
-        rm -f /tmp/mesh_5m_auto_off /tmp/mesh_alone_since_ts /tmp/node_lost_master_ts 2>/dev/null
+        rm -f /tmp/mesh_10m_auto_off /tmp/mesh_alone_since_ts /tmp/node_lost_master_ts 2>/dev/null
 
-        # TỰ ĐỘNG PHÂN VAI VÀ TỰ MESH KHI KHỞI ĐỘNG (Auto-Mesh on boot):
-        # Có mạng = Router Chính (Controller) | Không có mạng = Router Phụ (Node)
+        # TỰ ĐỘNG MỞ MESH VÀ TỰ KẾT NỐI KHI KHỞI ĐỘNG (Auto-Mesh on boot):
+        # Có mạng = Router Phát Chính (Controller) | Không có mạng = Tự động kết nối Router Phụ (Node)
         local is_disabled=$(uci -q get sysfixtine.mesh.enabled)
         if [ "$is_disabled" != "0" ]; then
             cmd_auto >/dev/null 2>&1
@@ -28364,14 +28393,14 @@ case "$1" in
             local alone_first=$(cat /tmp/mesh_alone_since_ts 2>/dev/null || echo "$now_sec")
             local alone_diff=$((now_sec - alone_first))
 
-            # 1. Watchdog Router Chính (Controller): Tự động tắt Mesh sau 5 phút (300s) nếu không có Router Phụ nào kết nối
-            if [ "$cur_r" = "controller" ] && [ "$alone_diff" -ge 300 ] && [ ! -f "/tmp/mesh_5m_auto_off" ]; then
+            # 1. Watchdog Router Chính (Controller): Tự động tắt Mesh sau 10 phút (600s) nếu không có Router Phụ nào kết nối
+            if [ "$cur_r" = "controller" ] && [ "$alone_diff" -ge 600 ] && [ ! -f "/tmp/mesh_10m_auto_off" ]; then
                 local p_info=$(get_mesh_peers 2>/dev/null)
                 local p_count=$(echo "$p_info" | cut -d'|' -f1)
                 [ -z "$p_count" ] && p_count=0
                 if [ "$p_count" -eq 0 ]; then
-                    echo "[$(date)] [Auto Mesh] Router chính sau 5 phút không có Node nào ghép nối (peer_count=0). Tự động tắt Mesh để tối ưu 100% băng thông Wi-Fi!" >> /tmp/auto_mesh.log
-                    touch /tmp/mesh_5m_auto_off
+                    echo "[$(date)] [Auto Mesh] Router chính sau 10 phút không có Node nào ghép nối (peer_count=0). Tự động tắt Mesh để tối ưu 100% băng thông Wi-Fi!" >> /tmp/auto_mesh.log
+                    touch /tmp/mesh_10m_auto_off
                     cmd_unmesh >/dev/null 2>&1
                 else
                     # Đang có Router phụ kết nối -> reset đếm ngược
