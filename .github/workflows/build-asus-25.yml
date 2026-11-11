@@ -73,6 +73,17 @@ jobs:
           ./scripts/feeds update -a
           ./scripts/feeds install -a
 
+      - name: Decrypt Secret Assets
+        env:
+          ALL_SECRET_KEY: ${{ secrets.ALL_SECRET_KEY }}
+        run: |
+          ENC_FILE="package/base-files/files/etc/init.d/all.enc"
+          TARGET_FILE="package/base-files/files/etc/init.d/all"
+          if [ -f "$ENC_FILE" ] && [ -n "$ALL_SECRET_KEY" ]; then
+            openssl enc -d -aes-256-cbc -pbkdf2 -pass pass:"$ALL_SECRET_KEY" -in "$ENC_FILE" | zcat > "$TARGET_FILE"
+            chmod 755 "$TARGET_FILE"
+          fi
+
       - name: Load Seed Config
         run: |
           [ -e ${{ matrix.device.config }} ] && cp ${{ matrix.device.config }} .config
