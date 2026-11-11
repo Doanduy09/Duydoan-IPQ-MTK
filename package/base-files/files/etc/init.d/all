@@ -1,4 +1,4 @@
-#!/bin/sh /etc/rc.common
+﻿#!/bin/sh /etc/rc.common
 # ==============================================================================
 # ALL UNIVERSAL WWAN & SYSTEM MANAGEMENT - MASTER SCRIPT 2026 (REFINED FULL)
 # ==============================================================================
@@ -26822,6 +26822,34 @@ PAIR_PORT=8999
 PAIR_TIMEOUT=120
 
 # 1. Phát hiện Card Wi-Fi tốt nhất (Ưu tiên 5GHz/6GHz HE160/HE80, đa kiến trúc)
+
+# 0. Dò tìm thông tin phần cứng tự động 100% cho mọi dòng Router (MediaTek, Qualcomm IPQ, x86, Rockchip)
+get_device_board_model() {
+    local m=""
+    m=$(cat /tmp/sysinfo/model 2>/dev/null)
+    [ -z "$m" ] && m=$(cat /proc/device-tree/model 2>/dev/null | tr -d '\0')
+    [ -z "$m" ] && m=$(uci -q get system.@system[0].hostname 2>/dev/null)
+    [ -z "$m" ] && m="OpenWrt Router"
+    echo "$m" | tr -d '\r\n' | sed 's/^[ \t]*//;s/[ \t]*$//'
+}
+
+get_device_soc() {
+    local s=""
+    s=$(grep -E "model name|Hardware|Processor|system type|cpu model" /proc/cpuinfo 2>/dev/null | head -n1 | cut -d':' -f2 | sed 's/^[ \t]*//' | tr -d '\r\n')
+    [ -z "$s" ] && s=$(uname -m 2>/dev/null || echo "Universal SoC")
+    echo "$s"
+}
+
+get_device_cores() {
+    local c=$(grep -c "^processor" /proc/cpuinfo 2>/dev/null || echo 4)
+    [ "$c" -eq 0 ] && c=4
+    echo "$c"
+}
+
+get_device_ram_mb() {
+    awk '/MemTotal/ {print int($2/1024)}' /proc/meminfo 2>/dev/null || echo 1024
+}
+
 get_best_mesh_radio() {
     local best_radio=""
     local best_priority=0
@@ -26963,7 +26991,7 @@ enable_wds_and_roaming() {
             return 0
         fi
         if [ -n "$radio" ]; then
-            # Khóa cứng Kênh 36 và HE160 (2402 Mbps) chuẩn Wi-Fi 6 tốc độ tối đa, không hạ băng thông mọi tầng
+            # Khóa cứng Kênh 36 và HE160 (2402 Mbps) chuẩn Wi-Fi 6 tốc độ tối đa
             uci set wireless."$radio".channel='36'
             uci set wireless."$radio".htmode='HE160'
             uci set wireless."$radio".txpower='30'
@@ -26971,11 +26999,6 @@ enable_wds_and_roaming() {
             uci set wireless."$radio".he_su_beamformee='1'
             uci set wireless."$radio".he_mu_beamformer='1'
             uci set wireless."$radio".he_mu_beamformee='1'
-            uci set wireless."$radio".short_gi_160='1'
-            uci set wireless."$radio".noscan='1'
-            uci set wireless."$radio".amsdu='1'
-            uci set wireless."$radio".amsdu_size='3839'
-            uci set wireless."$radio".ampdu='1'
             uci -q delete wireless.mesh_sta
 
             uci -q delete wireless.mesh_backhaul_ap
@@ -26988,20 +27011,17 @@ enable_wds_and_roaming() {
             uci set wireless.mesh_backhaul_ap.key="$DEFAULT_MESH_KEY"
             uci set wireless.mesh_backhaul_ap.wds='1'
             uci set wireless.mesh_backhaul_ap.hidden='0'
-            uci set wireless.mesh_backhaul_ap.multicast_to_unicast='1'
             uci set wireless.mesh_backhaul_ap.disabled='0'
             uci -q delete wireless.mesh_backhaul_149
 
-            # Kích hoạt Hardware Flow Offloading (HNAT) tối đa tốc độ không hạn chế
-            uci -q set network.@globals[0].packet_steering='1'
-            uci -q set firewall.@defaults[0].flow_offloading='1'
+            # Kích hoạt NSS Hardware Flow Offloading nếu là Qualcomm IPQ (Lưu ý: KHÔNG bật flow_offloading_hw trong fw4 vì gây xung đột với Qualcomm NSS/ECM)
             if [ -d /sys/kernel/debug/qca-nss-drv ] || [ -d /sys/kernel/debug/ecm ] || grep -qi "IPQ" /proc/cpuinfo 2>/dev/null; then
+                uci -q set network.@globals[0].packet_steering='1'
+                uci -q set firewall.@defaults[0].flow_offloading='1'
                 uci -q set firewall.@defaults[0].flow_offloading_hw='0'
-            else
-                uci -q set firewall.@defaults[0].flow_offloading_hw='1'
+                uci commit firewall 2>/dev/null
+                uci commit network 2>/dev/null
             fi
-            uci commit firewall 2>/dev/null
-            uci commit network 2>/dev/null
             changed=1
         fi
     fi
@@ -27012,7 +27032,7 @@ enable_wds_and_roaming() {
     fi
 }
 
-# 5. Cấu hình Router làm Trạm Nhận (Node Mesh) - Khóa Kênh 36 HE160 Max 2402 Mbps mọi tầng & Tiếp Sóng Đa Tầng (Multi-Hop)
+# 5. Cấu hình Router làm Trạm Nhận (Node Mesh) - Khóa Kênh 36 HE160 hoặc theo AP nguồn
 setup_node_client() {
     local radio="$1"
     local target_ssid="${2:-$DEFAULT_MESH_ID}"
@@ -27021,21 +27041,15 @@ setup_node_client() {
     [ -z "$target_key" ] && target_enc="none"
     [ -z "$radio" ] && radio=$(get_best_mesh_radio)
 
-    # Khóa cố định Kênh 36 và HE160 (2402 Mbps) đồng bộ tuyệt đối không hạ băng thông mọi tầng
+    # Khóa cố định Kênh 36 và HE160 (2402 Mbps) đồng bộ với Router Chính
     uci set wireless."$radio".channel='36'
     uci set wireless."$radio".htmode='HE160'
-    uci set wireless."$radio".txpower='30'
-    uci set wireless."$radio".he_su_beamformer='1'
-    uci set wireless."$radio".he_su_beamformee='1'
-    uci set wireless."$radio".he_mu_beamformer='1'
-    uci set wireless."$radio".he_mu_beamformee='1'
-    uci set wireless."$radio".short_gi_160='1'
-    uci set wireless."$radio".noscan='1'
-    uci set wireless."$radio".amsdu='1'
-    uci set wireless."$radio".amsdu_size='3839'
-    uci set wireless."$radio".ampdu='1'
 
-    # Thiết lập mesh_sta: trạm nhận WDS từ Router Chính (hoặc Node tầng dưới)
+    # Xóa toàn bộ AP Backhaul trên trạm nhận để tránh phát trùng sóng gây nhiễu
+    uci -q delete wireless.mesh_backhaul_ap
+    uci -q delete wireless.mesh_backhaul_149
+    uci -q delete wireless.mesh_backhaul
+
     uci -q delete wireless.mesh_sta
     uci set wireless.mesh_sta=wifi-iface
     uci set wireless.mesh_sta.device="$radio"
@@ -27045,24 +27059,7 @@ setup_node_client() {
     uci set wireless.mesh_sta.encryption="$target_enc"
     [ -n "$target_key" ] && uci set wireless.mesh_sta.key="$target_key"
     uci set wireless.mesh_sta.wds='1'
-    uci set wireless.mesh_sta.multicast_to_unicast='1'
     uci set wireless.mesh_sta.disabled='0'
-
-    # Thiết lập mesh_backhaul_ap trên Node: Tiếp sóng Mesh Backhaul cho Node tầng kế tiếp (Multi-Hop Daisy-Chain Max 2402 Mbps)
-    uci -q delete wireless.mesh_backhaul_ap
-    uci set wireless.mesh_backhaul_ap=wifi-iface
-    uci set wireless.mesh_backhaul_ap.device="$radio"
-    uci set wireless.mesh_backhaul_ap.mode='ap'
-    uci set wireless.mesh_backhaul_ap.network='lan'
-    uci set wireless.mesh_backhaul_ap.ssid="$DEFAULT_MESH_ID"
-    uci set wireless.mesh_backhaul_ap.encryption='psk2'
-    uci set wireless.mesh_backhaul_ap.key="$DEFAULT_MESH_KEY"
-    uci set wireless.mesh_backhaul_ap.wds='1'
-    uci set wireless.mesh_backhaul_ap.hidden='0'
-    uci set wireless.mesh_backhaul_ap.multicast_to_unicast='1'
-    uci set wireless.mesh_backhaul_ap.disabled='0'
-    uci -q delete wireless.mesh_backhaul_149
-    uci -q delete wireless.mesh_backhaul
 
     # Đồng bộ Wi-Fi phát cho khách (User AP) trên Router Phụ:
     uci -q set wireless.default_radio0.ssid='TPT Lam'
@@ -27151,10 +27148,10 @@ cmd_auto() {
             cmd_connect "$target_mesh_ssid" "$DEFAULT_MESH_KEY" "$target_node_ip"
             return 0
         else
-            # Chưa tìm thấy trạm Mesh chính (có thể Router chính đang khởi động):
-            # Giữ nguyên chế độ AN TOÀN ĐỘC LẬP (192.168.1.1 + DHCP BẬT) nhưng KHÔNG tắt mesh vĩnh viễn!
-            # Watchdog sẽ tiếp tục quét tìm mỗi 10 giây trong 10 phút đầu để tự kết nối ngay khi Router chính phát sóng.
-            logger -t auto_mesh "Chưa tìm thấy sóng Mesh $target_mesh_ssid. Tạm thời giữ 192.168.1.1 + DHCP và tiếp tục quét tìm trong 10 phút..."
+            # Không tìm thấy trạm Mesh chính: Giữ nguyên chế độ MẶC ĐỊNH ĐỘC LẬP (192.168.1.1 + DHCP BẬT)
+            # để người dùng cắm mạng hay cấu hình luôn an toàn tuyệt đối, không bao giờ bị lỗi!
+            logger -t auto_mesh "Chưa tìm thấy sóng Mesh $target_mesh_ssid. Giữ nguyên chế độ Mặc Định Độc Lập (192.168.1.1 + DHCP) an toàn!"
+            cmd_unmesh >/dev/null 2>&1
             return 0
         fi
     fi
@@ -27203,7 +27200,8 @@ get_mesh_peers() {
         local cur_ip=$(uci -q get network.lan.ipaddr | cut -d/ -f1)
         [ -z "$cur_ip" ] && cur_ip="192.168.1.10"
         local cur_mac=$(cat /sys/class/net/br-lan/address 2>/dev/null)
-        local cur_name=$(uci -q get system.@system[0].hostname || echo "Router Phụ 1")
+        local cur_name=$(get_device_board_model)
+        [ -z "$cur_name" ] && cur_name=$(uci -q get system.@system[0].hostname || echo "Router Phụ 1")
 
         peer_count=1
         peer_list="{\"ip\":\"$cur_ip\",\"mac\":\"$cur_mac\",\"name\":\"$cur_name\",\"signal\":\"${sig} dBm\",\"bitrate\":\"2402.0 Mbps (HE160)\",\"raw_bitrate\":\"${raw_rate}\",\"quality\":\"$quality\",\"advice\":\"$advice\",\"url\":\"http://${cur_ip}\"}"
@@ -27289,9 +27287,22 @@ $d_tmp"
                 advice="🟡 TÍN HIỆU KHÁ ỔN (Hoạt động tốt, khoảng cách tiếp sức chuẩn)"
             fi
 
+            local node_json=$(uclient-fetch -q -O - -T 1 "http://$nip/cgi-bin/airdrop?action=mesh_status" 2>/dev/null)
+            local node_board_model=""
+            local node_mac_from_json=""
+            if [ -n "$node_json" ]; then
+                node_board_model=$(echo "$node_json" | grep -o '"board_model": *"[^"]*"' | head -n1 | cut -d'"' -f4)
+                node_mac_from_json=$(echo "$node_json" | grep -o '"local_mac": *"[^"]*"' | head -n1 | cut -d'"' -f4)
+            fi
+            [ -n "$node_mac_from_json" ] && [ -z "$match_mac" ] && match_mac="$node_mac_from_json"
+
             local real_host=$(awk -v ip="$nip" '$3==ip {print $4}' /tmp/dhcp.leases 2>/dev/null | grep -v '^\*' | head -1)
             local node_name="Router Phụ $peer_count"
-            [ -n "$real_host" ] && node_name="$real_host (Phụ $peer_count)"
+            if [ -n "$node_board_model" ]; then
+                node_name="$node_board_model (Phụ $peer_count)"
+            elif [ -n "$real_host" ]; then
+                node_name="$real_host (Phụ $peer_count)"
+            fi
             local item="{\"ip\":\"$nip\",\"mac\":\"${match_mac:-$nmac}\",\"name\":\"$node_name\",\"signal\":\"${sig} dBm\",\"bitrate\":\"${rate}\",\"raw_bitrate\":\"${raw_rate}\",\"quality\":\"$quality\",\"advice\":\"$advice\",\"url\":\"http://${nip}\"}"
             if [ -z "$peer_list" ]; then
                 peer_list="$item"
@@ -27340,6 +27351,25 @@ cmd_refresh_cache() {
     local local_mac=$(cat /sys/class/net/br-lan/address 2>/dev/null || echo "dc:d8:7b:54:8c:d4")
     local local_ip=$(uci -q get network.lan.ipaddr || echo "192.168.1.1")
     local local_name=$(uci -q get system.@system[0].hostname || echo "DOANDUY")
+    local board_model=$(get_device_board_model)
+    local soc_family=$(get_device_soc)
+    local cpu_cores=$(get_device_cores)
+    local ram_total_mb=$(get_device_ram_mb)
+    local online_clients=$(grep -c " " /tmp/dhcp.leases 2>/dev/null || echo "0")
+
+    local master_model=""
+    local master_mac=""
+    local master_soc=""
+    if [ "$role" = "node" ]; then
+        local master_json=$(uclient-fetch -q -O - -T 1 "http://192.168.1.1/cgi-bin/airdrop?action=mesh_status" 2>/dev/null)
+        if [ -n "$master_json" ]; then
+            master_model=$(echo "$master_json" | grep -o '"board_model": *"[^"]*"' | head -n1 | cut -d'"' -f4)
+            master_mac=$(echo "$master_json" | grep -o '"local_mac": *"[^"]*"' | head -n1 | cut -d'"' -f4)
+            master_soc=$(echo "$master_json" | grep -o '"soc_family": *"[^"]*"' | head -n1 | cut -d'"' -f4)
+        fi
+        [ -z "$master_model" ] && master_model="Router Chính (Gateway)"
+        [ -z "$master_mac" ] && master_mac="192.168.1.1"
+    fi
 
     local inet_res=$(check_internet)
     local has_net_code=$(echo "$inet_res" | cut -d'|' -f1)
@@ -27478,6 +27508,14 @@ cmd_refresh_cache() {
   "local_mac": "$local_mac",
   "local_ip": "$local_ip",
   "local_name": "$local_name",
+  "board_model": "$board_model",
+  "soc_family": "$soc_family",
+  "cpu_cores": "$cpu_cores",
+  "ram_total_mb": "$ram_total_mb",
+  "online_clients": "$online_clients",
+  "master_model": "${master_model:-}",
+  "master_mac": "${master_mac:-}",
+  "master_soc": "${master_soc:-}",
   "has_internet": $has_internet,
   "internet_source": "$net_src",
   "peer_count": ${peer_count:-0},
@@ -28392,82 +28430,57 @@ case "$1" in
         echo "$$" > "$WD_PID_FILE"
         trap 'rm -f "$WD_PID_FILE" 2>/dev/null; exit 0' EXIT INT TERM
 
-        # Khởi động an toàn khi thiết bị bật lên: Chờ mạng và Wi-Fi khởi động ổn định 15s
-        sleep 15
+        # Khởi động an toàn khi thiết bị bật lên: Chờ mạng và Wi-Fi khởi động ổn định 20s
+        sleep 20
         rm -f /tmp/mesh_10m_auto_off /tmp/mesh_alone_since_ts /tmp/node_lost_master_ts 2>/dev/null
-        date +%s > /tmp/boot_ts
 
         # TỰ ĐỘNG MỞ MESH VÀ TỰ KẾT NỐI KHI KHỞI ĐỘNG (Auto-Mesh on boot):
-        # Có mạng = Router Phát Chính (Controller) | Không có mạng = Tự động tìm và kết nối Router Phụ (Node)
-        cmd_auto >/dev/null 2>&1
+        # Có mạng = Router Phát Chính (Controller) | Không có mạng = Tự động kết nối Router Phụ (Node)
+        local is_disabled=$(uci -q get sysfixtine.mesh.enabled)
+        if [ "$is_disabled" != "0" ]; then
+            cmd_auto >/dev/null 2>&1
+        fi
 
         local loop_c=0
         while true; do
+            local is_en=$(uci -q get sysfixtine.mesh.enabled 2>/dev/null)
+            local forced_role=$(uci -q get sysfixtine.mesh.role 2>/dev/null)
+            if [ "$is_en" = "0" ] || [ "$forced_role" = "standalone" ]; then
+                # Mesh đã tắt (Chế độ Wi-Fi Độc Lập): Chỉ cập nhật cache trạng thái Standalone và nghỉ ngơi
+                cmd_refresh_cache >/dev/null 2>&1
+                sleep 60
+                continue
+            fi
+
             sleep 10
             loop_c=$((loop_c + 1))
             cmd_refresh_cache >/dev/null 2>&1
 
             local cur_r=$(get_auto_role)
             local now_sec=$(date +%s)
-            local boot_sec=$(cat /tmp/boot_ts 2>/dev/null || echo "$now_sec")
-            local uptime_discovery=$((now_sec - boot_sec))
+            [ ! -f /tmp/mesh_alone_since_ts ] && echo "$now_sec" > /tmp/mesh_alone_since_ts
+            local alone_first=$(cat /tmp/mesh_alone_since_ts 2>/dev/null || echo "$now_sec")
+            local alone_diff=$((now_sec - alone_first))
 
-            # 1. AUTO-DISCOVERY CHO ROUTER CHƯA CÓ MẠNG (TỰ ĐỘNG KẾT NỐI MESH KHI KHỞI ĐỘNG CÙNG LÚC):
-            # Nếu router chưa là Node (đang độc lập) và chưa có Internet:
-            # Trong 10 phút đầu sau khởi động (uptime_discovery < 600s), liên tục quét tìm immorWRT-5G mỗi 10 giây!
-            if [ "$cur_r" != "node" ]; then
-                local inet_res=$(check_internet)
-                local has_net=$(echo "$inet_res" | cut -d'|' -f1)
-                if [ "$has_net" = "1" ]; then
-                    if [ "$cur_r" != "controller" ]; then
-                        cmd_set_controller
-                    fi
-                else
-                    # Không có mạng trực tiếp: Quét tìm sóng Mesh của Router chính
-                    if [ "$uptime_discovery" -lt 600 ] && [ ! -f /tmp/mesh_10m_auto_off ]; then
-                        local found_m=0
-                        for r_if in $(iw dev 2>/dev/null | grep Interface | awk '{print $2}'); do
-                            if iw dev "$r_if" scan 2>/dev/null | grep -q "SSID: $DEFAULT_MESH_ID"; then
-                                found_m=1
-                                break
-                            fi
-                        done
-                        if [ "$found_m" = "1" ]; then
-                            echo "[$(date)] [Auto Mesh] Phát hiện Router chính ($DEFAULT_MESH_ID). Tự động kết nối Mesh và nhận mạng!" >> /tmp/auto_mesh.log
-                            logger -t auto_mesh "Phát hiện Router chính ($DEFAULT_MESH_ID). Tự động kết nối Mesh và nhận mạng!"
-                            cmd_auto >/dev/null 2>&1
-                        fi
-                    fi
-                fi
-            fi
-
-            # 2. Watchdog Router Chính (Controller): Tự động tắt Mesh sau 10 phút (600s) nếu không có Router Phụ nào kết nối
-            if [ "$cur_r" = "controller" ]; then
+            # 1. Watchdog Router Chính (Controller): Tự động tắt Mesh sau 10 phút (600s) nếu không có Router Phụ nào kết nối
+            if [ "$cur_r" = "controller" ] && [ "$alone_diff" -ge 600 ] && [ ! -f "/tmp/mesh_10m_auto_off" ]; then
                 local p_info=$(get_mesh_peers 2>/dev/null)
                 local p_count=$(echo "$p_info" | cut -d'|' -f1)
                 [ -z "$p_count" ] && p_count=0
-                [ ! -f /tmp/mesh_alone_since_ts ] && echo "$now_sec" > /tmp/mesh_alone_since_ts
-                local alone_first=$(cat /tmp/mesh_alone_since_ts 2>/dev/null || echo "$now_sec")
-                local alone_diff=$((now_sec - alone_first))
-
-                if [ "$p_count" -gt 0 ]; then
-                    # Đang có ít nhất 1 Router phụ kết nối -> Reset đếm ngược, luôn giữ Mesh hoạt động
-                    echo "$now_sec" > /tmp/mesh_alone_since_ts
-                    rm -f /tmp/mesh_10m_auto_off
+                if [ "$p_count" -eq 0 ]; then
+                    echo "[$(date)] [Auto Mesh] Router chính sau 10 phút không có Node nào ghép nối (peer_count=0). Tự động tắt Mesh để tối ưu 100% băng thông Wi-Fi!" >> /tmp/auto_mesh.log
+                    touch /tmp/mesh_10m_auto_off
+                    cmd_unmesh >/dev/null 2>&1
                 else
-                    # Không có Router phụ nào kết nối trong 10 phút (600s): Tự động tắt Mesh để giải phóng sóng
-                    if [ "$alone_diff" -ge 600 ] && [ ! -f /tmp/mesh_10m_auto_off ]; then
-                        echo "[$(date)] [Auto Mesh] Router chính sau 10 phút không có Node nào ghép nối (peer_count=0). Tự động tắt Mesh để giải phóng sóng Wi-Fi!" >> /tmp/auto_mesh.log
-                        logger -t auto_mesh "Router chính sau 10 phút không có Node ghép nối. Tự động tắt Mesh để tối ưu sóng Wi-Fi!"
-                        touch /tmp/mesh_10m_auto_off
-                        cmd_unmesh >/dev/null 2>&1
-                    fi
+                    # Đang có Router phụ kết nối -> reset đếm ngược
+                    echo "$now_sec" > /tmp/mesh_alone_since_ts
                 fi
             fi
 
-            # 3. Watchdog Router Phụ (Node): Tự động khôi phục về mặc định nếu không còn kết nối Mesh sau 30 giây
+            # 2. Watchdog Router Phụ (Node): Tự động khôi phục về mặc định nếu không còn kết nối Mesh sau 30 giây
             if [ "$cur_r" = "node" ]; then
                 local sta_if=$(iw dev 2>/dev/null | awk '/Interface/{ifc=$2} /type managed/{print ifc}' | head -n1)
+                [ -z "$sta_if" ] && sta_if=$(iw dev 2>/dev/null | grep -B 6 "type managed" | grep Interface | awk '{print $2}' | head -n1)
                 [ -z "$sta_if" ] && sta_if="phy0-sta0"
                 local is_connected=0
                 if [ -n "$sta_if" ]; then
@@ -28478,8 +28491,11 @@ case "$1" in
                 fi
 
                 if [ "$is_connected" -eq 1 ]; then
+                    # Đang kết nối ổn định với Router Chính -> reset các mốc thời gian mất kết nối
                     rm -f /tmp/node_lost_master_ts
+                    echo "$now_sec" > /tmp/mesh_alone_since_ts
                 else
+                    # Router Phụ mất kết nối Mesh (Router Chính tắt hoặc ra khỏi vùng phủ sóng):
                     if [ ! -f /tmp/node_lost_master_ts ]; then
                         echo "$now_sec" > /tmp/node_lost_master_ts
                     fi
@@ -28488,11 +28504,8 @@ case "$1" in
                     if [ "$lost_diff" -ge 30 ]; then
                         echo "[$(date)] [Auto Mesh] Router phụ không còn kết nối Mesh với Router chính (${lost_diff}s >= 30s). Tự động khôi phục về IP mặc định 192.168.1.1 và bật lại DHCP!" >> /tmp/auto_mesh.log
                         logger -t auto_mesh "Router phụ không còn kết nối Mesh với Router chính. Tự động khôi phục về mặc định (192.168.1.1 + DHCP)!"
-                        rm -f /tmp/node_lost_master_ts
+                        rm -f /tmp/node_lost_master_ts /tmp/mesh_alone_since_ts /tmp/mesh_15m_auto_off
                         cmd_unmesh >/dev/null 2>&1
-                        # Sau khi hoàn trả về độc lập, reset mốc boot_ts để tiếp tục tìm kiếm lại Router chính nếu Router chính khởi động lại
-                        date +%s > /tmp/boot_ts
-                        rm -f /tmp/mesh_10m_auto_off
                     fi
                 fi
             fi
@@ -28540,6 +28553,7 @@ case "$1" in
         cmd_status
         ;;
 esac
+
 AUTO_MESH_EOF
     chmod 755 /usr/bin/auto_mesh 2>/dev/null
     cat << 'SYSFIXTINE_MESH_INIT_EOF' > /etc/init.d/sysfixtine_mesh
@@ -46534,14 +46548,14 @@ return baseclass.extend({
 
             // 1. THIẾT BỊ PHÁT CHÍNH (MASTER GATEWAY - GỐC CÓ MẠNG 192.168.1.1)
             var masterIp = '192.168.1.1';
-            var masterModel = isMaster ? 
-                ((fast && (fast.board_model || fast.model)) || window._savedBoardModel || d.local_name || 'ASUS TUF-AX6000') : 
-                'ASUS TUF-AX6000 (Router Chính)';
-            var masterName = isMaster ? (d.local_name || 'ImmortalWrt') : 'ImmortalWrt';
-            var masterMac = isMaster ? (d.local_mac || 'c8:7f:54:bc:aa:88') : 'c8:7f:54:bc:aa:88';
+            var masterModel = d.master_model || (isMaster ? 
+                ((fast && (fast.board_model || fast.model)) || window._savedBoardModel || d.board_model || d.local_name || 'Router Chính (Gateway)') : 
+                (d.master_model || 'Router Chính (Gateway)'));
+            var masterName = isMaster ? (d.local_name || 'ImmortalWrt') : (d.master_name || 'Router Chính');
+            var masterMac = d.master_mac || (isMaster ? (d.local_mac || '192.168.1.1') : (d.master_mac || '192.168.1.1'));
             var masterCpu = isMaster ? 
-                ((fast && fast.soc_family) ? (fast.soc_family + (fast.cpu_cores ? ' (' + fast.cpu_cores + ' Cores • ' + (fast.cpu_freq_ghz || '2.0 GHz') + (fast.ram_total_mb ? ' • ' + Math.round(fast.ram_total_mb/1024*10)/10 + 'GB RAM' : '') + ')' : '')) : 'MediaTek Filogic 830 (4 Cores • 2.0 GHz • 1.9GB RAM)') : 
-                'MediaTek Filogic 830 (4 Cores • 2.0 GHz • 1.9GB RAM)';
+                ((fast && fast.soc_family) ? (fast.soc_family + (fast.cpu_cores ? ' (' + fast.cpu_cores + ' Cores • ' + (fast.cpu_freq_ghz || '2.0 GHz') + (fast.ram_total_mb ? ' • ' + Math.round(fast.ram_total_mb/1024*10)/10 + 'GB RAM' : '') + ')' : '')) : (d.soc_family ? (d.soc_family + (d.cpu_cores ? ' (' + d.cpu_cores + ' Cores' + (d.ram_total_mb ? ' • ' + Math.round(d.ram_total_mb/1024*10)/10 + 'GB RAM' : '') + ')' : '')) : 'Bộ Xử Lý Trung Tâm')) : 
+                (d.master_soc || 'Bộ Xử Lý Trung Tâm (Gateway)');
             var masterWifi = (d.radio || 'radio1') + ' • Kênh ' + (d.channel || '36') + ' (' + speedDisplay + ')';
             var masterInternet = isMaster ? 
                 ((fast && fast.wwan_signal) ? (fast.wwan_signal + ' • ' + (fast.wwan_band_detail ? fast.wwan_band_detail.split('•')[0] : '5G Sub-6')) : (d.internet_source || 'Cổng WAN/WWAN Trực Tiếp')) :
@@ -46585,7 +46599,7 @@ return baseclass.extend({
                     });
                 }
             } else {
-                var currentSlaveName = (fast && (fast.board_model || fast.model)) || window._savedBoardModel || d.local_name || 'SDMC NR3053 (Router Phụ)';
+                var currentSlaveName = d.board_model || (fast && (fast.board_model || fast.model)) || window._savedBoardModel || d.local_name || 'Router Phụ';
                 var currentSlaveMac = d.local_mac || (d.peers && d.peers[0] && d.peers[0].mac) || '';
                 var currentSlaveSig = (d.peers && d.peers[0] && d.peers[0].signal) || '-21 dBm';
                 var currentSlaveBitrate = (d.peers && d.peers[0] && d.peers[0].bitrate) || '2402.0 Mbps (HE160)';
@@ -49116,6 +49130,7 @@ return baseclass.extend({
     }
 });
 
+
 JS_EOF
 
     # Cai dat trang Dieu Khien & Bat/Tat Script ALL doc lap trong LuCI
@@ -50264,14 +50279,14 @@ return view.extend({
 
             // 1. THIẾT BỊ PHÁT CHÍNH (MASTER GATEWAY - GỐC CÓ MẠNG 192.168.1.1)
             var masterIp = '192.168.1.1';
-            var masterModel = isMaster ? 
-                ((fast && (fast.board_model || fast.model)) || window._savedBoardModel || d.local_name || 'ASUS TUF-AX6000') : 
-                'ASUS TUF-AX6000 (Router Chính)';
-            var masterName = isMaster ? (d.local_name || 'ImmortalWrt') : 'ImmortalWrt';
-            var masterMac = isMaster ? (d.local_mac || 'c8:7f:54:bc:aa:88') : 'c8:7f:54:bc:aa:88';
+            var masterModel = d.master_model || (isMaster ? 
+                ((fast && (fast.board_model || fast.model)) || window._savedBoardModel || d.board_model || d.local_name || 'Router Chính (Gateway)') : 
+                (d.master_model || 'Router Chính (Gateway)'));
+            var masterName = isMaster ? (d.local_name || 'ImmortalWrt') : (d.master_name || 'Router Chính');
+            var masterMac = d.master_mac || (isMaster ? (d.local_mac || '192.168.1.1') : (d.master_mac || '192.168.1.1'));
             var masterCpu = isMaster ? 
-                ((fast && fast.soc_family) ? (fast.soc_family + (fast.cpu_cores ? ' (' + fast.cpu_cores + ' Cores • ' + (fast.cpu_freq_ghz || '2.0 GHz') + (fast.ram_total_mb ? ' • ' + Math.round(fast.ram_total_mb/1024*10)/10 + 'GB RAM' : '') + ')' : '')) : 'MediaTek Filogic 830 (4 Cores • 2.0 GHz • 1.9GB RAM)') : 
-                'MediaTek Filogic 830 (4 Cores • 2.0 GHz • 1.9GB RAM)';
+                ((fast && fast.soc_family) ? (fast.soc_family + (fast.cpu_cores ? ' (' + fast.cpu_cores + ' Cores • ' + (fast.cpu_freq_ghz || '2.0 GHz') + (fast.ram_total_mb ? ' • ' + Math.round(fast.ram_total_mb/1024*10)/10 + 'GB RAM' : '') + ')' : '')) : (d.soc_family ? (d.soc_family + (d.cpu_cores ? ' (' + d.cpu_cores + ' Cores' + (d.ram_total_mb ? ' • ' + Math.round(d.ram_total_mb/1024*10)/10 + 'GB RAM' : '') + ')' : '')) : 'Bộ Xử Lý Trung Tâm')) : 
+                (d.master_soc || 'Bộ Xử Lý Trung Tâm (Gateway)');
             var masterWifi = (d.radio || 'radio1') + ' • Kênh ' + (d.channel || '36') + ' (' + speedDisplay + ')';
             var masterInternet = isMaster ? 
                 ((fast && fast.wwan_signal) ? (fast.wwan_signal + ' • ' + (fast.wwan_band_detail ? fast.wwan_band_detail.split('•')[0] : '5G Sub-6')) : (d.internet_source || 'Cổng WAN/WWAN Trực Tiếp')) :
@@ -50315,7 +50330,7 @@ return view.extend({
                     });
                 }
             } else {
-                var currentSlaveName = (fast && (fast.board_model || fast.model)) || window._savedBoardModel || d.local_name || 'SDMC NR3053 (Router Phụ)';
+                var currentSlaveName = d.board_model || (fast && (fast.board_model || fast.model)) || window._savedBoardModel || d.local_name || 'Router Phụ';
                 var currentSlaveMac = d.local_mac || (d.peers && d.peers[0] && d.peers[0].mac) || '';
                 var currentSlaveSig = (d.peers && d.peers[0] && d.peers[0].signal) || '-21 dBm';
                 var currentSlaveBitrate = (d.peers && d.peers[0] && d.peers[0].bitrate) || '2402.0 Mbps (HE160)';
@@ -50604,6 +50619,7 @@ return view.extend({
     handleSave: null,
     handleReset: null
 });
+
 VIEW_MODEM_EOF
 
     # Direct write to rootfs automatically persists in overlayfs
