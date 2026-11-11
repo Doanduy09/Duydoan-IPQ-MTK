@@ -83,12 +83,19 @@ jobs:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         with:
           tag_name: Duydoan-25.12-Viettel-NR3053-${{ env.BUILD_DATE }}
-          name: Duydoan-25.12 Viettel NR3053 Release ${{ env.BUILD_DATE }}
+          name: Duydoan-25.12 Viettel NR3053 / SDMC MT3053 Release ${{ env.BUILD_DATE }}
           body: |
-            ### 🚀 Duydoan-25.12 (Bleeding Edge) for Viettel NR3053
+            ### 🚀 Duydoan-25.12 (Bleeding Edge) for Viettel NR3053 / SDMC MT3053
             * **Base Version**: ImmortalWrt 25.12 (Bleeding Edge)
-            * **Target Hardware**: Viettel NR3053 (MediaTek MT7981B Filogic 820, DDR3 512MB, SPI-NAND 256MB)
-            * **USB 3.0 Support**: xHCI controller & USB PHY enabled (Hardware mod ready)
-            * **Network**: 1x WAN, 3x LAN (MT7531 switch) + 2x2 Wi-Fi 6 AX3000
-            * **Offloading**: MediaTek HNAT (PPE + WED) hardware flow offload
+            * **Target Hardware**: Viettel NR3053 / SDMC MT3053 (MediaTek MT7981B Filogic 820, DDR3 512MB, SPI-NAND 256MB)
+            * **Stock / SDMC Layout**:
+              - `*sdmc_mt3053-squashfs-factory.ubi`: Dành cho nạp lần đầu qua Web Failsafe / U-Boot.
+              - `*sdmc_mt3053-squashfs-sysupgrade.bin`: Nâng cấp trực tiếp qua Web LuCI (System -> Backup / Flash Firmware).
+            * **OpenWrt U-Boot Layout**:
+              - `*viettel_nr3053-squashfs-sysupgrade.itb`: Dành cho router đã nạp OpenWrt U-Boot FIP.
+            * **Hardware Fixes**:
+              - EEPROM calibration & MAC address mapped to 100% verified hardware offsets.
+              - Network: 1x WAN, 3x LAN (MT7531 switch) + 2x2 Wi-Fi 6 AX3000.
+              - MediaTek HNAT (PPE + WED) hardware flow offload.
+              - Configured identically to JDC and ASUS profiles (full modem & kmod protocols, zero bloat).
           files: ${{ env.FIRMWARE }}/*

@@ -3724,7 +3724,7 @@ define Device/viettel_nr3053
   BLOCKSIZE := 128k
   PAGESIZE := 2048
   IMAGE_SIZE := 229376k
-  DEVICE_PACKAGES := kmod-mt7915e kmod-mt7981-firmware mt7981-wo-firmware kmod-usb3
+  DEVICE_PACKAGES := kmod-mt7915e kmod-mt7981-firmware mt7981-wo-firmware
   KERNEL_IN_UBI := 1
   UBOOTENV_IN_UBI := 1
   IMAGES := sysupgrade.itb
@@ -3739,6 +3739,27 @@ define Device/viettel_nr3053
   ARTIFACT/bl31-uboot.fip := mt7981-bl31-uboot viettel_nr3053
 endef
 TARGET_DEVICES += viettel_nr3053
+
+define Device/sdmc_mt3053
+  DEVICE_VENDOR := SDMC
+  DEVICE_MODEL := MT3053 (Viettel NR3053 Stock Layout)
+  DEVICE_DTS := mt7981b-sdmc-mt3053
+  DEVICE_DTS_DIR := ../dts
+  SUPPORTED_DEVICES := sdmc,mt3053 viettel,nr3053
+  UBINIZE_OPTS := -E 5
+  BLOCKSIZE := 128k
+  PAGESIZE := 2048
+  KERNEL_IN_UBI := 1
+  IMAGES := sysupgrade.bin factory.ubi
+  KERNEL := kernel-bin | lzma | \
+	fit lzma $$(KDIR)/image-$$(firstword $$(DEVICE_DTS)).dtb
+  KERNEL_INITRAMFS := kernel-bin | lzma | \
+	fit lzma $$(KDIR)/image-$$(firstword $$(DEVICE_DTS)).dtb with-initrd | pad-to 64k
+  IMAGE/factory.ubi := append-ubi
+  IMAGE/sysupgrade.bin := sysupgrade-tar | append-metadata
+  DEVICE_PACKAGES := kmod-mt7915e kmod-mt7981-firmware mt7981-wo-firmware
+endef
+TARGET_DEVICES += sdmc_mt3053
 
 define Device/xiaomi_mi-router-ax3000t
   DEVICE_VENDOR := Xiaomi

@@ -337,6 +337,7 @@ platform_do_upgrade() {
 			;;
 		esac
 		;;
+	sdmc,mt3053|\
 	xiaomi,mi-router-ax3000t|\
 	xiaomi,mi-router-wr30u-stock|\
 	xiaomi,redmi-router-ax6000-stock)
