@@ -46830,6 +46830,7 @@ return baseclass.extend({
                     btnUnmesh.disabled = false;
                     btnUnmesh.textContent = '⛔ TẮT CHẾ ĐỘ MESH';
                     btnUnmesh.style.background = 'linear-gradient(135deg, #dc2626 0%, #b91c1c 100%)';
+                    btnUnmesh.style.color = '#ffffff';
                     btnUnmesh.style.cursor = 'pointer';
                     btnUnmesh.style.opacity = '1';
                     btnUnmesh.style.boxShadow = '0 2px 6px rgba(220, 38, 38, 0.3)';
@@ -46838,6 +46839,7 @@ return baseclass.extend({
                     btnUnmesh.disabled = true;
                     btnUnmesh.textContent = '✅ ĐÃ TẮT MESH (CHẾ ĐỘ ĐỘC LẬP)';
                     btnUnmesh.style.background = '#64748b';
+                    btnUnmesh.style.color = '#ffffff';
                     btnUnmesh.style.cursor = 'not-allowed';
                     btnUnmesh.style.opacity = '0.75';
                     btnUnmesh.style.boxShadow = 'none';
@@ -47054,6 +47056,7 @@ return baseclass.extend({
                         btnUnmesh.disabled = false;
                         btnUnmesh.textContent = '⛔ TẮT CHẾ ĐỘ MESH';
                         btnUnmesh.style.background = 'linear-gradient(135deg, #dc2626 0%, #b91c1c 100%)';
+                        btnUnmesh.style.color = '#ffffff';
                         btnUnmesh.style.cursor = 'pointer';
                         btnUnmesh.style.opacity = '1';
                         btnUnmesh.style.boxShadow = '0 2px 6px rgba(220, 38, 38, 0.3)';
@@ -47062,6 +47065,7 @@ return baseclass.extend({
                         btnUnmesh.disabled = true;
                         btnUnmesh.textContent = '✅ ĐÃ TẮT MESH (CHẾ ĐỘ ĐỘC LẬP)';
                         btnUnmesh.style.background = '#64748b';
+                        btnUnmesh.style.color = '#ffffff';
                         btnUnmesh.style.cursor = 'not-allowed';
                         btnUnmesh.style.opacity = '0.75';
                         btnUnmesh.style.boxShadow = 'none';
@@ -47138,8 +47142,8 @@ return baseclass.extend({
         }, '✖ Đóng Về Trang Chủ');
 
         var btnUnmesh = E('button', {
-            class: 'btn cbi-button-reset',
-            style: 'font-weight: 800; font-size: 13.5px; padding: 11px 20px; border-radius: 8px; cursor: pointer; background: #ffffff; color: #000000; border: none; box-shadow: 0 2px 6px rgba(220, 38, 38, 0.3);',
+            class: 'btn cbi-button',
+            style: 'font-weight: 800; font-size: 13.5px; padding: 11px 20px; border-radius: 8px; cursor: pointer; background: #dc2626 !important; color: #ffffff !important; border: none; box-shadow: 0 2px 6px rgba(220, 38, 38, 0.4);',
             click: function(ev) {
                 if (!confirm('Xác nhận TẮT CHẾ ĐỘ MESH?\nRouter sẽ ngắt hoàn toàn sóng phụ Mesh, đưa Wi-Fi về chế độ Độc Lập (Standalone) và đóng bảng điều khiển Mesh.')) return;
                 var btn = ev.target;
