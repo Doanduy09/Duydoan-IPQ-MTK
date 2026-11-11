@@ -1,0 +1,16 @@
+--- a/qmi_wwan_f.c
++++ b/qmi_wwan_f.c
+@@ -1772,8 +1772,13 @@ static void ql_net_get_drvinfo(struct ne
+ {
+     /* Inherit standard device info */
+     usbnet_get_drvinfo(net, info);
++#if (LINUX_VERSION_CODE < KERNEL_VERSION(6,8,0))
+     strlcpy(info->driver, driver_name, sizeof(info->driver));
+     strlcpy(info->version, VERSION_NUMBER, sizeof(info->version));
++#else
++    strscpy(info->driver, driver_name, sizeof(info->driver));
++    strscpy(info->version, VERSION_NUMBER, sizeof(info->version));
++#endif
+ }
+ 
+ static struct ethtool_ops ql_net_ethtool_ops;
