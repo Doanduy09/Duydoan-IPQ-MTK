@@ -3750,13 +3750,14 @@ define Device/sdmc_mt3053
   BLOCKSIZE := 128k
   PAGESIZE := 2048
   KERNEL_IN_UBI := 1
-  IMAGES := sysupgrade.bin factory.ubi
+  IMAGES := sysupgrade.bin
   KERNEL := kernel-bin | lzma | \
 	fit lzma $$(KDIR)/image-$$(firstword $$(DEVICE_DTS)).dtb
   KERNEL_INITRAMFS := kernel-bin | lzma | \
 	fit lzma $$(KDIR)/image-$$(firstword $$(DEVICE_DTS)).dtb with-initrd | pad-to 64k
-  IMAGE/factory.ubi := append-ubi
   IMAGE/sysupgrade.bin := sysupgrade-tar | append-metadata
+  ARTIFACTS := factory.ubi
+  ARTIFACT/factory.ubi := append-image-stage initramfs-kernel.bin | ubinize-kernel
   DEVICE_PACKAGES := kmod-mt7915e kmod-mt7981-firmware mt7981-wo-firmware
 endef
 TARGET_DEVICES += sdmc_mt3053
