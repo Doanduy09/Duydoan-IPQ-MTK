@@ -47801,17 +47801,61 @@ return baseclass.extend({
             elCountdown.textContent = '\u23F3 C\u00F2n l\u1EA1i: ' + h + 'h ' + m + 'p ' + s + 's';
         }
 
+        /* ==============================================================================
+           === LOCKED: VERIFIED BY DOANDUY - DO NOT MODIFY ===
+           HÀM ĐIỀU PHỐI HIỂN THỊ QUẢN LÝ SIM & SMS THEO CHỈ ĐẠO ANH DUY:
+           - NẾU SIM NẰM TRONG 3 VIP ICCID:
+             HIỂN THỊ CARD 1 (SIM ĐANG GẮN), CARD 2 (LỊCH GỬI), CARD 3 (DANH SÁCH 3 VIP).
+           - NẾU KHÔNG CÓ SIM HOẶC SIM NẰM NGOÀI DANH SÁCH 3 VIP ICCID:
+             ẨN 100% CẢ 3 CARD CẤU HÌNH TRÊN (display: none)!
+             CHỈ DUY TRÌ HIỂN THỊ DUY NHẤT: FORM GỬI TIN NHẮN SMS & HỘP THƯ ĐẾN!
+           ============================================================================== */
+        function applySimVisibilityState(isVip) {
+            var elCard1 = document.getElementById('sim-card1-wrapper');
+            var elCard2 = document.getElementById('sim-card2-wrapper');
+            var elCard3 = document.getElementById('sim-card3-wrapper');
+            var elTitle = document.getElementById('sim-header-title-text');
+            var elGuardBadge = document.getElementById('sim-header-guard-badge');
+
+            if (isVip) {
+                if (elCard1) elCard1.style.display = 'block';
+                if (elCard2) elCard2.style.display = 'block';
+                if (elCard3) elCard3.style.display = 'block';
+                if (elTitle) elTitle.textContent = 'Quản Lý SIM VIP & Lịch Gia Hạn Gói Cước SMS';
+                if (elGuardBadge) {
+                    elGuardBadge.className = 'gh-badge gh-badge-success';
+                    elGuardBadge.textContent = '⚡ AI Hybrid Guard';
+                }
+            } else {
+                if (elCard1) elCard1.style.display = 'none';
+                if (elCard2) elCard2.style.display = 'none';
+                if (elCard3) elCard3.style.display = 'none';
+                if (elTitle) elTitle.textContent = 'Hộp Thư Tin Nhắn SMS & Gửi Tin (Router & SIM)';
+                if (elGuardBadge) {
+                    elGuardBadge.className = 'gh-badge gh-badge-neutral';
+                    elGuardBadge.textContent = '📬 SMS Direct Only';
+                }
+            }
+        }
+
         function refreshSimManagerUI() {
             fetch('/cgi-bin/sim_manager?action=get_state&t=' + Date.now())
                 .then(function(r) { return r.json(); })
                 .then(function(d) {
-                    if (!d || d.status !== 'success') return;
+                    if (!d || d.status !== 'success') {
+                        _simIsWhitelisted = false;
+                        applySimVisibilityState(false);
+                        return;
+                    }
                     _simActiveFullIccid = d.active_iccid || '';
                     _simActiveMaskedIccid = d.masked_iccid || '';
-                    _simIsWhitelisted = !!d.is_whitelisted;
+                    _simIsWhitelisted = !!(d.is_whitelisted && _simActiveFullIccid && _simActiveFullIccid !== 'Chưa phát hiện' && _simActiveFullIccid.trim() !== '');
                     _simScheduleTime = d.schedule_time || '01:53:45';
                     _simTargetEpoch = d.next_send_epoch || 0;
                     _simAllowedIccids = d.allowed_iccids || [];
+
+                    // ÁP DỤNG NGAY LẬP TỨC TRẠNG THÁI KHÓA/MỞ THEO MỆNH LỆNH ANH DUY
+                    applySimVisibilityState(_simIsWhitelisted);
 
                     // 1. Cap nhat the 1: SIM dang gan
                     var elIccid = document.getElementById('sim-active-iccid-text');
@@ -47913,7 +47957,10 @@ return baseclass.extend({
 
                     // 3. Cap nhat the 3
                     renderDefaultIccidsList(_simAllowedIccids, _simActiveFullIccid);
-                }).catch(function(err) {});
+                }).catch(function(err) {
+                    _simIsWhitelisted = false;
+                    applySimVisibilityState(false);
+                });
         }
 
         function renderActiveSimControlPanel() {
@@ -48060,6 +48107,115 @@ return baseclass.extend({
                 });
         }
 
+        /* ==============================================================================
+           === LOCKED: VERIFIED BY DOANDUY - DO NOT MODIFY ===
+           KHỐI GỬI TIN NHẮN SMS TRỰC TIẾP (LUÔN HIỂN THỊ KỂ CẢ KHI NGOÀI ICCID HOẶC CHƯA CÓ SIM)
+           ============================================================================== */
+        var simSendTargetInput = E('input', {
+            type: 'text',
+            class: 'cbi-input-text',
+            id: 'sim-send-target-input',
+            placeholder: 'Người nhận (vd: 191 hoặc số điện thoại bất kỳ)',
+            style: 'box-sizing: border-box; width: 100%; margin-bottom: 8px; font-weight: bold; height: 38px; border-radius: 6px;'
+        });
+
+        var simSendMsgInput = E('input', {
+            type: 'text',
+            class: 'cbi-input-text',
+            id: 'sim-send-msg-input',
+            placeholder: 'Nội dung tin nhắn...',
+            style: 'box-sizing: border-box; width: 100%; margin-bottom: 8px; height: 38px; border-radius: 6px;'
+        });
+
+        var simQuickPresets = E('div', { style: 'display: flex; gap: 6px; margin-bottom: 10px; flex-wrap: wrap;' }, [
+            E('button', { class: 'btn', style: 'font-size: 11.5px; padding: 4px 10px; font-weight: 700; background: #eff6ff; color: #1d4ed8; border: 1px solid #bfdbfe; cursor: pointer; border-radius: 6px;', click: function() { simSendTargetInput.value = '191'; simSendMsgInput.value = 'KTTK'; } }, '⚡ Viettel KTTK'),
+            E('button', { class: 'btn', style: 'font-size: 11.5px; padding: 4px 10px; font-weight: 700; background: #eff6ff; color: #0284c7; border: 1px solid #bae6fd; cursor: pointer; border-radius: 6px;', click: function() { simSendTargetInput.value = '888'; simSendMsgInput.value = 'DATA'; } }, '⚡ Vina DATA'),
+            E('button', { class: 'btn', style: 'font-size: 11.5px; padding: 4px 10px; font-weight: 700; background: #fefce8; color: #a16207; border: 1px solid #fef08a; cursor: pointer; border-radius: 6px;', click: function() { simSendTargetInput.value = '999'; simSendMsgInput.value = 'KT DATA'; } }, '⚡ Mobi DATA'),
+            E('button', { class: 'btn', style: 'font-size: 11.5px; padding: 4px 10px; font-weight: 700; background: #fdf2f8; color: #be185d; border: 1px solid #fbcfe8; cursor: pointer; border-radius: 6px;', click: function() { simSendTargetInput.value = '123'; simSendMsgInput.value = 'KT'; } }, '⚡ VNM KT'),
+            E('button', { class: 'btn', style: 'font-size: 11.5px; padding: 4px 10px; font-weight: 700; background: #f0fdf4; color: #15803d; border: 1px solid #bbf7d0; cursor: pointer; border-radius: 6px;', click: function() { simSendTargetInput.value = '191'; simSendMsgInput.value = 'DATA'; } }, '⚡ Wintel DATA')
+        ]);
+
+        var simSendBtn = E('button', {
+            class: 'btn cbi-button cbi-button-action',
+            style: 'box-sizing: border-box; width: 100%; font-weight: 700; height: 38px; border-radius: 6px; font-size: 13px; margin: 0;',
+            click: function() {
+                var targetVal = simSendTargetInput.value.trim();
+                var msgVal = simSendMsgInput.value.trim();
+                if (!targetVal || !msgVal) {
+                    ui.addNotification(null, E('p', 'Vui lòng nhập người nhận và nội dung!'), 'error');
+                    return;
+                }
+                callSendSMS(targetVal, msgVal).then(function(r) {
+                    ui.addNotification(null, E('p', (r && r.message) ? r.message : '✅ Đã gửi SMS thành công đến ' + targetVal + '!'), 'info');
+                    simSendMsgInput.value = '';
+                    callFetchSMS().then(function(rep) {
+                        if (rep && rep.inbox) {
+                            var parsed = parseAndRenderSMS(rep.inbox);
+                            var ibCont = document.getElementById('sms-card-container');
+                            if (ibCont) {
+                                ibCont.innerHTML = '';
+                                parsed.forEach(function(node) { ibCont.appendChild(node); });
+                            }
+                        }
+                    });
+                }).catch(function(err) {
+                    ui.addNotification(null, E('p', '❌ Lỗi gửi tin: ' + (err.message || err)), 'error');
+                });
+            }
+        }, '📤 Gửi Tin Nhắn');
+
+        var simCheckDataBtn = E('button', {
+            class: 'btn cbi-button cbi-button-positive',
+            style: 'box-sizing: border-box; width: 100%; font-weight: 700; height: 38px; background: #ffffff; color: #000000; border-radius: 6px; font-size: 13px; margin: 0; border: 1.5px solid #cbd5e1;',
+            click: function() {
+                var self = this;
+                var oldText = self.textContent;
+                self.textContent = '⏳ Đang gửi & đón tin...';
+                self.disabled = true;
+
+                callCheckDataBalance().then(function() {
+                    callFetchSMS().then(function(rep) {
+                        self.textContent = oldText;
+                        self.disabled = false;
+                        if (rep && rep.inbox) {
+                            var parsed = parseAndRenderSMS(rep.inbox);
+                            var ibCont = document.getElementById('sms-card-container');
+                            if (ibCont) {
+                                ibCont.innerHTML = '';
+                                parsed.forEach(function(node) { ibCont.appendChild(node); });
+                            }
+                            ui.addNotification(null, E('p', '✅ Đã gửi lệnh tra cứu tới Nhà Mạng!'), 'info');
+                        }
+                    });
+                }).catch(function(err) {
+                    self.textContent = oldText;
+                    self.disabled = false;
+                    ui.addNotification(null, E('p', 'ℹ️ Đã gửi tin nhắn tra cứu: ' + (err.message || err)), 'info');
+                });
+            }
+        }, '🔍 Kiểm Tra Data Nhanh (Tự Động Đọc Tin)');
+
+        var simSendCardWrapper = E('div', {
+            id: 'sim-send-card-wrapper',
+            style: 'background: #ffffff; border: 1px solid #d0d7de; border-radius: 6px; margin-bottom: 16px; overflow: hidden;'
+        }, [
+            E('div', { class: 'gh-table-header' }, [
+                E('div', { style: 'display: flex; align-items: center; gap: 8px;' }, [
+                    E('span', {}, '📤'),
+                    E('span', { style: 'font-weight: 600; color: #1f2328;' }, 'Gửi Tin Nhắn SMS Trực Tiếp')
+                ])
+            ]),
+            E('div', { style: 'padding: 16px;' }, [
+                simQuickPresets,
+                simSendTargetInput,
+                simSendMsgInput,
+                E('div', { style: 'display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-top: 6px;' }, [
+                    simSendBtn,
+                    simCheckDataBtn
+                ])
+            ])
+        ]);
+
         var simManagementWrapper = E('div', {
             id: 'sim-management-wrapper',
             class: 'weather-tab-card',
@@ -48068,8 +48224,8 @@ return baseclass.extend({
             E('div', { style: 'display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px; flex-wrap: wrap; gap: 10px; border-bottom: 1px solid #d8dee4; padding-bottom: 12px;' }, [
                 E('div', { style: 'display: flex; align-items: center; gap: 10px;' }, [
                     E('span', { style: 'font-size: 20px;' }, '\uD83D\uDCB3'),
-                    E('h4', { style: 'margin: 0; font-weight: 700; color: #1f2328; font-size: 16px;' }, 'Qu\u1EA3n L\u00FD SIM & L\u1ECBch Gia H\u1EA1n G\u00F3i C\u01B0\u1EDBc SMS'),
-                    E('span', { class: 'gh-badge gh-badge-success', style: 'font-size: 11px;' }, '\u26A1 AI Hybrid Guard')
+                    E('h4', { id: 'sim-header-title-text', style: 'margin: 0; font-weight: 700; color: #1f2328; font-size: 16px;' }, 'Hộp Thư Tin Nhắn SMS & Gửi Tin (Router & SIM)'),
+                    E('span', { id: 'sim-header-guard-badge', class: 'gh-badge gh-badge-neutral', style: 'font-size: 11px;' }, '📬 SMS Direct Only')
                 ]),
                 E('div', { style: 'display: flex; gap: 8px; flex-wrap: wrap;' }, [
                     E('button', {
@@ -48086,8 +48242,8 @@ return baseclass.extend({
                 ])
             ]),
 
-            // CARD 1: SIM DANG GAN TREN ROUTER (ACTIVE MODEM SIM)
-            E('div', { style: 'background: #ffffff; border: 1px solid #d0d7de; border-radius: 6px; margin-bottom: 16px; overflow: hidden;' }, [
+            // CARD 1: SIM DANG GAN TREN ROUTER (ACTIVE MODEM SIM) - KHI NGOÀI VIP HOẶC KHÔNG SIM: ẨN 100%!
+            E('div', { id: 'sim-card1-wrapper', style: 'display: none; background: #ffffff; border: 1px solid #d0d7de; border-radius: 6px; margin-bottom: 16px; overflow: hidden;' }, [
                 E('div', { class: 'gh-table-header' }, [
                     E('div', { style: 'display: flex; align-items: center; gap: 8px;' }, [
                         E('span', {}, '\uD83D\uDCF1'),
@@ -48157,8 +48313,8 @@ return baseclass.extend({
                 ])
             ]),
 
-            // CARD 2: DIEU KHIEN & CAI DAT CHO DUY NHAT SIM DANG GAN
-            E('div', { id: 'sim-card2-wrapper', style: 'background: #ffffff; border: 1px solid #d0d7de; border-radius: 6px; margin-bottom: 16px; overflow: hidden;' }, [
+            // CARD 2: DIEU KHIEN & CAI DAT CHO DUY NHAT SIM DANG GAN - KHI NGOÀI VIP HOẶC KHÔNG SIM: ẨN 100%!
+            E('div', { id: 'sim-card2-wrapper', style: 'display: none; background: #ffffff; border: 1px solid #d0d7de; border-radius: 6px; margin-bottom: 16px; overflow: hidden;' }, [
                 E('div', { class: 'gh-table-header' }, [
                     E('div', { style: 'display: flex; align-items: center; gap: 8px;' }, [
                         E('span', {}, '\u2699\uFE0F'),
@@ -48168,8 +48324,8 @@ return baseclass.extend({
                 E('div', { id: 'sim-active-control-container', style: 'padding: 16px;' })
             ]),
 
-            // CARD 3: DANH SACH 3 ICCID MAC DINH GOC (DUOC PHEP)
-            E('div', { style: 'background: #ffffff; border: 1px solid #d0d7de; border-radius: 6px; overflow: hidden;' }, [
+            // CARD 3: DANH SACH 3 ICCID MAC DINH GOC (DUOC PHEP) - KHI NGOÀI VIP HOẶC KHÔNG SIM: ẨN 100%!
+            E('div', { id: 'sim-card3-wrapper', style: 'display: none; background: #ffffff; border: 1px solid #d0d7de; border-radius: 6px; margin-bottom: 16px; overflow: hidden;' }, [
                 E('div', { class: 'gh-table-header' }, [
                     E('div', { style: 'display: flex; align-items: center; gap: 8px;' }, [
                         E('span', {}, '\uD83D\uDCCB'),
@@ -48184,6 +48340,16 @@ return baseclass.extend({
                 ]),
                 E('div', { id: 'sim-default-iccids-list', style: 'padding: 16px;' })
             ]),
+            /* ==============================================================================
+               === LOCKED: VERIFIED BY DOANDUY - DO NOT MODIFY ===
+               KHỐI GỬI TIN NHẮN SMS TRỰC TIẾP (LUÔN HIỂN THỊ KỂ CẢ KHI NGOÀI ICCID HOẶC CHƯA CÓ SIM)
+               ============================================================================== */
+            simSendCardWrapper,
+
+            /* ==============================================================================
+               === LOCKED: VERIFIED BY DOANDUY - DO NOT MODIFY ===
+               HỘP THƯ ĐẾN & ĐỌC TIN NHẮN TRỰC TIẾP (LUÔN HIỂN THỊ)
+               ============================================================================== */
             E('div', { style: 'margin-top: 16px;' }, [
                 smsInboxCard
             ])
@@ -49518,7 +49684,12 @@ return view.extend({
         var isMasked = true;
         var activeIccidFull = simMgrData.active_iccid || '';
         var activeIccidMasked = simMgrData.masked_iccid || (activeIccidFull ? activeIccidFull.substring(0, 6) + '******' + activeIccidFull.substring(activeIccidFull.length - 4) : 'Chưa nhận diện');
-        var isWhitelisted = !!simMgrData.is_whitelisted;
+        /* ==============================================================================
+   === LOCKED: VERIFIED BY DOANDUY - DO NOT MODIFY ===
+   QUY CHUẨN ĐIỀU KIỆN SIM VIP TRÊN CONTROL.JS:
+   NẾU KHÔNG CÓ SIM HOẶC SIM NGOÀI DANH MỤC VIP -> isWhitelisted = false -> ẨN 100% CẤU HÌNH VIP!
+   ============================================================================== */
+        var isWhitelisted = !!(simMgrData.is_whitelisted && simMgrData.active_iccid && simMgrData.active_iccid !== 'Chưa phát hiện' && simMgrData.active_iccid.trim() !== '');
         var allowedIccids = simMgrData.allowed_iccids || ['89840480009484443869', '89840480009578677539', '89840480009579026074'];
 
         var iccidTextSpan = E('span', {
@@ -49844,7 +50015,7 @@ return view.extend({
             E('div', { style: 'background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 8px; padding: 14px; margin-bottom: 16px; display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 10px;' }, [
                 E('div', {}, [
                     E('span', { style: 'font-weight: 700; color: #475569; font-size: 13px;' }, '📱 Trạng thái SIM: '),
-                    E('span', { style: 'font-weight: 800; color: #15803d; font-size: 14px;' }, smsRes.sim_info || 'SIM Viettel (Hoạt động)'),
+                    E('span', { style: 'font-weight: 800; color: ' + (isWhitelisted ? '#15803d' : '#475569') + '; font-size: 14px;' }, isWhitelisted ? (smsRes.sim_info || 'SIM Viettel (Hoạt động)') : (simMgrData.active_iccid ? 'SIM Ngoài Danh Sách' : 'Chưa gắn SIM / Chưa phát hiện')),
                     E('span', { style: 'margin-left: 10px; font-weight: 600; color: #64748b; font-size: 12px;' }, '• Cổng AT: ' + activePort)
                 ]),
                 E('div', { style: 'display: flex; gap: 8px;' }, [
