@@ -977,6 +977,7 @@
 			color = <0x02>;
 			function = "status";
 			gpios = <0x0f 0x04 0x01>;
+			linux,default-trigger = "default-on";
 			phandle = <0x51>;
 		};
 

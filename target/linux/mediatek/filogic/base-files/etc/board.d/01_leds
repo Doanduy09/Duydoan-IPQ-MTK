@@ -322,8 +322,8 @@ totolink,x6000r)
 	;;
 sdmc,mt3053|\
 viettel,nr3053)
-	ucidef_set_led_default "wan-green" "WAN" "green:status" "0"
-	ucidef_set_led_default "wan-red" "WAN offline" "red:status" "0"
+	ucidef_set_led_default "status-green" "Status" "green:status" "1"
+	ucidef_set_led_default "status-red" "Status Red" "red:status" "0"
 	;;
 tplink,archer-ax80-v1-eu)
 	ucidef_set_led_netdev "lan" "LAN" "white:lan" "br-lan" "link tx rx"
