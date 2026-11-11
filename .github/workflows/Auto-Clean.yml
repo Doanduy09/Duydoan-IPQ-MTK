@@ -73,4 +73,5 @@ jobs:
           gh workflow run "build-25-firmware.yml" --repo "${{ github.repository }}" -r openwrt-25 || true
           gh workflow run "build-asus-24.yml" --repo "${{ github.repository }}" -r main || true
           gh workflow run "build-asus-25.yml" --repo "${{ github.repository }}" -r openwrt-25 || true
+          gh workflow run "build-viettel-nr3053.yml" --repo "${{ github.repository }}" -r openwrt-25 || true
           echo ">> Da gui yeu cau build toan bo firmware moi thanh cong!"

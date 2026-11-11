@@ -23,6 +23,7 @@
 | **JDCloud Athena AX6600 (RE-CS-02)** | Qualcomm IPQ6010 (4x 1.2 GHz) | **Qualcomm NSS 12.5 + ECM + ath11k** | eMMC 128GB F2FS, Modem 5G Sierra, Màn hình LED Athena |
 | **ASUS TUF Gaming AX6000** | MediaTek MT7986A Filogic 830 (4x 2.0 GHz) | **MediaTek HNAT (PPE + WED) + SafeXcel EIP-97** | Dual 2.5Gbps WAN/LAN, Wi-Fi 6 4x4 AX6000, Full App Suite |
 | **ASUS TUF Gaming AX4200** | MediaTek MT7986A Filogic 830 (4x 2.0 GHz) | **MediaTek HNAT (PPE + WED) + SafeXcel EIP-97** | 2.5Gbps WAN/LAN, Wi-Fi 6 AX4200, Full App Suite |
+| **Viettel NR3053 / SDMC MT3053** | MediaTek MT7981B Filogic 820 (2x 1.3 GHz) | **MediaTek HNAT (PPE v2 + WED) + SafeXcel EIP-97** | 1x 2.5G/1G WAN + 3x 1G LAN, Wi-Fi 6 AX3000, USB 3.0 Mod, SPI-NAND 128MB, DDR3 512MB, Full App Suite |
 
 ---
 
@@ -44,7 +45,18 @@
 - **06:10 AM (ICT)**: `Build Duydoan-24.10 ASUS TUF Gaming (All Devices)` (Song song AX6000 & AX4200)
 - **06:15 AM (ICT)**: `Build Duydoan-25.12 JDCloud RE-CS-02 (Bleeding Edge)` (Qualcomm NSS + Auto-Sync)
 - **06:25 AM (ICT)**: `Build Duydoan-25.12 ASUS TUF Gaming (All Devices - Bleeding Edge)` (MediaTek HNAT + Auto-Sync)
+- **06:30 AM (ICT)**: `Build Duydoan-25.12 Viettel NR3053 / SDMC MT3053 (Bleeding Edge)` (MediaTek MT7981B + USB 3.0 Mod + Auto-Sync)
 - **Cơ chế dọn dẹp (Self-Cleaning)**: Tự động xóa các bản phát hành cũ của từng router trước khi tạo bản mới, bảo đảm không bao giờ bị trùng lặp hoặc tốn dung lượng GitHub.
+
+---
+
+## ⚡ HƯỚNG DẪN NẠP FIRMWARE CHO VIETTEL NR3053 / SDMC MT3053
+- **Đang chạy firmware gốc Viettel / SDMC / Failsafe U-Boot**:
+  - Dùng file `*sdmc_mt3053-squashfs-factory.ubi` nạp qua giao diện Web Failsafe U-Boot (giữ nút Reset khi cắm nguồn đến khi đèn nhấp nháy, truy cập `192.168.1.1`).
+- **Đang chạy OpenWrt / ImmortalWrt (Stock Partition Layout)**:
+  - Nâng cấp trực tiếp qua LuCI: Vào **System** -> **Backup / Flash Firmware** -> Chọn file `*sdmc_mt3053-squashfs-sysupgrade.bin` -> Bấm **Flash**.
+- **Router đã chuyển sang OpenWrt U-Boot Layout (FIP)**:
+  - Chọn file `*viettel_nr3053-squashfs-sysupgrade.itb` -> Bấm **Flash**.
 
 ---
 
