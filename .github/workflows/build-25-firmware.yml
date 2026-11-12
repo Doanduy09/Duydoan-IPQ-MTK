@@ -1,6 +1,9 @@
 name: Build Duydoan-25.12 JDCloud RE-CS-02 (Bleeding Edge)
 
 on:
+  schedule:
+    # 05:45 AM Asia/Ho_Chi_Minh daily (22:45 UTC)
+    - cron: '45 22 * * *'
   workflow_dispatch:
     inputs:
       release:

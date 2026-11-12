@@ -1,6 +1,9 @@
 name: Build Duydoan-25.12 Viettel NR3053 (Bleeding Edge)
 
 on:
+  schedule:
+    # 05:35 AM Asia/Ho_Chi_Minh daily (22:35 UTC)
+    - cron: '35 22 * * *'
   workflow_dispatch:
     inputs:
       release:
