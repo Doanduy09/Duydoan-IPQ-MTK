@@ -13,7 +13,6 @@
 /logs
 /feeds
 /feeds.conf
-/files
 /target/linux/feeds
 /overlay
 /package/feeds
@@ -36,6 +35,5 @@ git-src
 .ccache
 .vscode*
 
-/files
 package/base-files/files/etc/init.d/all
 *.dat

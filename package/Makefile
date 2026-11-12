@@ -99,7 +99,7 @@ $(curdir)/install: $(TMP_DIR)/.build $(curdir)/merge $(curdir)/merge-index
 ifneq ($(CONFIG_USE_APK),)
 	$(file >$(TMP_DIR)/apk_install_list,\
 	    $(foreach pkg,$(shell cat $(PACKAGE_INSTALL_FILES) 2>/dev/null),$(pkg)$(call GetABISuffix,$(pkg))))
-	$(call apk,$(TARGET_DIR)) add --no-cache --initdb --no-scripts --arch $(ARCH_PACKAGES) \
+	$(call apk,$(TARGET_DIR)) add --no-cache --initdb --no-scripts --arch $(ARCH_PACKAGES) --force-overwrite \
 		--repositories-file /dev/null --repository file://$(PACKAGE_DIR_ALL)/packages.adb \
 		$(if $(CONFIG_SIGNED_PACKAGES),,--allow-untrusted) \
 		$$(cat $(TMP_DIR)/apk_install_list) \
