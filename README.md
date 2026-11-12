@@ -31,9 +31,9 @@
 
 | Thiết Bị | Kiến Trúc Phần Cứng & Cấu Hình Chi Tiết | Tăng Tốc Phần Cứng & HNAT | Tính Năng Đặc Biệt |
 | :--- | :--- | :--- | :--- |
-| **CMCC RAX3000M (Bản eMMC)** | • **SoC**: MediaTek MT7981B Filogic 820 (2x 1.3 GHz)<br>• **RAM**: 512MB DDR4 tốc độ cao<br>• **Flash**: **4GB / 8GB eMMC** (Cài đặt app không giới hạn)<br>• **Cổng mạng**: 1 Cổng 2.5Gbps WAN/LAN + 3 Cổng 1Gbps LAN<br>• **Wi-Fi 6**: 2T2R AX3000 (2.4G 574M + 5G 2402M HE160)<br>• **USB**: 1 Cổng USB 3.0 cắm Modem 5G / ổ cứng di động | **MediaTek PPE v2 HNAT (WED Turbo)**<br>+ SafeXcel EIP-97 Crypto Engine<br>+ HNAT Hardware Flow Offload | • Bộ nhớ eMMC dung lượng lớn, hỗ trợ Docker / cài gói thoải mái<br>• Bộ công cụ 4G/5G chuyên sâu (Quectel, Fibocom, MBIM, QMI)<br>• Hỗ trợ GPT, Preloader & U-Boot FIP riêng biệt |
-| **CMCC RAX3000M (Bản SPI-NAND)** | • **SoC**: MediaTek MT7981B Filogic 820 (2x 1.3 GHz)<br>• **RAM**: 512MB DDR4 tốc độ cao<br>• **Flash**: **128MB SPI-NAND Flash**<br>• **Cổng mạng**: 1 Cổng 2.5Gbps WAN/LAN + 3 Cổng 1Gbps LAN<br>• **Wi-Fi 6**: 2T2R AX3000 (2.4G 574M + 5G 2402M HE160)<br>• **USB**: 1 Cổng USB 3.0 cắm Modem 5G / ổ cứng di động | **MediaTek PPE v2 HNAT (WED Turbo)**<br>+ SafeXcel EIP-97 Crypto Engine<br>+ HNAT Hardware Flow Offload | • Phiên bản tối ưu cho flash SPI-NAND 128MB<br>• Tích hợp EasyMesh, Batman-adv, DAWN Roaming, ModemInfo<br>• Hỗ trợ Preloader & U-Boot FIP NAND riêng biệt |
-| **Viettel NR3053 / SDMC MT3053** | • **SoC**: MediaTek MT7981B Filogic 820 (2x 1.3 GHz)<br>• **RAM**: 512MB DDR3<br>• **Flash**: 128MB SPI-NAND<br>• **Cổng mạng**: 1 Cổng 2.5G/1G WAN + 3 Cổng 1G LAN<br>• **Wi-Fi 6**: 2T2R AX3000 (2.4G 574M + 5G 2402M HE160)<br>• **USB**: Mod phần cứng USB 3.0 cắm Modem 5G ngoài | **MediaTek PPE v2 HNAT (WED Turbo)**<br>+ SafeXcel EIP-97 Crypto Engine<br>+ **Công tắc HNAT 1-Click trên LuCI** | • Tương thích 100% layout gốc SDMC factory.ubi và U-Boot FIP<br>• Hiệu chuẩn EEPROM sóng Wi-Fi chuẩn xác 100%<br>• Master Dashboard & 1-Click Auto Mesh |
+| **CMCC RAX3000M (Bản eMMC)** | • **SoC**: MediaTek MT7981B Filogic 820 (2x 1.3 GHz)<br>• **RAM**: 512MB DDR4 tốc độ cao<br>• **Flash**: **4GB / 8GB eMMC** (Cài đặt app không giới hạn)<br>• **Cổng mạng**: 1 Cổng 1Gbps WAN + 3 Cổng 1Gbps LAN (1000Mbps Full Duplex)<br>• **Wi-Fi 6**: 2T2R AX3000 (2.4G 574M + 5G 2402M HE160)<br>• **USB**: 1 Cổng USB 3.0 cắm Modem 5G / ổ cứng di động | **MediaTek PPE v2 HNAT (WED Turbo)**<br>+ SafeXcel EIP-97 Crypto Engine<br>+ HNAT Hardware Flow Offload | • Bộ nhớ eMMC dung lượng lớn, hỗ trợ Docker / cài gói thoải mái<br>• Bộ công cụ 4G/5G chuyên sâu (Quectel, Fibocom, MBIM, QMI)<br>• Hỗ trợ GPT, Preloader & U-Boot FIP riêng biệt |
+| **CMCC RAX3000M (Bản SPI-NAND)** | • **SoC**: MediaTek MT7981B Filogic 820 (2x 1.3 GHz)<br>• **RAM**: 512MB DDR4 tốc độ cao<br>• **Flash**: **128MB SPI-NAND Flash**<br>• **Cổng mạng**: 1 Cổng 1Gbps WAN + 3 Cổng 1Gbps LAN (1000Mbps Full Duplex)<br>• **Wi-Fi 6**: 2T2R AX3000 (2.4G 574M + 5G 2402M HE160)<br>• **USB**: 1 Cổng USB 3.0 cắm Modem 5G / ổ cứng di động | **MediaTek PPE v2 HNAT (WED Turbo)**<br>+ SafeXcel EIP-97 Crypto Engine<br>+ HNAT Hardware Flow Offload | • Phiên bản tối ưu cho flash SPI-NAND 128MB<br>• Tích hợp EasyMesh, Batman-adv, DAWN Roaming, ModemInfo<br>• Hỗ trợ Preloader & U-Boot FIP NAND riêng biệt |
+| **Viettel NR3053 / SDMC MT3053** | • **SoC**: MediaTek MT7981B Filogic 820 (2x 1.3 GHz)<br>• **RAM**: 512MB DDR3<br>• **Flash**: 128MB SPI-NAND<br>• **Cổng mạng**: 1 Cổng 1Gbps WAN + 3 Cổng 1Gbps LAN (1000Mbps Full Duplex)<br>• **Wi-Fi 6**: 2T2R AX3000 (2.4G 574M + 5G 2402M HE160)<br>• **USB**: Mod phần cứng USB 3.0 cắm Modem 5G ngoài | **MediaTek PPE v2 HNAT (WED Turbo)**<br>+ SafeXcel EIP-97 Crypto Engine<br>+ **Công tắc HNAT 1-Click trên LuCI** | • Tương thích 100% layout gốc SDMC factory.ubi và U-Boot FIP<br>• Hiệu chuẩn EEPROM sóng Wi-Fi chuẩn xác 100%<br>• Master Dashboard & 1-Click Auto Mesh |
 
 ---
 
@@ -98,21 +98,21 @@ Trên các dòng router MediaTek Filogic (ASUS TUF-AX6000, ASUS TUF-AX4200, CMCC
   - `*emmc-gpt.bin`: Bảng phân vùng GPT cho bộ nhớ eMMC.
   - `*emmc-preloader.bin`: Bootloader cấp 1 (BL2) cho eMMC.
   - `*emmc-bl31-uboot.fip`: U-Boot FIP (BL31 + U-Boot Web Failsafe).
-  - `*cmcc_rax3000m-squashfs-sysupgrade.itb`: Firmware hệ thống (tự nhận diện eMMC qua DTB overlay).
+  - `*cmcc_rax3000m-squashfs-sysupgrade.bin`: Firmware hệ thống (tự nhận diện eMMC qua DTB overlay).
 - **Dành cho Bản NAND**:
   - `*nand-preloader.bin`: Bootloader cấp 1 (BL2) cho chip nhớ SPI-NAND.
   - `*nand-bl31-uboot.fip`: U-Boot FIP (BL31 + U-Boot Web Failsafe) cho SPI-NAND.
-  - `*cmcc_rax3000m-squashfs-sysupgrade.itb`: Firmware hệ thống (tự nhận diện NAND qua DTB overlay).
+  - `*cmcc_rax3000m-squashfs-sysupgrade.bin`: Firmware hệ thống (tự nhận diện NAND qua DTB overlay).
 
 #### Hướng dẫn nạp lần đầu từ Firmware gốc hoặc U-Boot Web Failsafe:
 1. Đặt IP tĩnh máy tính: `192.168.1.10 / 255.255.255.0`. Cắm dây LAN vào cổng LAN của router.
 2. Giữ nút **Reset** và cắm nguồn điện đến khi đèn LED nhấp nháy chuyển màu, truy cập `http://192.168.1.1` trên trình duyệt để vào Web U-Boot Failsafe.
-3. Chọn file firmware `*cmcc_rax3000m-squashfs-sysupgrade.itb` và nạp.
+3. Chọn file firmware `*cmcc_rax3000m-squashfs-sysupgrade.bin` và nạp.
 4. Chờ 3 phút, router tự khởi động lại vào hệ điều hành ImmortalWrt.
 
 #### Nâng cấp từ LuCI OpenWrt (Sysupgrade):
 - Vào menu **Hệ thống (System)** ➔ **Sao lưu / Nạp phần mềm (Backup / Flash Firmware)**.
-- Chọn file `*cmcc_rax3000m-squashfs-sysupgrade.itb` và bấm nạp trực tiếp.
+- Chọn file `*cmcc_rax3000m-squashfs-sysupgrade.bin` và bấm nạp trực tiếp.
 
 ---
 
@@ -125,7 +125,7 @@ Trên các dòng router MediaTek Filogic (ASUS TUF-AX6000, ASUS TUF-AX4200, CMCC
 4. Chờ 3 phút, router khởi động lại là hoàn tất.
 
 #### Nâng cấp từ LuCI OpenWrt (Sysupgrade):
-- Dùng file `openwrt-mediatek-filogic-sdmc_mt3053-squashfs-sysupgrade.bin` (layout gốc) hoặc `*viettel_nr3053-squashfs-sysupgrade.itb` (layout U-Boot FIP) nạp trực tiếp qua trang Flash Firmware.
+- Dùng file `openwrt-mediatek-filogic-sdmc_mt3053-squashfs-sysupgrade.bin` (layout gốc) hoặc `*viettel_nr3053-squashfs-sysupgrade.bin` (layout U-Boot FIP) nạp trực tiếp qua trang Flash Firmware.
 
 ---
 

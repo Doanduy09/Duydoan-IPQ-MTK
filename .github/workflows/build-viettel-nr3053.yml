@@ -79,6 +79,9 @@ jobs:
         run: |
           cd bin/targets/mediatek/filogic
           rm -rf packages
+          for itb in *sysupgrade.itb; do
+            [ -f "$itb" ] && cp -f "$itb" "${itb%.itb}.bin"
+          done
           echo "FIRMWARE=$PWD" >> $GITHUB_ENV
           echo "BUILD_DATE=$(date +'%Y.%m.%d-%H%M')" >> $GITHUB_ENV
           echo "status=success" >> $GITHUB_OUTPUT
@@ -103,6 +106,11 @@ jobs:
             * **Base Version**: Duydoan-24.10 (LTS Kernel 6.6)
             * **Target Hardware**: Viettel NR3053 (MediaTek MT7981B Filogic 820, DDR3 512MB, SPI-NAND 256MB)
             * **USB 3.0 Support**: xHCI controller & USB PHY enabled (Hardware mod ready)
-            * **Network**: 1x WAN, 3x LAN (MT7531 switch) + 2x2 Wi-Fi 6 AX3000
+            * **Stock / SDMC Layout**:
+              - `*sdmc_mt3053-squashfs-factory.ubi`: Dành cho nạp lần đầu qua Web Failsafe / U-Boot.
+              - `*sdmc_mt3053-squashfs-sysupgrade.bin`: Nâng cấp trực tiếp qua Web LuCI (System -> Backup / Flash Firmware).
+            * **OpenWrt U-Boot Layout**:
+              - `*viettel_nr3053-squashfs-sysupgrade.bin (hoặc *.itb)`: Dành cho router đã nạp OpenWrt U-Boot FIP.
+            * **Network**: 1x WAN, 3x LAN (MT7531 switch 1000Mbps) + 2x2 Wi-Fi 6 AX3000
             * **Offloading**: MediaTek HNAT (PPE + WED) hardware flow offload
           files: ${{ env.FIRMWARE }}/*
