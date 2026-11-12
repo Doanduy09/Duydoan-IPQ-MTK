@@ -1,6 +1,9 @@
 name: Build Duydoan-24.10 ASUS TUF Gaming (All Devices)
 
 on:
+  schedule:
+    # 05:55 AM Asia/Ho_Chi_Minh daily (22:55 UTC)
+    - cron: '55 22 * * *'
   workflow_dispatch:
     inputs:
       release:

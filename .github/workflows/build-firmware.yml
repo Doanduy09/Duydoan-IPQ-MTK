@@ -1,6 +1,9 @@
 name: Build Duydoan-24.10 JDCloud RE-CS-02
 
 on:
+  schedule:
+    # 06:05 AM Asia/Ho_Chi_Minh daily (23:05 UTC)
+    - cron: '05 23 * * *'
   workflow_dispatch:
     inputs:
       release:
