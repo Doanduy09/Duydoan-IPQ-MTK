@@ -1,4 +1,4 @@
-name: Build Duydoan-24.10 CMCC RAX3000M
+name: Build Duydoan-24.10 CMCC RAX3000M (All Variants)
 
 on:
   schedule:
@@ -16,8 +16,23 @@ permissions: write-all
 
 jobs:
   build:
-    name: Build CMCC RAX3000M (24.10)
+    name: Build ${{ matrix.device.name }}
     runs-on: ubuntu-22.04
+    strategy:
+      fail-fast: false
+      matrix:
+        device:
+          - name: "CMCC_RAX3000M_eMMC"
+            config: "cmcc_rax3000m-emmc.config"
+            tag_prefix: "CMCC-RAX3000M-eMMC"
+            desc: "CMCC RAX3000M eMMC (MediaTek MT7981B Filogic 820, DDR4 512MB, eMMC Flash, 1x 2.5Gbps WAN/LAN + 3x 1Gbps LAN, USB 3.0, Wi-Fi 6 AX3000 160MHz)"
+            flash_type: "eMMC (4GB/8GB)"
+          - name: "CMCC_RAX3000M_NAND"
+            config: "cmcc_rax3000m-nand.config"
+            tag_prefix: "CMCC-RAX3000M-NAND"
+            desc: "CMCC RAX3000M NAND (MediaTek MT7981B Filogic 820, DDR4 512MB, SPI-NAND Flash 128MB, 1x 2.5Gbps WAN/LAN + 3x 1Gbps LAN, USB 3.0, Wi-Fi 6 AX3000 160MHz)"
+            flash_type: "SPI-NAND (128MB)"
+
     steps:
       - name: Checkout Source
         uses: actions/checkout@v4
@@ -57,7 +72,7 @@ jobs:
 
       - name: Load Seed Config
         run: |
-          cp cmcc_rax3000m.config .config
+          [ -e ${{ matrix.device.config }} ] && cp ${{ matrix.device.config }} .config
           make defconfig
 
       - name: Download Package Sources
@@ -69,7 +84,7 @@ jobs:
       - name: Compile Firmware
         id: compile
         run: |
-          echo -e "$(nproc) thread compile for CMCC RAX3000M (24.10)"
+          echo -e "$(nproc) thread compile for ${{ matrix.device.name }} (24.10)"
           make -j$(nproc) || make -j1 V=s
           echo "status=success" >> $GITHUB_OUTPUT
 
@@ -87,7 +102,7 @@ jobs:
         uses: actions/upload-artifact@v4
         if: steps.organize.outputs.status == 'success'
         with:
-          name: Duydoan-24.10_CMCC_RAX3000M_${{ env.BUILD_DATE }}
+          name: Duydoan-24.10_${{ matrix.device.name }}_${{ env.BUILD_DATE }}
           path: ${{ env.FIRMWARE }}/*
 
       - name: Create GitHub Release
@@ -96,19 +111,24 @@ jobs:
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         with:
-          tag_name: Duydoan-24.10-CMCC-RAX3000M-${{ env.BUILD_DATE }}
-          name: Duydoan-24.10 CMCC RAX3000M (eMMC / NAND) Release ${{ env.BUILD_DATE }}
+          tag_name: Duydoan-24.10-${{ matrix.device.tag_prefix }}-${{ env.BUILD_DATE }}
+          name: Duydoan-24.10 ${{ matrix.device.name }} Release ${{ env.BUILD_DATE }}
           body: |
-            ### 🚀 Duydoan-24.10 for CMCC RAX3000M (eMMC & NAND)
-            * **Base Version**: ImmortalWrt 24.10 (Stable)
-            * **Target Hardware**: CMCC RAX3000M (MediaTek MT7981B Filogic 820, DDR4 512MB, eMMC / NAND Wi-Fi 6 AX3000)
-            * **Supported Flash Variants**:
-              - **eMMC Version**: GPT (`*emmc-gpt.bin`), Preloader (`*emmc-preloader.bin`), U-Boot FIP (`*emmc-bl31-uboot.fip`)
-              - **NAND Version**: Preloader (`*nand-preloader.bin`), U-Boot FIP (`*nand-bl31-uboot.fip`)
-              - **Firmware Image**: `*cmcc_rax3000m-squashfs-sysupgrade.itb`
-            * **Features**:
-              - Full 4G/5G Modem Suite.
-              - 1-Click Auto Mesh & 802.11k/v/r Fast Roaming.
-              - MediaTek HNAT (PPE + WED) hardware flow offload.
-              - Modern ArgonTheme & Optimized LuCI interface.
+            ### 🚀 Duydoan-24.10 for ${{ matrix.device.name }}
+            * **Phiên bản nền**: ImmortalWrt 24.10 (Stable LTS - Kernel 6.6)
+            * **Phần cứng mục tiêu**: ${{ matrix.device.desc }}
+            * **Kiểu bộ nhớ Flash**: ${{ matrix.device.flash_type }}
+            * **Bộ vi xử lý (SoC)**: MediaTek MT7981B (Filogic 820) 2x ARM Cortex-A53 @ 1.3GHz
+            * **Bộ nhớ RAM**: 512MB DDR4
+            * **Cổng mạng & Kết nối**: 1 Cổng 2.5Gbps WAN/LAN + 3 Cổng 1Gbps LAN + 1 Cổng USB 3.0
+            * **Wi-Fi 6 AX3000**: 2.4GHz 574Mbps (2x2) + 5GHz 2402Mbps (2x2 HE160)
+            * **Tăng tốc phần cứng**: MediaTek HNAT (PPE v2 + WED DMA) tải Full 2.5Gbps với CPU ~0% + SafeXcel EIP-97 Crypto Engine.
+            * **Bộ ứng dụng Modem & Mạng**:
+              - Trọn bộ Modem 4G/5G: QModem, ModemData, Fibocom, Quectel CM, QMI, MBIM, ECM, RNDIS.
+              - 1-Click Auto Mesh & Fast Roaming 802.11k/v/r.
+              - Giao diện ArgonTheme & Master Dashboard.
+            * **Hướng dẫn file nạp**:
+              - File firmware nâng cấp: `*cmcc_rax3000m-squashfs-sysupgrade.itb`.
+              - File bootloader eMMC: `*emmc-gpt.bin`, `*emmc-preloader.bin`, `*emmc-bl31-uboot.fip`.
+              - File bootloader NAND: `*nand-preloader.bin`, `*nand-bl31-uboot.fip`.
           files: ${{ env.FIRMWARE }}/*
