@@ -16,22 +16,40 @@
 
 ---
 
-## 📌 DANH MỤC THIẾT BỊ HỖ TRỢ CHÍNH THỨC
+## 📌 DANH MỤC THIẾT BỊ HỖ TRỢ CHÍNH THỨC (PHÂN THEO DÒNG CHIPSET)
 
-| Thiết Bị | Kiến Trúc Vi Xử Lý & Phần Cứng | Bộ Tăng Tốc Phần Cứng & HNAT | Đóng Gói Cấu Hình Đặc Biệt |
+### 🔹 NHÓM 1: MEDIATEK FILOGIC 830 (MT7986A - 4 NHÂN CORTEX-A53 2.0 GHz)
+
+| Thiết Bị | Kiến Trúc Phần Cứng & Cấu Hình Chi Tiết | Tăng Tốc Phần Cứng & HNAT | Tính Năng Đặc Biệt |
 | :--- | :--- | :--- | :--- |
-| **ASUS TUF Gaming AX6000** | MediaTek MT7986A Filogic 830 (4x 2.0 GHz)<br>RAM 512MB/1GB DDR3/DDR4, Flash 256MB | **MediaTek Dual-PPE HNAT (32,768 luồng)**<br>+ mt7915e WED Turbo Direct DMA<br>+ SafeXcel EIP-97 Crypto Engine<br>+ **Nút Bật/Tắt HNAT 1-Click trên LuCI** | • 2 Cổng 2.5Gbps WAN/LAN + 4 Cổng 1Gbps LAN<br>• Wi-Fi 6 4T4R AX6000 (160MHz Dual MT7976GN)<br>• Cổng USB 3.0 cắm ổ cứng/Modem 5G<br>• Giao diện Master Dashboard Chuyên Sâu |
-| **ASUS TUF Gaming AX4200** | MediaTek MT7986A Filogic 830 (4x 2.0 GHz)<br>RAM 512MB DDR3, Flash 256MB | **MediaTek Dual-PPE HNAT (32,768 luồng)**<br>+ mt7915e WED Turbo Direct DMA<br>+ SafeXcel EIP-97 Crypto Engine<br>+ **Nút Bật/Tắt HNAT 1-Click trên LuCI** | • 1 Cổng 2.5Gbps WAN/LAN + 4 Cổng 1Gbps LAN<br>• Wi-Fi 6 AX4200 (4T4R 5GHz 160MHz + 2T2R 2.4GHz)<br>• Cổng USB 3.0 cắm ổ cứng/Modem 5G<br>• Giao diện Master Dashboard Chuyên Sâu |
-| **Viettel NR3053 / SDMC MT3053** | MediaTek MT7981B Filogic 820 (2x 1.3 GHz)<br>RAM 512MB DDR3, Flash 128MB SPI-NAND | **MediaTek PPE v2 HNAT (WED Turbo)**<br>+ SafeXcel EIP-97 Crypto Engine<br>+ **Nút Bật/Tắt HNAT 1-Click trên LuCI** | • 1 Cổng 2.5G/1G WAN + 3 Cổng 1G LAN<br>• Wi-Fi 6 AX3000 (2x2 5GHz 160MHz + 2x2 2.4GHz)<br>• Mod phần cứng USB 3.0 cắm Modem 5G ngoài<br>• Giao diện Master Dashboard Chuyên Sâu |
-| **JDCloud Athena AX6600 (RE-CS-02)** | Qualcomm IPQ6010 (4x 1.2 GHz)<br>RAM 1GB DDR4, Flash 128GB eMMC F2FS | **Qualcomm NSS 12.5 Hardware Max**<br>+ ECM Flow Offload (NSS Core 0/1)<br>+ Qualcomm Crypto Acceleration | • eMMC 128GB F2FS cài đặt app không giới hạn<br>• Màn hình LED ma trận hiển thị đồng hồ & trạng thái<br>• Hỗ trợ khe cắm module WWAN M.2 5G Sierra/Quectel<br>• Wi-Fi 6 Tri-Band AX6600 (Qualcomm ath11k) |
+| **ASUS TUF Gaming AX6000** | • **SoC**: MediaTek MT7986A Filogic 830 (4x 2.0 GHz)<br>• **RAM**: 512MB/1GB DDR3/DDR4<br>• **Flash**: 256MB SPI-NAND<br>• **Cổng mạng**: 2 Cổng 2.5Gbps WAN/LAN + 4 Cổng 1Gbps LAN<br>• **Wi-Fi 6**: 4T4R AX6000 (160MHz Dual MT7976GN)<br>• **USB**: 1 Cổng USB 3.0 cắm modem 5G / ổ cứng | **MediaTek Dual-PPE HNAT (32,768 luồng)**<br>+ mt7915e WED Turbo Direct DMA<br>+ SafeXcel EIP-97 Crypto Engine<br>+ **Công tắc HNAT 1-Click trên LuCI** | • Tốc độ định tuyến 2.5Gbps CPU ~0%<br>• Trọn bộ 5G Modem Manager & AT Commands<br>• 1-Click Auto Mesh 802.11k/v/r<br>• Giao diện Master Dashboard Chuyên Sâu |
+| **ASUS TUF Gaming AX4200** | • **SoC**: MediaTek MT7986A Filogic 830 (4x 2.0 GHz)<br>• **RAM**: 512MB DDR3<br>• **Flash**: 256MB SPI-NAND<br>• **Cổng mạng**: 1 Cổng 2.5Gbps WAN/LAN + 4 Cổng 1Gbps LAN<br>• **Wi-Fi 6**: 4T4R 5GHz 160MHz + 2T2R 2.4GHz AX4200<br>• **USB**: 1 Cổng USB 3.0 cắm modem 5G / ổ cứng | **MediaTek Dual-PPE HNAT (32,768 luồng)**<br>+ mt7915e WED Turbo Direct DMA<br>+ SafeXcel EIP-97 Crypto Engine<br>+ **Công tắc HNAT 1-Click trên LuCI** | • Tốc độ định tuyến 2.5Gbps CPU ~0%<br>• Trọn bộ 5G Modem Manager & AT Commands<br>• 1-Click Auto Mesh 802.11k/v/r<br>• Giao diện Master Dashboard Chuyên Sâu |
+
+---
+
+### 🔹 NHÓM 2: MEDIATEK FILOGIC 820 (MT7981B - 2 NHÂN CORTEX-A53 1.3 GHz)
+
+| Thiết Bị | Kiến Trúc Phần Cứng & Cấu Hình Chi Tiết | Tăng Tốc Phần Cứng & HNAT | Tính Năng Đặc Biệt |
+| :--- | :--- | :--- | :--- |
+| **CMCC RAX3000M (Bản eMMC)** | • **SoC**: MediaTek MT7981B Filogic 820 (2x 1.3 GHz)<br>• **RAM**: 512MB DDR4 tốc độ cao<br>• **Flash**: **4GB / 8GB eMMC** (Cài đặt app không giới hạn)<br>• **Cổng mạng**: 1 Cổng 2.5Gbps WAN/LAN + 3 Cổng 1Gbps LAN<br>• **Wi-Fi 6**: 2T2R AX3000 (2.4G 574M + 5G 2402M HE160)<br>• **USB**: 1 Cổng USB 3.0 cắm Modem 5G / ổ cứng di động | **MediaTek PPE v2 HNAT (WED Turbo)**<br>+ SafeXcel EIP-97 Crypto Engine<br>+ HNAT Hardware Flow Offload | • Bộ nhớ eMMC dung lượng lớn, hỗ trợ Docker / cài gói thoải mái<br>• Bộ công cụ 4G/5G chuyên sâu (Quectel, Fibocom, MBIM, QMI)<br>• Hỗ trợ GPT, Preloader & U-Boot FIP riêng biệt |
+| **CMCC RAX3000M (Bản SPI-NAND)** | • **SoC**: MediaTek MT7981B Filogic 820 (2x 1.3 GHz)<br>• **RAM**: 512MB DDR4 tốc độ cao<br>• **Flash**: **128MB SPI-NAND Flash**<br>• **Cổng mạng**: 1 Cổng 2.5Gbps WAN/LAN + 3 Cổng 1Gbps LAN<br>• **Wi-Fi 6**: 2T2R AX3000 (2.4G 574M + 5G 2402M HE160)<br>• **USB**: 1 Cổng USB 3.0 cắm Modem 5G / ổ cứng di động | **MediaTek PPE v2 HNAT (WED Turbo)**<br>+ SafeXcel EIP-97 Crypto Engine<br>+ HNAT Hardware Flow Offload | • Phiên bản tối ưu cho flash SPI-NAND 128MB<br>• Tích hợp EasyMesh, Batman-adv, DAWN Roaming, ModemInfo<br>• Hỗ trợ Preloader & U-Boot FIP NAND riêng biệt |
+| **Viettel NR3053 / SDMC MT3053** | • **SoC**: MediaTek MT7981B Filogic 820 (2x 1.3 GHz)<br>• **RAM**: 512MB DDR3<br>• **Flash**: 128MB SPI-NAND<br>• **Cổng mạng**: 1 Cổng 2.5G/1G WAN + 3 Cổng 1G LAN<br>• **Wi-Fi 6**: 2T2R AX3000 (2.4G 574M + 5G 2402M HE160)<br>• **USB**: Mod phần cứng USB 3.0 cắm Modem 5G ngoài | **MediaTek PPE v2 HNAT (WED Turbo)**<br>+ SafeXcel EIP-97 Crypto Engine<br>+ **Công tắc HNAT 1-Click trên LuCI** | • Tương thích 100% layout gốc SDMC factory.ubi và U-Boot FIP<br>• Hiệu chuẩn EEPROM sóng Wi-Fi chuẩn xác 100%<br>• Master Dashboard & 1-Click Auto Mesh |
+
+---
+
+### 🔹 NHÓM 3: QUALCOMM IPQ6010 / IPQ6000 (4 NHÂN CORTEX-A53 1.2 GHz + NPU NSS)
+
+| Thiết Bị | Kiến Trúc Phần Cứng & Cấu Hình Chi Tiết | Tăng Tốc Phần Cứng & NSS | Tính Năng Đặc Biệt |
+| :--- | :--- | :--- | :--- |
+| **JDCloud Athena AX6600 (RE-CS-02)** | • **SoC**: Qualcomm IPQ6010 (4x 1.2 GHz)<br>• **RAM**: 1GB DDR4<br>• **Flash**: **128GB eMMC F2FS**<br>• **Cổng mạng**: 1 Cổng 2.5Gbps WAN/LAN + 4 Cổng 1Gbps LAN<br>• **Wi-Fi 6**: Tri-Band AX6600 (2.4G + 5.2G + 5.8G Qualcomm ath11k)<br>• **Mở rộng**: Khe cắm module WWAN M.2 5G Sierra/Quectel + LED ma trận | **Qualcomm NSS 12.5 Hardware Max**<br>+ ECM Flow Offload (NSS Core 0/1)<br>+ Qualcomm Crypto Acceleration | • eMMC 128GB F2FS siêu tốc cài đặt app không giới hạn<br>• Màn hình LED ma trận hiển thị đồng hồ thời gian & trạng thái mạng<br>• Hỗ trợ module WWAN 5G khe M.2 trong thân máy |
 
 ---
 
 ## ⚡ CƠ CHẾ TĂNG TỐC PHẦN CỨNG MEDIATEK HNAT (PPE + WED TURBO)
 
-Trên các dòng router MediaTek Filogic (ASUS TUF-AX6000, ASUS TUF-AX4200, Viettel NR3053):
+Trên các dòng router MediaTek Filogic (ASUS TUF-AX6000, ASUS TUF-AX4200, CMCC RAX3000M, Viettel NR3053):
 1. **MediaTek PPE (Packet Processing Engine)**:
-   - MT7986A trang bị **Dual-PPE Engine** với năng lực định tuyến phần cứng lên tới **32,768 kết nối đồng thời**.
+   - Trang bị công cụ chuyển mạch gói phần cứng với năng lực xử lý lên tới **32,768 kết nối đồng thời**.
    - Gói tin mạng qua cổng 2.5Gbps được xử lý trực tiếp trên chip chuyển mạch phần cứng, đưa mức sử dụng CPU về mức **~0%** ngay cả khi kéo Full tải 2.5Gbps, giúp Router luôn mát mẻ và không bị nghẽn CPU.
 2. **MediaTek WED (Wireless Ethernet Dispatcher) Turbo**:
    - Cầu nối DMA trực tiếp giữa chip chuyển mạch mạng và card Wi-Fi 6 `mt7915e`, loại bỏ hoàn toàn hiện tượng nghẽn cổ chai truyền dữ liệu qua RAM/CPU khi truyền tải tốc độ cao qua sóng không dây.
@@ -69,7 +87,36 @@ Trên các dòng router MediaTek Filogic (ASUS TUF-AX6000, ASUS TUF-AX4200, Viet
 
 ---
 
-### 2. Viettel NR3053 / SDMC MT3053 (MediaTek MT7981B)
+### 2. CMCC RAX3000M (MediaTek MT7981B - Bản eMMC & Bản SPI-NAND)
+
+#### Phân biệt 2 phiên bản phần cứng:
+- **Bản eMMC**: Mặt đáy thiết bị ghi bộ nhớ 4GB hoặc 8GB eMMC, trên bo mạch tích hợp chip eMMC.
+- **Bản NAND**: Mặt đáy thiết bị ghi bộ nhớ 128MB SPI-NAND.
+
+#### Danh mục file nạp tương ứng cho từng bản:
+- **Dành cho Bản eMMC**:
+  - `*emmc-gpt.bin`: Bảng phân vùng GPT cho bộ nhớ eMMC.
+  - `*emmc-preloader.bin`: Bootloader cấp 1 (BL2) cho eMMC.
+  - `*emmc-bl31-uboot.fip`: U-Boot FIP (BL31 + U-Boot Web Failsafe).
+  - `*cmcc_rax3000m-squashfs-sysupgrade.itb`: Firmware hệ thống (tự nhận diện eMMC qua DTB overlay).
+- **Dành cho Bản NAND**:
+  - `*nand-preloader.bin`: Bootloader cấp 1 (BL2) cho chip nhớ SPI-NAND.
+  - `*nand-bl31-uboot.fip`: U-Boot FIP (BL31 + U-Boot Web Failsafe) cho SPI-NAND.
+  - `*cmcc_rax3000m-squashfs-sysupgrade.itb`: Firmware hệ thống (tự nhận diện NAND qua DTB overlay).
+
+#### Hướng dẫn nạp lần đầu từ Firmware gốc hoặc U-Boot Web Failsafe:
+1. Đặt IP tĩnh máy tính: `192.168.1.10 / 255.255.255.0`. Cắm dây LAN vào cổng LAN của router.
+2. Giữ nút **Reset** và cắm nguồn điện đến khi đèn LED nhấp nháy chuyển màu, truy cập `http://192.168.1.1` trên trình duyệt để vào Web U-Boot Failsafe.
+3. Chọn file firmware `*cmcc_rax3000m-squashfs-sysupgrade.itb` và nạp.
+4. Chờ 3 phút, router tự khởi động lại vào hệ điều hành ImmortalWrt.
+
+#### Nâng cấp từ LuCI OpenWrt (Sysupgrade):
+- Vào menu **Hệ thống (System)** ➔ **Sao lưu / Nạp phần mềm (Backup / Flash Firmware)**.
+- Chọn file `*cmcc_rax3000m-squashfs-sysupgrade.itb` và bấm nạp trực tiếp.
+
+---
+
+### 3. Viettel NR3053 / SDMC MT3053 (MediaTek MT7981B)
 
 #### Nạp từ firmware gốc Viettel / SDMC / Failsafe U-Boot:
 1. Đặt IP tĩnh máy tính: `192.168.1.10 / 255.255.255.0`. Cắm dây LAN vào cổng LAN của router.
@@ -82,7 +129,7 @@ Trên các dòng router MediaTek Filogic (ASUS TUF-AX6000, ASUS TUF-AX4200, Viet
 
 ---
 
-### 3. JDCloud Athena AX6600 (RE-CS-02 Qualcomm IPQ6010)
+### 4. JDCloud Athena AX6600 (RE-CS-02 Qualcomm IPQ6010)
 
 1. **Nạp lần đầu qua U-Boot Failsafe**:
    - Kết nối dây mạng vào cổng LAN 1, giữ nút Reset khi cấp nguồn, truy cập web U-Boot tại `192.168.1.1`.
@@ -107,12 +154,16 @@ Trên các dòng router MediaTek Filogic (ASUS TUF-AX6000, ASUS TUF-AX4200, Viet
 
 ## 🚀 TIẾN TRÌNH BIÊN DỊCH TỰ ĐỘNG HẰNG NGÀY (GITHUB ACTIONS)
 
-- **06:00 AM (ICT)**: `Build Duydoan-24.10 JDCloud RE-CS-02` (Qualcomm NSS)
-- **06:10 AM (ICT)**: `Build Duydoan-24.10 ASUS TUF Gaming (All Devices)` (Song song AX6000 & AX4200)
-- **06:15 AM (ICT)**: `Build Duydoan-25.12 JDCloud RE-CS-02 (Bleeding Edge)` (Qualcomm NSS + Auto-Sync)
-- **06:25 AM (ICT)**: `Build Duydoan-25.12 ASUS TUF Gaming (All Devices - Bleeding Edge)` (MediaTek HNAT + Auto-Sync)
-- **06:30 AM (ICT)**: `Build Duydoan-25.12 Viettel NR3053 / SDMC MT3053 (Bleeding Edge)` (MediaTek MT7981B + USB 3.0 Mod + Auto-Sync)
-- **Cơ chế dọn dẹp (Self-Cleaning)**: Tự động xóa các bản phát hành cũ của từng router trước khi tạo bản mới, bảo đảm không bao giờ bị trùng lặp hoặc tốn dung lượng GitHub.
+- **05:15 AM (ICT)**: `Auto-Clean` (Dọn dẹp Releases, Tags, và Workflow runs cũ)
+- **05:25 AM (ICT)**: `Build Duydoan-25.12 ASUS TUF Gaming` (Song song AX6000 & AX4200 - MediaTek MT7986A)
+- **05:35 AM (ICT)**: `Build Duydoan-25.12 Viettel NR3053 / SDMC MT3053` (MediaTek MT7981B)
+- **05:45 AM (ICT)**: `Build Duydoan-25.12 JDCloud RE-CS-02` (Qualcomm IPQ6010 NSS)
+- **05:55 AM (ICT)**: `Build Duydoan-24.10 ASUS TUF Gaming` (Song song AX6000 & AX4200 - MediaTek MT7986A)
+- **06:05 AM (ICT)**: `Build Duydoan-24.10 Viettel NR3053` (MediaTek MT7981B)
+- **06:15 AM (ICT)**: `Build Duydoan-24.10 JDCloud RE-CS-02` (Qualcomm IPQ6010 NSS)
+- **06:25 AM (ICT)**: `Build Duydoan-25.12 CMCC RAX3000M` (Song song eMMC & NAND - MediaTek MT7981B)
+- **06:35 AM (ICT)**: `Build Duydoan-24.10 CMCC RAX3000M` (Song song eMMC & NAND - MediaTek MT7981B)
+- **Cơ chế bảo đảm 24/7 (Self-Healing)**: Máy ảo Debian kích hoạt độc lập lúc 05:20 AM qua crontab để bảo đảm không phụ thuộc vào hàng đợi của GitHub.
 
 ---
 
