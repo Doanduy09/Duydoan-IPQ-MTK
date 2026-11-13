@@ -55,6 +55,7 @@
 			color = <LED_COLOR_ID_GREEN>;
 			function = LED_FUNCTION_STATUS;
 			gpios = <&pio 4 GPIO_ACTIVE_LOW>;
+			linux,default-trigger = "default-on";
 		};
 
 		led_red: led-1 {
@@ -192,7 +193,7 @@
 					#size-cells = <1>;
 
 					eeprom_factory_0: eeprom@0 {
-						reg = <0x0 0x1000>;
+						reg = <0x0 0x5000>;
 					};
 
 					macaddr_factory_4: macaddr@4 {

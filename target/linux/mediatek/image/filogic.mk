@@ -2227,6 +2227,28 @@ define Device/viettel_nr3053
 endef
 TARGET_DEVICES += viettel_nr3053
 
+define Device/sdmc_mt3053
+  DEVICE_VENDOR := SDMC
+  DEVICE_MODEL := MT3053 (Viettel NR3053 Stock Layout)
+  DEVICE_DTS := mt7981b-sdmc-mt3053
+  DEVICE_DTS_DIR := ../dts
+  SUPPORTED_DEVICES := sdmc,mt3053 viettel,nr3053
+  UBINIZE_OPTS := -E 5
+  BLOCKSIZE := 128k
+  PAGESIZE := 2048
+  KERNEL_IN_UBI := 1
+  IMAGES := sysupgrade.bin
+  KERNEL := kernel-bin | lzma | \
+	fit lzma $$(KDIR)/image-$$(firstword $$(DEVICE_DTS)).dtb
+  KERNEL_INITRAMFS := kernel-bin | lzma | \
+	fit lzma $$(KDIR)/image-$$(firstword $$(DEVICE_DTS)).dtb with-initrd | pad-to 64k
+  IMAGE/sysupgrade.bin := sysupgrade-tar | append-metadata
+  ARTIFACTS := factory.ubi
+  ARTIFACT/factory.ubi := append-image-stage initramfs-kernel.bin | ubinize-kernel
+  DEVICE_PACKAGES := kmod-usb3 kmod-mt7915e kmod-mt7981-firmware mt7981-wo-firmware automount
+endef
+TARGET_DEVICES += sdmc_mt3053
+
 define Device/xiaomi_mi-router-ax3000t
   DEVICE_VENDOR := Xiaomi
   DEVICE_MODEL := Mi Router AX3000T
