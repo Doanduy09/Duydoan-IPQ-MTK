@@ -13,6 +13,7 @@ ipq807x_setup_interfaces()
 	case "$board" in
 	aliyun,ap8220|\
 	edgecore,eap102|\
+	swaiot,s10sky|\
 	tplink,deco-x80-5g|\
 	yuncore,ax880|\
 	zte,mf269|\

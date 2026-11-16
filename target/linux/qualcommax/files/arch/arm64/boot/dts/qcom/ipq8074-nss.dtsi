@@ -1,6 +1,13 @@
 // SPDX-License-Identifier: GPL-2.0-only
 
 / {
+	reserved-memory {
+		nss_region: nss@40000000 {
+			no-map;
+			reg = <0x0 0x40000000 0x0 0x01000000>;
+		};
+	};
+
 	nss_dummy_reg: nss-regulator {
 		compatible = "regulator-fixed";
 		regulator-name = "nss-reg";
