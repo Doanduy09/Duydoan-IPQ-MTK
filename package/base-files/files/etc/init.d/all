@@ -271,17 +271,7 @@ EOF
     # === LOCKED: DYNAMIC LUCI CACHE-BUSTING - VERIFIED BY DOANDUY - DO NOT MODIFY ===
     # Đảm bảo trình duyệt luôn tự động nạp JavaScript mới nhất trên cả Router Chính & Phụ
     # ==============================================================================
-    for h_file in "/usr/share/ucode/luci/template/themes/argon/header.ut" "/usr/share/ucode/luci/template/header.ut"; do
-        if [ -f "$h_file" ]; then
-            if grep -q "from 'fs';" "$h_file" && ! grep -E -q "import \{[^}]*stat[^}]*\} from 'fs';" "$h_file"; then
-                sed -i -E "s/import \{([^}]+)\} from 'fs';/import {\1, stat} from 'fs';/g" "$h_file" 2>/dev/null
-            fi
-            sed -i "s|{{ pkgs_update_time }}|{{ stat('/www/luci-static/resources/view/status/include/10_weather.js')?.mtime ?? time() }}|g" "$h_file" 2>/dev/null
-            if ! grep -q "10_weather.js" "$h_file"; then
-                sed -i "s|<script src=\"{{ resource }}/luci.js?v={{ version.luciversion }}\"></script>|<script src=\"{{ resource }}/luci.js?v={{ version.luciversion }}-{{ stat('/www/luci-static/resources/view/status/include/10_weather.js')?.mtime ?? time() }}\"></script>|g" "$h_file" 2>/dev/null
-            fi
-        fi
-    done
+    # Fixed LuCI cache-busting to prevent 'left-hand side is not a function'
 
     # 2. Tự động đăng nhập và chống lỗi Chrome tự điền mật khẩu sai khi root không đặt pass
     for tpl in \

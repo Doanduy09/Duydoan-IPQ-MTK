@@ -31,15 +31,16 @@ case "$FIRMWARE" in
 	netgear,wax218|\
 	qnap,301w|\
 	redmi,ax6|\
-	redmi,ax6-stock|\
 	xiaomi,ax3600|\
-	xiaomi,ax3600-stock|\
 	xiaomi,ax9000|\
-	xiaomi,ax9000-stock|\
 	yuncore,ax880|\
-	zte,mf269|\
-	zte,mf269-stock)
+	zte,mf269)
 		caldata_extract "0:art" 0x1000 0x20000
+		;;
+	swaiot,s10sky|\
+	hisense,5g-cpe|\
+	inseego,fg2000)
+		caldata_extract "0:ART" 0x1000 0x20000
 		;;
 	linksys,homewrk|\
 	linksys,mx4200v1|\
@@ -71,6 +72,15 @@ case "$FIRMWARE" in
 		ath11k_patch_mac $(mtd_get_mac_binary boarddata1 0x6) 2
 		ath11k_set_macflag
 		;;
+	netgear,rbr750|\
+	netgear,rbs750)
+		caldata_extract "0:art" 0x1000 0x20000
+		label_mac=$(get_mac_label_dt)
+		ath11k_patch_mac $(macaddr_add $label_mac 3) 0
+		ath11k_patch_mac $(macaddr_add $label_mac 2) 1
+		ath11k_patch_mac $(macaddr_add $label_mac 4) 2
+		ath11k_set_macflag
+		;;
 	netgear,sxr80|\
 	netgear,sxs80)
 		caldata_extract "0:art" 0x1000 0x20000
@@ -100,12 +110,25 @@ case "$FIRMWARE" in
 	spectrum,sax1v1k)
 		caldata_extract_mmc "0:ART" 0x1000 0x20000
 		;;
+	tcl,linkhub-hh500v)
+		caldata_extract "0:ART" 0x1000 0x20000
+		ath11k_patch_mac $(mtd_get_mac_binary "0:ART" 0x5e29c) 0
+		ath11k_patch_mac $(mtd_get_mac_binary "0:ART" 0x5e2a2) 1
+		ath11k_set_macflag
+		;;
 	tplink,deco-x80-5g)
 		caldata_extract "0:art" 0x1000 0x20000
 		label_mac=$(get_mac_binary /tmp/factory_data/default-mac 0)
 		ath11k_patch_mac $(macaddr_add $label_mac -1) 0
 		ath11k_patch_mac $(macaddr_add $label_mac -2) 1
 		ath11k_set_macflag
+		;;
+	tcl,hh500v)
+		caldata_extract "0:ART" 0x1000 0x20000
+		ath11k_patch_mac $(mtd_get_mac_binary "0:ART" 0x5e29c) 0
+		ath11k_patch_mac $(mtd_get_mac_binary "0:ART" 0x5e2a2) 1
+		ath11k_set_macflag
+		ath11k_remove_regdomain
 		;;
 	tplink,eap620hd-v1|\
 	tplink,eap660hd-v1)
@@ -130,6 +153,13 @@ case "$FIRMWARE" in
 		ath11k_patch_mac $(macaddr_add $label_mac 4) 2
 		ath11k_set_macflag
 		;;
+	zyxel,nwa110ax)
+		caldata_extract "0:art" 0x1000 0x20000
+		label_mac=$(get_mac_label)
+		ath11k_patch_mac $(macaddr_add $label_mac 2) 0
+		ath11k_patch_mac $(macaddr_add $label_mac 1) 1
+		ath11k_set_macflag
+		;;
 	zyxel,nwa210ax)
 		caldata_extract "0:art" 0x1000 0x20000
 		label_mac=$(get_mac_label)
@@ -149,8 +179,7 @@ case "$FIRMWARE" in
 	prpl,haze)
 		caldata_extract_mmc "0:ART" 0x26800 0x20000
 		;;
-	xiaomi,ax9000|\
-	xiaomi,ax9000-stock)
+	xiaomi,ax9000)
 		caldata_extract "0:art" 0x26800 0x20000
 		;;
 	esac

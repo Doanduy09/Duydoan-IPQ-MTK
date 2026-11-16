@@ -178,6 +178,7 @@ platform_do_upgrade() {
 	cmcc,rm2-6|\
 	compex,wpq873|\
 	dynalink,dl-wrx36|\
+	swaiot,s10sky|\
 	edimax,cax1800|\
 	netgear,rax120v2|\
 	netgear,sxr80|\
