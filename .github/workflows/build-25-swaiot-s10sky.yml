@@ -43,6 +43,9 @@ jobs:
         run: |
           ./scripts/feeds update -a
           ./scripts/feeds install -a
+          sed -i 's/^int qma_setting_store(/static int qma_setting_store(/' feeds/all/fibocom_QMI_WWAN/src/qmi_wwan_f.c || true
+          sed -i 's/^struct sk_buff \*qmi_wwan_tx_fixup(/static struct sk_buff *qmi_wwan_tx_fixup(/' feeds/all/simcom_QMI_WWAN/src/qmi_wwan_s.c || true
+          sed -i 's/CXXFLAGS="$(TARGET_CXXFLAGS)"/CXXFLAGS="$(TARGET_CXXFLAGS)" \\\n\tEXTRA_CFLAGS="-Wno-error=missing-prototypes -Wno-error=incompatible-pointer-types"/' feeds/all/fibocom_QMI_WWAN/Makefile feeds/all/simcom_QMI_WWAN/Makefile || true
 
       - name: Load Custom Configuration
         run: |
@@ -91,8 +94,8 @@ jobs:
             * **Target Architecture**: Qualcomm IPQ8071 / IPQ8074 (`qualcommax/ipq807x`)
             * **Hardware Specs**:
               - SoC: Qualcomm IPQ8071 (Quad-Core ARM Cortex-A53)
-              - RAM: 512MB DDR3
-              - Flash: SPI-NOR / SPI-NAND
+              - RAM: 1GB DDR4
+              - Flash: 16MB SPI-NOR + 256MB QPIC NAND
               - Ethernet: QCA8075 + QCA8081 (2.5GbE PHY)
               - Wi-Fi: Qualcomm ath11k 4x4 5GHz + 2x2 2.4GHz Wi-Fi 6
             * **Firmware Files**:

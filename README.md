@@ -45,6 +45,14 @@
 
 ---
 
+### 🔹 NHÓM 4: QUALCOMM IPQ8071 / IPQ8074 (4 NHÂN CORTEX-A53 + NPU NSS)
+
+| Thiết Bị | Kiến Trúc Phần Cứng & Cấu Hình Chi Tiết | Giao Tiếp Mạng & Modem 5G | Tính Năng Đặc Biệt |
+| :--- | :--- | :--- | :--- |
+| **Swaiot S10-SKY** | • **SoC**: Qualcomm IPQ8071 / IPQ8074 (4x Cortex-A53 + NSS)<br>• **RAM**: 1GB DDR4 (`ipq8074.dtsi`)<br>• **Flash**: 16MB SPI-NOR (`n25q128a11`) + 256MB QPIC NAND (`rootfs` + `0:WIFIFW` cấp phát động qua U-Boot)<br>• **Cổng mạng**: 1 Cổng 2.5Gbps WAN (`dp5` QCA8081 SGMII) + 2 Cổng 1Gbps LAN (`dp4` `lan1`, `dp3` `lan2` QCA8075 QSGMII)<br>• **Wi-Fi 6**: Dual-Band Qualcomm `ath11k` (2.4GHz + 5GHz, caldata `0:ART`)<br>• **Khe mở rộng**: M.2 PCIe (`&pcie0`, `perst-gpio` GPIO 58, power GPIO 29/30/35) + Dual USB 3.0 (`dwc3-qcom` `&usb_0`/`&usb_1`) | • **Modem PCIe 5G**: Hỗ trợ sẵn `mtk_t7xx` (Fibocom FM350-GL / MediaTek T700 MBIM) & Qualcomm SDX/MHI<br>• **Modem USB & Giao thức**: `qmi_wwan` (`uqmi`), `cdc_mbim` (`umbim`), `cdc_ncm` (`comgt-ncm`), `qmi_wwan_q/f/s`<br>• **Quản lý**: Bộ `qmodem` (`Modem 5G`) + SMS + TTL | • Layout phân vùng NAND chuẩn U-Boot Swaiot S10-SKY<br>• Tự động nhận `lan1`/`lan2`/`wan` và hiệu chuẩn Wi-Fi `0:ART`<br>• LED điều khiển I2C `aw9523b` + Master Dashboard |
+
+---
+
 ## ⚡ CƠ CHẾ TĂNG TỐC PHẦN CỨNG MEDIATEK HNAT (PPE + WED TURBO)
 
 Trên các dòng router MediaTek Filogic (ASUS TUF-AX6000, ASUS TUF-AX4200, CMCC RAX3000M, Viettel NR3053):
