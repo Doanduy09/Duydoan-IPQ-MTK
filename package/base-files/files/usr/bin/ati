@@ -1,0 +1,120 @@
+#!/bin/sh
+# ==============================================================================
+# 🛰️ ATI - Universal AT Command CLI & Modem Diagnostics Tool
+# Tương thích 100% PCIe (/dev/wwan0at0, /dev/mhi_DUN) và USB (/dev/ttyUSB*)
+# Tác giả: DOANDUY - Swaiot S10-SKY (Qualcomm IPQ8071/IPQ8074)
+# ==============================================================================
+
+PORT=""
+CMD=""
+
+while [ $# -gt 0 ]; do
+    case "$1" in
+        -p|-d|--port|--device)
+            PORT="$2"
+            shift 2
+            ;;
+        -h|--help)
+            echo "Cú pháp: ati [-p <cổng>] [LỆNH_AT]"
+            echo "Ví dụ:"
+            echo "  ati                  # Tự dò cổng và hiển thị thông tin toàn diện modem"
+            echo "  ati ATI              # Gửi lệnh ATI"
+            echo "  ati AT+CPIN?         # Kiểm tra trạng thái SIM"
+            echo "  ati AT+CSQ           # Kiểm tra cường độ sóng"
+            echo "  ati AT+COPS?         # Kiểm tra nhà mạng"
+            echo "  ati -p /dev/wwan0at0 ATI # Chỉ định cổng AT cụ thể"
+            exit 0
+            ;;
+        *)
+            if [ -z "$CMD" ]; then
+                CMD="$1"
+            else
+                CMD="$CMD $1"
+            fi
+            shift
+            ;;
+    esac
+done
+
+# Tự động dò tìm cổng AT nếu không chỉ định
+if [ -z "$PORT" ] || [ ! -c "$PORT" ]; then
+    for candidate in $(cat /tmp/master_sms_port 2>/dev/null) $(cat /tmp/custom_at_port 2>/dev/null)                      /dev/wwan0at0 /dev/wwan1at0 /dev/mhi_DUN /dev/mhi_BHI                      /dev/ttyUSB2 /dev/ttyUSB0 /dev/ttyUSB1 /dev/ttyUSB3 /dev/ttyACM0; do
+        if [ -c "$candidate" ]; then
+            PORT="$candidate"
+            break
+        fi
+    done
+fi
+
+if [ -z "$PORT" ] || [ ! -c "$PORT" ]; then
+    echo "❌ Lỗi: Không tìm thấy cổng AT Modem nào trên router!" >&2
+    echo "   Vui lòng kiểm tra cắm card M.2 PCIe hoặc Modem USB." >&2
+    exit 1
+fi
+
+send_at() {
+    local p="$1"
+    local c="$2"
+    local res=""
+
+    if command -v atinout >/dev/null 2>&1; then
+        res=$(printf '%s\r\n' "$c" | timeout 3 atinout - "$p" - 2>/dev/null)
+    fi
+    if [ -z "$res" ] && command -v sms_tool >/dev/null 2>&1 && [ "${p#/dev/wwan}" = "$p" ]; then
+        res=$(timeout 4 sms_tool -d "$p" at "$c" 2>/dev/null)
+    fi
+    if [ -z "$res" ]; then
+        local tmp_in="/tmp/ati_in_$$.tmp"
+        local tmp_out="/tmp/ati_out_$$.tmp"
+        printf '%s\r\n' "$c" > "$tmp_in"
+        timeout 2 cat "$p" > "$tmp_out" 2>/dev/null &
+        local cat_pid=$!
+        sleep 0.1
+        cat "$tmp_in" > "$p" 2>/dev/null
+        sleep 0.8
+        kill -9 "$cat_pid" 2>/dev/null
+        res=$(cat "$tmp_out" 2>/dev/null)
+        rm -f "$tmp_in" "$tmp_out" 2>/dev/null
+    fi
+    echo "$res"
+}
+
+if [ -n "$CMD" ]; then
+    echo "[Gửi lệnh tới $PORT]: $CMD"
+    send_at "$PORT" "$CMD"
+    exit $?
+fi
+
+echo "=============================================================="
+echo "  🛰️  THÔNG TIN MODEM 5G/LTE - THIẾT BỊ SWAIOT S10-SKY"
+echo "  Cổng AT đang sử dụng: $PORT"
+echo "=============================================================="
+
+ati_out=$(send_at "$PORT" "ATI")
+if [ -n "$ati_out" ]; then
+    echo "[1] Nhận Diện Modem (ATI):"
+    echo "$ati_out" | sed 's/^/    /'
+    echo ""
+fi
+
+cpin_out=$(send_at "$PORT" "AT+CPIN?")
+echo "[2] Trạng Thái SIM (AT+CPIN?):"
+echo "$cpin_out" | grep -iE 'READY|SIM|ERROR|PIN' | sed 's/^/    /' || echo "    $cpin_out"
+echo ""
+
+csq_out=$(send_at "$PORT" "AT+CSQ")
+echo "[3] Tín Hiệu Sóng (AT+CSQ):"
+echo "$csq_out" | grep -i '+CSQ:' | sed 's/^/    /' || echo "    $csq_out"
+echo ""
+
+cops_out=$(send_at "$PORT" "AT+COPS?")
+echo "[4] Nhà Mạng Đang Đăng Ký (AT+COPS?):"
+echo "$cops_out" | grep -i '+COPS:' | sed 's/^/    /' || echo "    $cops_out"
+echo ""
+
+cgsn_out=$(send_at "$PORT" "AT+CGSN")
+echo "[5] Số IMEI Thiết Bị (AT+CGSN):"
+echo "$cgsn_out" | grep -E '^[0-9]{14,17}$' | sed 's/^/    /' || echo "    $cgsn_out"
+echo ""
+
+echo "=============================================================="
