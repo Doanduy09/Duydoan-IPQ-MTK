@@ -53,4 +53,22 @@ if [ -f /etc/init.d/all ]; then
     /etc/init.d/all enable 2>/dev/null
 fi
 
+# 7. Set default LuCI Theme to Argon for ALL routers
+uci -q batch <<-EOF
+	set luci.main.mediaurlbase=/luci-static/argon
+	set luci.themes.Argon=/luci-static/argon
+	commit luci
+EOF
+
+# 8. Clean up conflicting legacy modem/SMS menu entries and irqbalance
+rm -f /usr/share/luci/menu.d/luci-app-3ginfo-lite.json \
+      /usr/share/luci/menu.d/luci-app-sms-tool-js.json \
+      /etc/uci-defaults/setup_sms_tool_js.sh \
+      /etc/uci-defaults/set_3ginfo_port.sh \
+      /etc/init.d/my_new_sms 2>/dev/null
+if [ -f /etc/init.d/irqbalance ]; then
+    /etc/init.d/irqbalance disable 2>/dev/null
+    /etc/init.d/irqbalance stop 2>/dev/null
+fi
+
 exit 0
