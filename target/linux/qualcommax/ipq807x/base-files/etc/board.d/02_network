@@ -13,12 +13,14 @@ ipq807x_setup_interfaces()
 	case "$board" in
 	aliyun,ap8220|\
 	edgecore,eap102|\
-	swaiot,s10sky|\
 	tplink,deco-x80-5g|\
 	yuncore,ax880|\
 	zte,mf269|\
 	zte,mf269-stock)
 		ucidef_set_interfaces_lan_wan "lan" "wan"
+		;;
+	swaiot,s10sky)
+		ucidef_set_interfaces_lan_wan "lan1 lan2" "wan"
 		;;
 	asus,rt-ax89x)
 		ucidef_set_interfaces_lan_wan "lan1 lan2 lan3 lan4 lan5 lan6 lan7 lan8 10g-sfp 10g-copper" "wan"

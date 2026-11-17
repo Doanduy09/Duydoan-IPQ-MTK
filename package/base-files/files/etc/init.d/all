@@ -1,4 +1,4 @@
-﻿#!/bin/sh /etc/rc.common
+#!/bin/sh /etc/rc.common
 # ==============================================================================
 # ALL UNIVERSAL WWAN & SYSTEM MANAGEMENT - MASTER SCRIPT 2026 (REFINED FULL)
 # ==============================================================================
