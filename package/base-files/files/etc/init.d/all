@@ -643,7 +643,56 @@ setup_wwan_initial() {
     IFACE="wwan0"
     TARGET_PORT="/dev/ttyUSB2"
 
-    if echo "$USB_LIST" | grep -iqE "0e8d:7127|0e8d:7126|0e8d:7128|fm350|t700|t99w175"; then
+    # Ưu tiên Card M.2 PCIe 5G (Fibocom FM350-GL / MTK T700 / Qualcomm MHI)
+    if [ -c "/dev/wwan0mbim0" ] || [ -c "/dev/wwan0at0" ] || [ -d "/sys/bus/pci/drivers/mtk_t7xx" ]; then
+        clean_stale_wwan_interfaces "wwan0"
+        local cur_apn=$(uci -q get network.wwan0.apn)
+        [ -z "$cur_apn" ] && cur_apn='v-internet'
+        uci -q batch <<EOC
+delete network.wwan0
+set network.wwan0=interface
+set network.wwan0.proto='mbim'
+set network.wwan0.device='/dev/wwan0mbim0'
+set network.wwan0.apn='$cur_apn'
+set network.wwan0.auth='none'
+set network.wwan0.pdptype='ipv4v6'
+set network.wwan0.metric='10'
+del network.wwan0.dns
+add_list network.wwan0.dns='8.8.8.8'
+add_list network.wwan0.dns='1.1.1.1'
+set network.wwan0.mtu='1460'
+commit network
+EOC
+        IFACE="wwan0"
+        TARGET_PORT="/dev/wwan0at0"
+        echo "Fibocom FM350-GL 5G (PCIe MTK T700)" > /tmp/master_m_type
+
+    elif [ -c "/dev/mhi_DUN" ] || [ -d "/sys/bus/mhi" ]; then
+        clean_stale_wwan_interfaces "wwan0"
+        local cur_apn=$(uci -q get network.wwan0.apn)
+        [ -z "$cur_apn" ] && cur_apn='v-internet'
+        local mhi_dev="/dev/mhi_QMI0"
+        local mhi_proto="qmi"
+        [ -c "/dev/mhi_MBIM" ] && { mhi_dev="/dev/mhi_MBIM"; mhi_proto="mbim"; }
+        uci -q batch <<EOC
+delete network.wwan0
+set network.wwan0=interface
+set network.wwan0.proto='$mhi_proto'
+set network.wwan0.device='$mhi_dev'
+set network.wwan0.apn='$cur_apn'
+set network.wwan0.auth='none'
+set network.wwan0.pdptype='ipv4v6'
+set network.wwan0.metric='10'
+del network.wwan0.dns
+add_list network.wwan0.dns='8.8.8.8'
+add_list network.wwan0.dns='1.1.1.1'
+commit network
+EOC
+        IFACE="wwan0"
+        TARGET_PORT="/dev/mhi_DUN"
+        echo "Qualcomm Snapdragon 5G (PCIe MHI)" > /tmp/master_m_type
+
+    elif echo "$USB_LIST" | grep -iqE "0e8d:7127|0e8d:7126|0e8d:7128|fm350|t700|t99w175"; then
         clean_stale_wwan_interfaces "wwan0"
         uci -q batch <<EOC
 delete network.wwan0
@@ -973,6 +1022,7 @@ EOF
     /etc/init.d/firewall restart >/dev/null 2>&1
     sleep 2
     /sbin/ifup "$IFACE" >/dev/null 2>&1
+    [ -x /usr/bin/modem_autodial.sh ] && ( /usr/bin/modem_autodial.sh >/dev/null 2>&1 & )
     touch "$WWAN_FLAG_FILE" 2>/dev/null
 
     CORE_PID=$(cat /tmp/combined_core.pid 2>/dev/null)
@@ -11492,7 +11542,11 @@ LUATGOK
                 [ -n "$saved_port" ] && [ -c "$saved_port" ] && target_at_port="$saved_port"
 
                 if [ -z "$target_at_port" ]; then
-                    if lsusb 2>/dev/null | grep -iqE "1199:|sierra|em919" && [ -c "/dev/ttyUSB0" ]; then
+                    if [ -c "/dev/wwan0at0" ]; then
+                        target_at_port="/dev/wwan0at0"
+                    elif [ -c "/dev/mhi_DUN" ]; then
+                        target_at_port="/dev/mhi_DUN"
+                    elif lsusb 2>/dev/null | grep -iqE "1199:|sierra|em919" && [ -c "/dev/ttyUSB0" ]; then
                         target_at_port="/dev/ttyUSB0"
                     elif [ "$proto" = "xmm" ] && [ -c "/dev/ttyUSB3" ]; then
                         target_at_port="/dev/ttyUSB3"
@@ -11503,7 +11557,7 @@ LUATGOK
                     elif [ -c "/dev/ttyUSB0" ]; then
                         target_at_port="/dev/ttyUSB0"
                     else
-                        target_at_port="/dev/ttyUSB2"
+                        target_at_port="/dev/wwan0at0"
                     fi
                 fi
 
@@ -11551,14 +11605,16 @@ commit network
 EOC
                         ;;
                     mbim)
+                        local mbim_dev="/dev/cdc-wdm0"
+                        [ -c "/dev/wwan0mbim0" ] && mbim_dev="/dev/wwan0mbim0"
                         uci -q batch <<EOC
 set network.$custom_iface=interface
 set network.$custom_iface.proto='mbim'
-set network.$custom_iface.device='/dev/cdc-wdm0'
+set network.$custom_iface.device='$mbim_dev'
 set network.$custom_iface.apn='v-internet'
 set network.$custom_iface.auth='none'
 set network.$custom_iface.pdptype='ipv4v6'
-set network.$custom_iface.metric='1'
+set network.$custom_iface.metric='10'
 commit network
 EOC
                         ;;
@@ -11726,6 +11782,15 @@ get_active_modem_port() {
         return 0
     fi
 
+    # Ưu tiên cổng AT PCIe WWAN / MHI (Fibocom FM350-GL / MTK T700 / Qualcomm MHI)
+    for pcie_p in /dev/wwan0at0 /dev/wwan1at0 /dev/mhi_DUN /dev/mhi_BHI; do
+        if [ -c "$pcie_p" ]; then
+            echo "$pcie_p" > /tmp/master_sms_port
+            echo "$pcie_p"
+            return 0
+        fi
+    done
+
     local iface=""
     for i in wwan0 wwan1 usb0; do
         [ -d "/sys/class/net/$i" ] && { iface="$i"; break; }
@@ -11783,10 +11848,12 @@ send_at_direct() {
     local cmd="$2"
     local out=""
 
-    if command -v sms_tool >/dev/null 2>&1; then
-        out=$(timeout 4 sms_tool -d "$p" at "$cmd" 2>/dev/null)
-    elif command -v atinout >/dev/null 2>&1; then
+    # Ưu tiên atinout cho character devices PCIe (/dev/wwan0at0)
+    if command -v atinout >/dev/null 2>&1; then
         out=$(timeout 3 sh -c "printf '%s\r\n' \"$cmd\" | atinout - '$p' -" 2>/dev/null)
+    fi
+    if [ -z "$out" ] && command -v sms_tool >/dev/null 2>&1 && [ "${p#/dev/wwan}" = "$p" ]; then
+        out=$(timeout 4 sms_tool -d "$p" at "$cmd" 2>/dev/null)
     fi
 
     echo "$out"
@@ -11849,13 +11916,18 @@ case "$1" in
                 ;;
             getAvailablePorts)
                 ports_json=""
-                for p in /dev/ttyUSB2 /dev/ttyUSB3 /dev/ttyUSB0 /dev/ttyUSB1 /dev/ttyUSB4 /dev/ttyACM0 /dev/ttyACM1; do
+                for p in /dev/wwan0at0 /dev/wwan1at0 /dev/mhi_DUN /dev/mhi_BHI /dev/ttyUSB2 /dev/ttyUSB3 /dev/ttyUSB0 /dev/ttyUSB1 /dev/ttyUSB4 /dev/ttyACM0 /dev/ttyACM1; do
                     [ -c "$p" ] || continue
+                    case "$ports_json" in
+                        *"\"$p\""*) continue ;;
+                    esac
                     [ -n "$ports_json" ] && ports_json="${ports_json},"
                     ports_json="${ports_json}\"${p}\""
                 done
                 cur_p=$(cat /tmp/master_sms_port 2>/dev/null)
-                [ -z "$cur_p" ] && cur_p=$(cat /tmp/custom_at_port 2>/dev/null || echo "/dev/ttyUSB2")
+                [ -z "$cur_p" ] && cur_p=$(cat /tmp/custom_at_port 2>/dev/null)
+                [ -z "$cur_p" ] && [ -n "$ports_json" ] && cur_p=$(echo "$ports_json" | cut -d'"' -f2)
+                [ -z "$cur_p" ] && cur_p="/dev/wwan0at0"
                 printf '{"current_port":"%s","available_ports":[%s]}\n' "$cur_p" "$ports_json"
                 ;;
             setCustomAtPort)
@@ -15141,10 +15213,12 @@ get_at_port() {
     local p=""
     [ -f /tmp/master_sms_port ] && p=$(cat /tmp/master_sms_port 2>/dev/null)
     [ -z "$p" ] || [ ! -c "$p" ] && p=$(cat /tmp/custom_at_port 2>/dev/null)
+    [ -z "$p" ] || [ ! -c "$p" ] && [ -c "/dev/wwan0at0" ] && p="/dev/wwan0at0"
+    [ -z "$p" ] || [ ! -c "$p" ] && [ -c "/dev/mhi_DUN" ] && p="/dev/mhi_DUN"
     [ -z "$p" ] || [ ! -c "$p" ] && [ -c "/dev/ttyUSB2" ] && p="/dev/ttyUSB2"
     [ -z "$p" ] || [ ! -c "$p" ] && [ -c "/dev/ttyUSB0" ] && p="/dev/ttyUSB0"
     [ -z "$p" ] || [ ! -c "$p" ] && [ -c "/dev/ttyUSB3" ] && p="/dev/ttyUSB3"
-    [ -c "/dev/ttyUSB0" ] && [ ! -c "/dev/ttyUSB2" ] && echo "${p:-/dev/ttyUSB0}" || echo "${p:-/dev/ttyUSB2}"
+    echo "${p:-/dev/wwan0at0}"
 }
 
 send_tg_alert() {
@@ -50182,10 +50256,15 @@ return view.extend({
         ]);
 
         // 4. Cổng AT Modem
-        var atPortSelect = E('select', { class: 'cbi-input-select', style: 'width: 240px; height: 38px; font-weight: 700; border-radius: 6px;' });
-        var availablePorts = portsData.available_ports || ['/dev/ttyUSB0', '/dev/ttyUSB1', '/dev/ttyUSB2', '/dev/ttyUSB3'];
+        var atPortSelect = E('select', { class: 'cbi-input-select', style: 'width: 320px; height: 38px; font-weight: 700; border-radius: 6px;' });
+        var availablePorts = (portsData && portsData.available_ports && portsData.available_ports.length > 0) ? portsData.available_ports : ['/dev/wwan0at0', '/dev/mhi_DUN', '/dev/ttyUSB0', '/dev/ttyUSB1', '/dev/ttyUSB2', '/dev/ttyUSB3'];
         availablePorts.forEach(function(p) {
-            atPortSelect.appendChild(E('option', { value: p, selected: (p === activePort) }, p + (p === activePort ? ' (Đang dùng)' : '')));
+            var label = p;
+            if (p === '/dev/wwan0at0') label += ' (PCIe Fibocom FM350-GL / T700)';
+            else if (p === '/dev/mhi_DUN') label += ' (PCIe Qualcomm MHI)';
+            else if (p === '/dev/ttyUSB0') label += ' (Sierra EM919x)';
+            else if (p === '/dev/ttyUSB2') label += ' (Quectel / SIMCOM)';
+            atPortSelect.appendChild(E('option', { value: p, selected: (p === activePort) }, label + (p === activePort ? ' (Đang dùng)' : '')));
         });
 
         var savePortBtn = E('button', {
@@ -50207,7 +50286,7 @@ return view.extend({
             ]),
             E('div', { style: 'background: #ffffff; border: 1px solid #e2e8f0; padding: 8px 12px; border-radius: 6px; font-size: 12px; line-height: 1.6; color: #475569;' }, [
                 E('b', {}, '💡 Cổng AT Tiêu Chuẩn: '),
-                E('span', {}, '• Sierra Wireless (EM919x / EM929x): /dev/ttyUSB0 | • Quectel / SIMCOM: /dev/ttyUSB2 | • Fibocom FM350-GL: /dev/ttyUSB3')
+                E('span', {}, '• PCIe 5G (Fibocom FM350-GL / T700): /dev/wwan0at0 | • PCIe Qualcomm (MHI): /dev/mhi_DUN | • Sierra (EM919x): /dev/ttyUSB0 | • Quectel/SIMCOM: /dev/ttyUSB2')
             ])
         ]);
 
