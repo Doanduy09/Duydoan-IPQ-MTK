@@ -33,6 +33,7 @@ uci commit firewall 2>/dev/null
 # 4. Boost Wi-Fi TX Power (30dBm / 1000mW), Beamforming & Silence log flood
 for rad in radio0 radio1 radio2; do
     if uci -q get wireless.${rad} >/dev/null 2>&1; then
+        uci -q set wireless.${rad}.disabled='0'
         uci -q set wireless.${rad}.country='US'
         uci -q set wireless.${rad}.txpower='30'
         uci -q set wireless.${rad}.he_su_beamformer='1'
@@ -40,6 +41,11 @@ for rad in radio0 radio1 radio2; do
         uci -q set wireless.${rad}.he_mu_beamformer='1'
         uci -q set wireless.${rad}.log_level='3'
         uci -q set wireless.${rad}.log_80211='0'
+    fi
+done
+for ifc in default_radio0 default_radio1 default_radio2; do
+    if uci -q get wireless.${ifc} >/dev/null 2>&1; then
+        uci -q set wireless.${ifc}.disabled='0'
     fi
 done
 uci commit wireless 2>/dev/null
