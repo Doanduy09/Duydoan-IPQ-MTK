@@ -6973,7 +6973,7 @@ get_physical_lan_ports() {
         local dev_name=$(basename "$iface")
         [ -d "$iface/dsa" ] && continue
         case "$dev_name" in
-            lan*|eth[0-9]|enp*|eth1|eth2)
+            lan*|eth0|eth1|enp*)
                 # Loại trừ bridge, wireless và modem
                 [ "$dev_name" = "br-lan" ] && continue
                 ports="$ports $dev_name"
