@@ -33,6 +33,7 @@
 | :--- | :--- | :--- | :--- |
 | **CMCC RAX3000M (Bản eMMC)** | • **SoC**: MediaTek MT7981B Filogic 820 (2x 1.3 GHz)<br>• **RAM**: 512MB DDR4 tốc độ cao<br>• **Flash**: **4GB / 8GB eMMC** (Cài đặt app không giới hạn)<br>• **Cổng mạng**: 1 Cổng 1Gbps WAN + 3 Cổng 1Gbps LAN (1000Mbps Full Duplex)<br>• **Wi-Fi 6**: 2T2R AX3000 (2.4G 574M + 5G 2402M HE160)<br>• **USB**: 1 Cổng USB 3.0 cắm Modem 5G / ổ cứng di động | **MediaTek PPE v2 HNAT (WED Turbo)**<br>+ SafeXcel EIP-97 Crypto Engine<br>+ HNAT Hardware Flow Offload | • Bộ nhớ eMMC dung lượng lớn, hỗ trợ Docker / cài gói thoải mái<br>• Bộ công cụ 4G/5G chuyên sâu (Quectel, Fibocom, MBIM, QMI)<br>• Hỗ trợ GPT, Preloader & U-Boot FIP riêng biệt |
 | **CMCC RAX3000M (Bản SPI-NAND)** | • **SoC**: MediaTek MT7981B Filogic 820 (2x 1.3 GHz)<br>• **RAM**: 512MB DDR4 tốc độ cao<br>• **Flash**: **128MB SPI-NAND Flash**<br>• **Cổng mạng**: 1 Cổng 1Gbps WAN + 3 Cổng 1Gbps LAN (1000Mbps Full Duplex)<br>• **Wi-Fi 6**: 2T2R AX3000 (2.4G 574M + 5G 2402M HE160)<br>• **USB**: 1 Cổng USB 3.0 cắm Modem 5G / ổ cứng di động | **MediaTek PPE v2 HNAT (WED Turbo)**<br>+ SafeXcel EIP-97 Crypto Engine<br>+ HNAT Hardware Flow Offload | • Phiên bản tối ưu cho flash SPI-NAND 128MB<br>• Tích hợp EasyMesh, Batman-adv, DAWN Roaming, ModemInfo<br>• Hỗ trợ Preloader & U-Boot FIP NAND riêng biệt |
+| **WirelessTag ZX7981PD** | • **SoC**: MediaTek MT7981B Filogic 820 (2x 1.3 GHz)<br>• **RAM**: **1GB DDR4** tốc độ cao<br>• **Flash**: **128MB SPI-NAND Flash**<br>• **Cổng mạng**: 1 Cổng 1Gbps WAN + 2 Cổng 1Gbps LAN (MediaTek MT7531 Switch)<br>• **Wi-Fi 6**: 2T2R AX3000 (MediaTek MT7915E, 2.4G 574M + 5G 2402M HE160)<br>• **Khe cắm M.2 Key-B 5G**: PCIe & USB 3.0 chuyên dụng (Fibocom FM350-GL, Quectel RM500Q/RM520N, Sierra EM919x)<br>• **SIM**: Khe Dual Nano-SIM chuyển đổi thông minh qua GPIO 25<br>• **Reset Modem**: GPIO 2 điều khiển Power/Reset | **MediaTek PPE v2 HNAT (WED Turbo)**<br>+ SafeXcel EIP-97 Crypto Engine<br>+ HNAT Hardware Flow Offload | • Thiết kế chuẩn 5G CPE chuyên nghiệp, tản nhiệt tốt<br>• Nhận diện tức thì card 5G PCIe Fibocom FM350-GL & Modem USB<br>• Tự động nhận diện SIM, khóa băng tần 5G/4G, đổi TTL 65 né bóp dung lượng<br>• Tích hợp lệnh CLI `ati` độc quyền & Web LuCI Tiện Ích 5G & Modem<br>• Tự động quay số `modem_autodial.sh` khi khởi động Router |
 | **Viettel NR3053 / SDMC MT3053** | • **SoC**: MediaTek MT7981B Filogic 820 (2x 1.3 GHz)<br>• **RAM**: 512MB DDR3<br>• **Flash**: 128MB SPI-NAND<br>• **Cổng mạng**: 1 Cổng 1Gbps WAN + 3 Cổng 1Gbps LAN (1000Mbps Full Duplex)<br>• **Wi-Fi 6**: 2T2R AX3000 (2.4G 574M + 5G 2402M HE160)<br>• **USB**: Mod phần cứng USB 3.0 cắm Modem 5G ngoài | **MediaTek PPE v2 HNAT (WED Turbo)**<br>+ SafeXcel EIP-97 Crypto Engine<br>+ **Công tắc HNAT 1-Click trên LuCI** | • Tương thích 100% layout gốc SDMC factory.ubi và U-Boot FIP<br>• Hiệu chuẩn EEPROM sóng Wi-Fi chuẩn xác 100%<br>• Master Dashboard & 1-Click Auto Mesh |
 
 ---
@@ -219,3 +220,34 @@ Trên các dòng router MediaTek Filogic (ASUS TUF-AX6000, ASUS TUF-AX4200, CMCC
 - **Ứng dụng mạng cao cấp**: PassWall, SSR-Plus, Bypass, dae, TTYD Web Terminal, BBR Congestion Control.
 - **Hỗ trợ kết nối WAN**: PPPoE, DHCP, Dual-WAN Load Balancing (mwan3), Modem di động 4G/5G qua giao thức MBIM/QMI/ECM.
 - **Giao diện Master Dashboard**: Tích hợp nút tắt 1-click `[⚡ Master Dashboard]` cố định, theo dõi thời tiết, trạng thái CPU, nhiệt độ, SIM/Modem 5G, kiểm tra độ trễ Game QoS và nút gạt HNAT tức thì.
+
+---
+
+### 4. Wireless-Tag ZX7981PD (5G CPE Development Board)
+
+#### Danh mục file nạp tương ứng:
+- `*wirelesstag_zx7981pd-squashfs-factory.bin`: Dành cho nạp lần đầu qua Web Failsafe U-Boot (hoặc cứu brick).
+- `*wirelesstag_zx7981pd-squashfs-sysupgrade.bin`: Nâng cấp trực tiếp qua giao diện Web LuCI (System ➔ Backup / Flash Firmware).
+- `*wirelesstag_zx7981pd-initramfs-kernel.bin`: Firmware chạy trực tiếp trên RAM qua TFTP / U-Boot console `tftpboot 0x44000000 <file>; bootm`.
+
+#### 🚀 Hướng dẫn nạp lần đầu qua U-Boot Failsafe Web:
+1. Nối dây mạng LAN từ máy tính vào **Cổng LAN 1** của bo mạch WirelessTag ZX7981PD.
+2. Đặt IP tĩnh trên máy tính: `192.168.1.10`, subnet mask `255.255.255.0`, gateway `192.168.1.1`.
+3. Giữ nút **Reset** trên mạch và cắm nguồn điện. Đợi 5 giây cho đèn trạng thái chuyển sang nhấp nháy rồi thả tay.
+4. Mở trình duyệt web truy cập `http://192.168.1.1` (Giao diện phục hồi U-Boot Web Failsafe).
+5. Chọn file `doanduy-*-wirelesstag_zx7981pd-squashfs-factory.bin` và bấm **Upload / Update**.
+6. Đợi khoảng 2 - 3 phút để hệ thống ghi flash SPI-NAND và tự khởi động lại vào ImmortalWrt Duydoan.
+
+#### 🔄 Nâng cấp trực tiếp từ LuCI (Sysupgrade):
+- Vào menu **Hệ thống (System)** ➔ **Sao lưu / Nạp phần mềm (Backup / Flash Firmware)**.
+- Chọn file `doanduy-*-wirelesstag_zx7981pd-squashfs-sysupgrade.bin` và tiến hành nạp giữ cấu hình hoặc xóa trắng cấu hình tùy nhu cầu.
+- Hoặc nâng cấp nhanh qua SSH: `sysupgrade -n -F /tmp/*wirelesstag_zx7981pd-squashfs-sysupgrade.bin`.
+
+#### 📶 Quản trị Modem 5G M.2 & SIM:
+- **Tự động kích hoạt & Quay số**: Firmware tích hợp sẵn `modem_autodial.sh`, tự động quét nhận diện card 5G (Fibocom FM350-GL PCIe, Quectel RM500Q/RM520N, Sierra EM919x, SIMCOM), kiểm tra thẻ SIM và tự động thiết lập kết nối mạng Internet.
+- **Tiện ích LuCI 5G (`Modem 5G` ➔ `Tiện Ích 5G & Modem`)**:
+  - Giao thức kết nối: Hỗ trợ linh hoạt MBIM, QMI, ECM, RNDIS, ECM.
+  - Cổng AT Modem: Tự động liệt kê các cổng AT `/dev/wwan0at0`, `/dev/ttyUSB*`, `/dev/mhi_DUN`.
+  - Khóa băng tần 5G/4G: Khóa mạng Viettel, VinaPhone, MobiFone, Wintel nhanh chóng.
+  - Đổi TTL 65: Ngăn chặn nhà mạng trừ dung lượng phát Wi-Fi Hotspot.
+  - Lệnh `ati` trong Terminal: Gõ `ati` để kiểm tra toàn bộ thông tin Modem, CSQ, IMEI, Cell ID.

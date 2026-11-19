@@ -8,6 +8,9 @@ mediatek_setup_interfaces()
 	local board="$1"
 
 	case $board in
+	wirelesstag,zx7981pd)
+		ucidef_set_interfaces_lan_wan "lan1 lan2" wan
+		;;
 	abt,asr3000|\
 	buffalo,wsr-6000ax8|\
 	cmcc,rax3000m|\
