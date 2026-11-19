@@ -11,7 +11,7 @@ var callFetchSMS = rpc.declare({ object: 'luci.sms-status', method: 'fetchSMSNow
 var callDeleteAllSMS = rpc.declare({ object: 'luci.sms-status', method: 'deleteAllSMS', expect: { } });
 var callDeleteSingleSMS = rpc.declare({ object: 'luci.sms-status', method: 'deleteSingleSMS', params: ['indices', 'storage'], expect: { } });
 var callSendSMS = rpc.declare({ object: 'luci.sms-status', method: 'sendSMS', params: ['target', 'msg'] });
-var callSendAT = rpc.declare({ object: 'luci.sms-status', method: 'sendAT', params: ['cmd'] });
+var callSendAT = rpc.declare({ object: 'luci.sms-status', method: 'sendAT', params: ['cmd', 'port'] });
 var callSetPort = rpc.declare({ object: 'luci.sms-status', method: 'setCustomAtPort', params: ['port'] });
 var callGetPorts = rpc.declare({ object: 'luci.sms-status', method: 'getAvailablePorts', expect: { } });
 var callCheckDataBalance = rpc.declare({ object: 'luci.sms-status', method: 'checkDataBalance', expect: { } });
@@ -23,8 +23,7 @@ var callSetCustomSchedule = rpc.declare({ object: 'luci.sms-status', method: 'se
 var callChangeIMEI = rpc.declare({ object: 'luci.weather-status', method: 'changeIMEI', params: ['imei', 'brand'] });
 var callSetTelegramToken = rpc.declare({ object: 'luci.weather-status', method: 'setTelegramToken', params: ['token', 'admin_id', 'owner_name'] });
 var callTriggerAITest = rpc.declare({ object: 'luci.device-control', method: 'triggerAITest', params: ['mode', 'cam'] });
-var callGetWifi = rpc.declare({ object: 'luci.weather-status', method: 'getWifi', expect: { } });
-var callSetWifi = rpc.declare({ object: 'luci.weather-status', method: 'setWifi', params: ['s5g', 'p5g', 'w5g', 's2g', 'p2g', 'w2g', 's5g2', 'p5g2', 'w5g2'] });
+
 var callSetTTL = rpc.declare({ object: 'luci.weather-status', method: 'setTTL', params: ['ttl'] });
 var callSetCard = rpc.declare({ object: 'luci.weather-status', method: 'setCardMode', params: ['mode', 'iface_name'] });
 
@@ -192,8 +191,7 @@ return view.extend({
             callSMSInfo().catch(function() { return {}; }),
             callGetPorts().catch(function() { return {}; }),
             callGetCellInfo().catch(function() { return {}; }),
-            fetch('/cgi-bin/sim_manager?action=get_state&t=' + Date.now()).then(function(r) { return r.json(); }).catch(function() { return {}; }),
-            callGetWifi().catch(function() { return {}; })
+            fetch('/cgi-bin/sim_manager?action=get_state&t=' + Date.now()).then(function(r) { return r.json(); }).catch(function() { return {}; })
         ]);
     },
 
@@ -202,15 +200,17 @@ return view.extend({
         var portsData = data[1] || {};
         var cellRes = data[2] || {};
         var simMgrData = data[3] || {};
-        var wifiData = data[4] || {};
 
-        var activePort = (smsRes && smsRes.port && smsRes.port.indexOf('/dev/') !== -1) ? smsRes.port : '/dev/ttyUSB0';
+        var activePort = (portsData && portsData.current_port && portsData.current_port.indexOf('/dev/') !== -1)
+            ? portsData.current_port
+            : ((smsRes && smsRes.port && smsRes.port.indexOf('/dev/') !== -1)
+                ? smsRes.port
+                : '/dev/ttyUSB3');
         var currentTab = 'sms';
 
         var tabButtons = [
             { id: 'tab-btn-sms', key: 'sms', icon: '📬', title: 'Quản Lý SIM & Tin Nhắn SMS' },
-            { id: 'tab-btn-modem', key: 'modem', icon: '📶', title: 'Modem 5G & Băng Tần' },
-            { id: 'tab-btn-at', key: 'at', icon: '💻', title: 'Lệnh AT Trực Tiếp' },
+            { id: 'tab-btn-modem', key: 'modem', icon: '📶', title: 'Quản Trị Modem & Lệnh AT' },
             { id: 'tab-btn-mesh', key: 'mesh', icon: '⚡', title: '1-Click Auto Mesh' },
             { id: 'tab-btn-sentinel', key: 'sentinel', icon: '🤖', title: 'Telegram & AI Sentinel' }
         ];
@@ -697,19 +697,27 @@ return view.extend({
         ]);
 
         // 4. Cổng AT Modem
-        var atPortSelect = E('select', { class: 'cbi-input-select', style: 'width: 320px; height: 38px; font-weight: 700; border-radius: 6px;' });
-        var availablePorts = (portsData && ((portsData.ports && portsData.ports.length > 0) ? portsData.ports : portsData.available_ports)) || ['/dev/ttyFMI0', '/dev/wwan0at0', '/dev/mhi_DUN', '/dev/ttyUSB0', '/dev/ttyUSB1', '/dev/ttyUSB2', '/dev/ttyUSB3'];
-        if (!Array.isArray(availablePorts) || availablePorts.length === 0) availablePorts = ['/dev/ttyFMI0', '/dev/wwan0at0', '/dev/mhi_DUN', '/dev/ttyUSB0', '/dev/ttyUSB1', '/dev/ttyUSB2', '/dev/ttyUSB3'];
+        var activePortDisplay = E('span', { style: 'font-weight: 800; color: #166534; font-family: monospace;' }, activePort);
+        var atPortSelect = E('select', {
+            class: 'cbi-input-select',
+            style: 'width: 360px; height: 38px; font-weight: 700; border-radius: 6px;',
+            change: function(ev) {
+                activePort = ev.target.value;
+                if (activePortDisplay) activePortDisplay.textContent = activePort;
+            }
+        });
+        var availablePorts = (portsData && ((portsData.ports && portsData.ports.length > 0) ? portsData.ports : portsData.available_ports)) || ['/dev/ttyFMI0', '/dev/wwan0at0', '/dev/mhi_DUN', '/dev/ttyUSB3', '/dev/ttyUSB2', '/dev/ttyUSB1', '/dev/ttyUSB0'];
+        if (!Array.isArray(availablePorts) || availablePorts.length === 0) availablePorts = ['/dev/ttyFMI0', '/dev/wwan0at0', '/dev/mhi_DUN', '/dev/ttyUSB3', '/dev/ttyUSB2', '/dev/ttyUSB1', '/dev/ttyUSB0'];
         availablePorts.forEach(function(p) {
             var label = p;
-            if (p === '/dev/ttyFMI0') label += ' (PCIe Fibocom FM350-GL ttyFMI0)';
-            else if (p === '/dev/ttyFMI1') label += ' (PCIe Fibocom FM350-GL ttyFMI1)';
+            if (p === '/dev/ttyUSB3') label += ' (Fibocom FM350-GL AT Cổng 3 - Chuẩn)';
             else if (p === '/dev/wwan0at0') label += ' (PCIe Fibocom FM350-GL / T700 wwan0at0)';
-            else if (p === '/dev/mhi_DUN') label += ' (PCIe Qualcomm MHI)';
-            else if (p === '/dev/ttyUSB1') label += ' (Fibocom FM350-GL AT Port)';
-            else if (p === '/dev/ttyUSB3') label += ' (Fibocom FM350-GL Data Port)';
-            else if (p === '/dev/ttyUSB0') label += ' (Sierra EM919x)';
-            else if (p === '/dev/ttyUSB2') label += ' (Quectel / SIMCOM)';
+            else if (p === '/dev/mhi_DUN') label += ' (PCIe Qualcomm MHI / Foxconn)';
+            else if (p === '/dev/ttyUSB2') label += ' (Quectel / SIMCOM / MeiG AT)';
+            else if (p === '/dev/ttyUSB1') label += ' (Fibocom AT Phụ)';
+            else if (p === '/dev/ttyUSB0') label += ' (Sierra EM919x / DM Log)';
+            else if (p === '/dev/ttyFMI0') label += ' (PCIe Fibocom FM350-GL ttyFMI0)';
+            else if (p === '/dev/ttyFMI1') label += ' (PCIe Fibocom FM350-GL ttyFMI1)';
             atPortSelect.appendChild(E('option', { value: p, selected: (p === activePort) }, label + (p === activePort ? ' (Đang dùng)' : '')));
         });
 
@@ -718,6 +726,8 @@ return view.extend({
             style: 'font-weight: 750; font-size: 12.5px; padding: 6px 14px; border-radius: 6px;',
             click: function() {
                 var chosen = atPortSelect.value;
+                activePort = chosen;
+                if (activePortDisplay) activePortDisplay.textContent = activePort;
                 callSetPort(chosen).then(function() {
                     ui.addNotification(null, E('p', '✅ Đã lưu cổng AT: ' + chosen), 'info');
                 });
@@ -732,7 +742,7 @@ return view.extend({
             ]),
             E('div', { style: 'background: #ffffff; border: 1px solid #e2e8f0; padding: 8px 12px; border-radius: 6px; font-size: 12px; line-height: 1.6; color: #475569;' }, [
                 E('b', {}, '💡 Cổng AT Tiêu Chuẩn: '),
-                E('span', {}, '• Fibocom FM350-GL: /dev/ttyUSB1 (USB) | /dev/wwan0at0 (PCIe) | • Quectel/SIMCOM: /dev/ttyUSB2 | • Sierra (EM919x): /dev/ttyUSB0')
+                E('span', {}, '• Fibocom FM350-GL: /dev/ttyUSB3 (USB) | /dev/wwan0at0 (PCIe) | • Quectel/SIMCOM: /dev/ttyUSB2 | • Sierra (EM919x): /dev/ttyUSB0')
             ])
         ]);
 
@@ -794,8 +804,86 @@ return view.extend({
             }
         }, '🔒 Khóa Băng Tần');
 
+        var atCmdInput = E('input', {
+            type: 'text',
+            class: 'cbi-input-text',
+            placeholder: 'Nhập lệnh AT (vd: ATI, AT+CSQ, AT+CEREG?, AT+CGDCONT?)...',
+            style: 'width: 100%; height: 40px; font-weight: 800; font-family: monospace; border-radius: 6px; margin-bottom: 10px;'
+        });
+
+        var atRespBox = E('pre', {
+            style: 'background: #0f172a; color: #38bdf8; padding: 16px; border-radius: 8px; font-family: monospace; font-size: 13px; line-height: 1.5; max-height: 360px; overflow-y: auto; white-space: pre-wrap; word-break: break-all;'
+        }, 'Ready. Nhập lệnh AT hoặc nhấn "Kiểm Tra ATI" để kiểm tra modem.');
+
+        function executeAtCommand(cmd) {
+            var c = (cmd || atCmdInput.value).trim();
+            if (!c) { alert('Vui lòng nhập lệnh AT!'); return; }
+            atCmdInput.value = c;
+            var targetP = atPortSelect.value || activePort;
+            atRespBox.textContent = '⏳ Đang gửi: ' + c + ' tới modem qua cổng ' + targetP + '...';
+            callSendAT(c, targetP).then(function(r) {
+                if (r && r.response) {
+                    atRespBox.textContent = r.response;
+                } else if (r && r.message) {
+                    atRespBox.textContent = 'Phản hồi: ' + r.message;
+                } else {
+                    atRespBox.textContent = JSON.stringify(r, null, 2);
+                }
+            }).catch(function(err) {
+                atRespBox.textContent = '❌ Lỗi gửi lệnh AT: ' + err;
+            });
+        }
+
+        var sendAtActionBtn = E('button', {
+            class: 'btn cbi-button cbi-button-action',
+            style: 'font-weight: 750; font-size: 13px; padding: 8px 20px; border-radius: 6px;',
+            click: function() { executeAtCommand(); }
+        }, '🚀 Gửi Lệnh AT');
+
+        var atiCheckBtn = E('button', {
+            class: 'btn cbi-button cbi-button-action',
+            style: 'font-weight: 750; font-size: 12.5px; padding: 6px 16px; border-radius: 6px; background: #059669; border-color: #059669;',
+            click: function() { executeAtCommand('ATI'); }
+        }, '🔍 Kiểm Tra ATI (Thông Tin Modem)');
+
+        var atQuickCmds = E('div', { style: 'display: flex; gap: 6px; flex-wrap: wrap; margin-bottom: 12px;' }, [
+            E('button', { class: 'btn', style: 'font-size: 11.5px; padding: 4px 10px; font-weight: 700; background: #ecfdf5; color: #065f46; border: 1px solid #a7f3d0; cursor: pointer; border-radius: 6px;', click: function() { executeAtCommand('ATI'); } }, '🔍 ATI (Thông tin modem)'),
+            E('button', { class: 'btn', style: 'font-size: 11.5px; padding: 4px 10px; font-weight: 700; background: #eff6ff; color: #1e40af; border: 1px solid #bfdbfe; cursor: pointer; border-radius: 6px;', click: function() { executeAtCommand('AT+CSQ'); } }, '📶 AT+CSQ (Cường độ sóng)'),
+            E('button', { class: 'btn', style: 'font-size: 11.5px; padding: 4px 10px; font-weight: 700; background: #f8fafc; border: 1px solid #cbd5e1; cursor: pointer; border-radius: 6px;', click: function() { executeAtCommand('AT+CPIN?'); } }, '📱 AT+CPIN? (Trạng thái SIM)'),
+            E('button', { class: 'btn', style: 'font-size: 11.5px; padding: 4px 10px; font-weight: 700; background: #f8fafc; border: 1px solid #cbd5e1; cursor: pointer; border-radius: 6px;', click: function() { executeAtCommand('AT+CEREG?'); } }, '📡 AT+CEREG? (Đăng ký mạng 4G/5G)'),
+            E('button', { class: 'btn', style: 'font-size: 11.5px; padding: 4px 10px; font-weight: 700; background: #f8fafc; border: 1px solid #cbd5e1; cursor: pointer; border-radius: 6px;', click: function() { executeAtCommand('AT+CGDCONT?'); } }, '🌐 AT+CGDCONT? (Cấu hình APN)'),
+            E('button', { class: 'btn', style: 'font-size: 11.5px; padding: 4px 10px; font-weight: 700; background: #f8fafc; border: 1px solid #cbd5e1; cursor: pointer; border-radius: 6px;', click: function() { executeAtCommand('AT+COPS?'); } }, '⚡ AT+COPS? (Nhà mạng đang kết nối)'),
+            E('button', { class: 'btn', style: 'font-size: 11.5px; padding: 4px 10px; font-weight: 700; background: #fdf4ff; color: #86198f; border: 1px solid #f0abfc; cursor: pointer; border-radius: 6px;', click: function() { executeAtCommand('AT+GTCCINFO?'); } }, '🔬 AT+GTCCINFO? (Fibocom Cell/Band)'),
+            E('button', { class: 'btn', style: 'font-size: 11.5px; padding: 4px 10px; font-weight: 700; background: #fdf4ff; color: #86198f; border: 1px solid #f0abfc; cursor: pointer; border-radius: 6px;', click: function() { executeAtCommand('AT+QENG="servingcell"'); } }, '🔬 AT+QENG (Quectel Serving Cell)'),
+            E('button', { class: 'btn', style: 'font-size: 11.5px; padding: 4px 10px; font-weight: 700; background: #fdf4ff; color: #86198f; border: 1px solid #f0abfc; cursor: pointer; border-radius: 6px;', click: function() { executeAtCommand('AT!GSTATUS?'); } }, '🔬 AT!GSTATUS? (Sierra Status)'),
+            E('button', { class: 'btn', style: 'font-size: 11.5px; padding: 4px 10px; font-weight: 700; background: #fff1f2; color: #9f1239; border: 1px solid #fecdd3; cursor: pointer; border-radius: 6px;', click: function() { if (confirm("Khởi động lại sóng modem (AT+CFUN=1,1)?")) executeAtCommand('AT+CFUN=1,1'); } }, '🔄 Reset Sóng Modem')
+        ]);
+
+        var modemOverviewHeader = E('div', {
+            style: 'background: #f0fdf4; border: 1.5px solid #bbf7d0; border-radius: 8px; padding: 14px; margin-bottom: 16px; display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 10px;'
+        }, [
+            E('div', {}, [
+                E('div', { style: 'font-weight: 800; font-size: 14px; color: #166534;' }, [
+                    '🟢 Cổng AT Đang Hoạt Động: ',
+                    activePortDisplay
+                ]),
+                E('div', { style: 'font-size: 12.5px; color: #15803d; margin-top: 3px;' }, '• Tự động kết nối và thẩm định qua lệnh ATI • Sẵn sàng nhận lệnh AT & điều khiển sóng 4G/5G.')
+            ]),
+            atiCheckBtn
+        ]);
+
+        var atTerminalSection = E('div', { style: 'border: 1px solid #e2e8f0; border-radius: 8px; padding: 14px; background: #fafafa; margin-top: 16px;' }, [
+            E('div', { style: 'font-weight: 800; font-size: 14px; margin-bottom: 6px; color: #1e293b;' }, '💻 Console Gửi Lệnh AT Trực Tiếp:'),
+            E('div', { style: 'font-size: 12.5px; color: #64748b; font-weight: 600; margin-bottom: 8px;' }, 'Phím tắt lệnh thông dụng (1-Click gửi ngay):'),
+            atQuickCmds,
+            atCmdInput,
+            E('div', { style: 'display: flex; gap: 8px; margin-bottom: 14px;' }, [ sendAtActionBtn ]),
+            atRespBox
+        ]);
+
         var modemTabContent = E('div', { class: 'cbi-section', style: 'display: none; padding: 20px; background: #ffffff; border-radius: 10px; border: 1px solid #e2e8f0;' }, [
-            E('h3', { style: 'margin-top: 0; font-size: 18px; font-weight: 800; color: #1e293b; border-bottom: 1px solid #f1f5f9; padding-bottom: 10px;' }, '📶 Quản Trị Modem 5G & Băng Tần'),
+            E('h3', { style: 'margin-top: 0; font-size: 18px; font-weight: 800; color: #1e293b; border-bottom: 1px solid #f1f5f9; padding-bottom: 10px;' }, '📶 Quản Trị Modem & Lệnh AT'),
+            modemOverviewHeader,
             ttlSection,
             ifaceSection,
             atPortSection,
@@ -803,59 +891,14 @@ return view.extend({
                 E('div', { style: 'font-weight: 800; font-size: 14px; margin-bottom: 6px; color: #1e293b;' }, '📲 Tự Đổi IMEI Modem (Kháng Chặn & Né Giới Hạn):'),
                 E('div', { style: 'display: flex; gap: 8px; align-items: center; flex-wrap: wrap;' }, [ imeiInput, genImeiBtn, applyImeiBtn ])
             ]),
-            E('div', { style: 'border: 1px solid #e2e8f0; border-radius: 8px; padding: 14px; background: #fafafa;' }, [
+            E('div', { style: 'border: 1px solid #e2e8f0; border-radius: 8px; padding: 14px; background: #fafafa; margin-bottom: 16px;' }, [
                 E('div', { style: 'font-weight: 800; font-size: 14px; margin-bottom: 6px; color: #1e293b;' }, '⚡ Khóa Băng Tần 5G/4G Tối Ưu Tốc Độ:'),
                 bandPresetSelect,
                 applyBandBtn
-            ])
+            ]),
+            atTerminalSection
         ]);
         tabPanes['modem'] = modemTabContent;
-
-        // ---------------- TAB 3: LỆNH AT TRỰC TIẾP ----------------
-        var atCmdInput = E('input', { type: 'text', class: 'cbi-input-text', placeholder: 'Nhập lệnh AT (vd: ATI, AT+CSQ, AT!GSTATUS?)...', style: 'width: 100%; height: 40px; font-weight: 800; font-family: monospace; border-radius: 6px; margin-bottom: 10px;' });
-        var atRespBox = E('pre', {
-            style: 'background: #0f172a; color: #38bdf8; padding: 16px; border-radius: 8px; font-family: monospace; font-size: 13px; line-height: 1.5; max-height: 360px; overflow-y: auto; white-space: pre-wrap; word-break: break-all;'
-        }, 'Ready. Nhập lệnh AT và nhấn "Gửi Lệnh AT" để kiểm tra phản hồi từ Modem.');
-
-        var sendAtActionBtn = E('button', {
-            class: 'btn cbi-button cbi-button-action',
-            style: 'font-weight: 750; font-size: 13px; padding: 8px 20px; border-radius: 6px;',
-            click: function() {
-                var c = atCmdInput.value.trim();
-                if (!c) { alert('Vui lòng nhập lệnh AT!'); return; }
-                atRespBox.textContent = '⏳ Đang gửi: ' + c + ' tới modem qua cổng ' + activePort + '...';
-                callSendAT(c).then(function(r) {
-                    if (r && r.response) {
-                        atRespBox.textContent = r.response;
-                    } else if (r && r.message) {
-                        atRespBox.textContent = 'Phản hồi: ' + r.message;
-                    } else {
-                        atRespBox.textContent = JSON.stringify(r, null, 2);
-                    }
-                }).catch(function(err) {
-                    atRespBox.textContent = '❌ Lỗi gửi lệnh AT: ' + err;
-                });
-            }
-        }, '🚀 Gửi Lệnh AT');
-
-        var atQuickCmds = E('div', { style: 'display: flex; gap: 6px; flex-wrap: wrap; margin-bottom: 12px;' }, [
-            E('button', { class: 'btn', style: 'font-size: 11.5px; padding: 3px 8px; font-weight: 700; background: #f1f5f9; border: 1px solid #cbd5e1; cursor: pointer; border-radius: 6px;', click: function() { atCmdInput.value = 'ATI'; } }, 'ATI (Thông tin modem)'),
-            E('button', { class: 'btn', style: 'font-size: 11.5px; padding: 3px 8px; font-weight: 700; background: #f1f5f9; border: 1px solid #cbd5e1; cursor: pointer; border-radius: 6px;', click: function() { atCmdInput.value = 'AT+CSQ'; } }, 'AT+CSQ (Cường độ sóng)'),
-            E('button', { class: 'btn', style: 'font-size: 11.5px; padding: 3px 8px; font-weight: 700; background: #f1f5f9; border: 1px solid #cbd5e1; cursor: pointer; border-radius: 6px;', click: function() { atCmdInput.value = 'AT+CPIN?'; } }, 'AT+CPIN? (Trạng thái SIM)'),
-            E('button', { class: 'btn', style: 'font-size: 11.5px; padding: 3px 8px; font-weight: 700; background: #f1f5f9; border: 1px solid #cbd5e1; cursor: pointer; border-radius: 6px;', click: function() { atCmdInput.value = 'AT+CGDCONT?'; } }, 'AT+CGDCONT? (Cấu hình APN)'),
-            E('button', { class: 'btn', style: 'font-size: 11.5px; padding: 3px 8px; font-weight: 700; background: #f1f5f9; border: 1px solid #cbd5e1; cursor: pointer; border-radius: 6px;', click: function() { atCmdInput.value = 'AT!GSTATUS?'; } }, 'AT!GSTATUS? (Sierra Status)'),
-            E('button', { class: 'btn', style: 'font-size: 11.5px; padding: 3px 8px; font-weight: 700; background: #f1f5f9; border: 1px solid #cbd5e1; cursor: pointer; border-radius: 6px;', click: function() { atCmdInput.value = 'AT+QENG="servingcell"'; } }, 'AT+QENG (Quectel Cell)')
-        ]);
-
-        var atTabContent = E('div', { class: 'cbi-section', style: 'display: none; padding: 20px; background: #ffffff; border-radius: 10px; border: 1px solid #e2e8f0;' }, [
-            E('h3', { style: 'margin-top: 0; font-size: 18px; font-weight: 800; color: #1e293b; border-bottom: 1px solid #f1f5f9; padding-bottom: 10px;' }, '💻 Console Gửi Lệnh AT Trực Tiếp'),
-            E('div', { style: 'font-size: 12.5px; color: #64748b; font-weight: 600; margin-bottom: 8px;' }, 'Phím tắt lệnh thông dụng:'),
-            atQuickCmds,
-            atCmdInput,
-            E('div', { style: 'display: flex; gap: 8px; margin-bottom: 14px;' }, [ sendAtActionBtn ]),
-            atRespBox
-        ]);
-        tabPanes['at'] = atTabContent;
 
         // ---------------- TAB 4: 1-CLICK AUTO MESH (THIẾT KẾ GIỐNG NHƯ FILE ALL) ----------------
         var meshStatusCard = E('div', {
