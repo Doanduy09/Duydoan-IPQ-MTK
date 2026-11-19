@@ -148,6 +148,43 @@ Trên các dòng router MediaTek Filogic (ASUS TUF-AX6000, ASUS TUF-AX4200, CMCC
 
 ---
 
+### 5. Swaiot S10-SKY (Qualcomm IPQ8071 / IPQ8074 - M.2 PCIe 5G Fibocom FM350-GL & 1GB RAM)
+
+#### 📋 Thông số phần cứng Swaiot S10-SKY:
+- **SoC**: Qualcomm IPQ8071 / IPQ8074 Quad-Core Cortex-A53 2.2GHz + Qualcomm NSS NPU.
+- **RAM**: 1GB DDR4 3200MHz tốc độ cao.
+- **Flash**: Dual-Flash 16MB SPI-NOR + 256MB QPIC NAND (phân vùng động UBI).
+- **Mạng**: 1 Cổng WAN 2.5Gbps (Qualcomm QCA8081 SGMII) + 2 Cổng LAN 1Gbps (Qualcomm QCA8075 Switch).
+- **Wi-Fi 6**: Qualcomm ath11k AX6000/AX3600 (2.4GHz + 5GHz), tự động bóc tách caldata từ phân vùng `0:ART`.
+- **Khe cắm 5G M.2 PCIe 3.0**: Hỗ trợ trực tiếp module Fibocom FM350-GL (MediaTek T700) PCIe MBIM `/dev/wwan0mbim0` & AT `/dev/wwan0at0`, `/dev/ttyFMI*`, Qualcomm MHI PCIe `/dev/mhi_DUN`, và 2 cổng USB 3.0 DWC3.
+
+#### 🚀 Hướng dẫn nạp lần đầu từ Firmware gốc hoặc U-Boot Failsafe:
+1. Đặt IP tĩnh trên máy tính: `192.168.1.10 / 255.255.255.0`. Cắm cáp mạng vào cổng LAN của Swaiot S10-SKY.
+2. Giữ nút **Reset** và cắm nguồn điện đến khi đèn LED nhấp nháy, mở trình duyệt truy cập `http://192.168.1.1` (Web Failsafe U-Boot) hoặc nạp qua TFTP `tftpboot 0x44000000 *swaiot_s10sky-squashfs-factory.ubi; nand erase.part rootfs; nand write $fileaddr rootfs $filesize`.
+3. Chọn file `duydoan-25.12-*-swaiot_s10sky-squashfs-factory.ubi` và bấm **Update Firmware**.
+4. Chờ 2 - 3 phút để hệ thống tự phân vùng UBI và khởi động vào giao diện ImmortalWrt Duydoan 25.12.
+
+#### 🔄 Nâng cấp từ LuCI OpenWrt (Sysupgrade):
+- Vào menu **Hệ thống (System)** ➔ **Sao lưu / Nạp phần mềm (Backup / Flash Firmware)**.
+- Chọn file `duydoan-25.12-*-swaiot_s10sky-squashfs-sysupgrade.bin` và bấm nạp trực tiếp.
+- Hoặc qua SSH: `sysupgrade -n -F /tmp/*swaiot_s10sky-squashfs-sysupgrade.bin`.
+
+#### 📶 Hướng dẫn quản trị Modem 5G PCIe & SIM:
+- **Giao diện LuCI Web**: Menu **Modem 5G** ➔ **Tiện Ích 5G & Modem** (`/cgi-bin/luci/admin/modem/control`):
+  - **Tự động nhận diện**: Fibocom FM350-GL PCIe, Quectel RM500Q/RM520N, Sierra EM919x, SIMCOM.
+  - **Cổng AT Modem**: Hiển thị đầy đủ danh sách cổng PCIe `/dev/ttyFMI0`, `/dev/wwan0at0`, `/dev/mhi_DUN` và `/dev/ttyUSB*`.
+  - **Đổi TTL né bóp băng thông hotspot**: Mặc định 65 (chống nhà mạng trừ dung lượng hotspot).
+  - **Khóa băng tần 5G/4G & Cell Lock**: Khóa cố định các băng tần mạnh nhất (N77, N78, N1, N3, B1, B3, B7, B8).
+  - **Đổi IMEI 1-click**: Vượt qua rào cản hạn chế thiết bị của nhà mạng.
+  - **Hộp thư SMS 2 chiều**: Đọc tin nhắn OTP, tra cước nhanh (Viettel KTTK, Vina DATA, Mobi KT DATA, Wintel) và hẹn giờ tự động gia hạn gói cước.
+- **Lệnh CLI `ati` độc quyền**:
+  - Gõ `ati` trong Terminal để kiểm tra toàn bộ thông tin Modem, IMEI, SIM, CSQ, Cell ID, IP WAN.
+  - Gõ `ati <lệnh AT>` (ví dụ `ati AT+CSQ`) để gửi lệnh tùy biến tức thì.
+- **Cơ chế tự động quay số (`modem_autodial.sh`)**:
+  - Tự động nhận thẻ SIM, nhận diện nhà mạng (Viettel, Vinaphone, Mobifone, Wintel) và quay số cấp phát IP Internet hoàn toàn tự động.
+
+---
+
 ## 🌿 CẤU TRÚC PHÂN NHÁNH HỆ THỐNG
 
 1. **Nhánh `main` — Bản 24.10 LTS Siêu Ổn Định**:
@@ -164,6 +201,7 @@ Trên các dòng router MediaTek Filogic (ASUS TUF-AX6000, ASUS TUF-AX4200, CMCC
 
 - **05:15 AM (ICT)**: `Auto-Clean` (Dọn dẹp Releases, Tags, và Workflow runs cũ)
 - **05:25 AM (ICT)**: `Build Duydoan-25.12 ASUS TUF Gaming` (Song song AX6000 & AX4200 - MediaTek MT7986A)
+- **05:30 AM (ICT)**: `Build Duydoan-25.12 Swaiot S10-SKY` (Qualcomm IPQ8071/IPQ8074 - M.2 PCIe 5G Fibocom FM350-GL)
 - **05:35 AM (ICT)**: `Build Duydoan-25.12 Viettel NR3053 / SDMC MT3053` (MediaTek MT7981B)
 - **05:45 AM (ICT)**: `Build Duydoan-25.12 JDCloud RE-CS-02` (Qualcomm IPQ6010 NSS)
 - **05:55 AM (ICT)**: `Build Duydoan-24.10 ASUS TUF Gaming` (Song song AX6000 & AX4200 - MediaTek MT7986A)
