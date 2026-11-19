@@ -51220,7 +51220,26 @@ schedule_next() {
 }
 
 detect_network_hardware() {
-    for i in wwan0_4 usb0_4 wwan0 usb0 eth1 wan $(ubus list 2>/dev/null | grep '^network.interface.' | sed 's/network.interface.//'); do
+    # 0. Ưu tiên kiểm tra interface mạng từ wwan_smart_dialer
+    if [ -s /tmp/wwan_state/netdev ]; then
+        local w_dev=$(cat /tmp/wwan_state/netdev 2>/dev/null | tr -d ' \r\n')
+        if [ -n "$w_dev" ] && [ -d "/sys/class/net/$w_dev" ]; then
+            local w_ip=$(ip -4 addr show dev "$w_dev" 2>/dev/null | grep -oE 'inet [0-9.]+' | awk '{print $2}' | head -n 1)
+            if [ -n "$w_ip" ] && [ "$w_ip" != "0.0.0.0" ]; then
+                local w_gw=$(ip route show dev "$w_dev" 2>/dev/null | awk '/default/ {print $3}' | head -n 1)
+                IFACE="wwan"
+                DEV="$w_dev"
+                echo "$w_dev" > /tmp/wd_interface
+                echo "wwan_smart" > /tmp/wd_proto
+                echo "$w_dev" > /tmp/wd_device
+                echo "$w_ip" > /tmp/wd_wanip
+                echo "${w_gw:-0.0.0.0}" > /tmp/wd_gateway
+                return 0
+            fi
+        fi
+    fi
+
+    for i in wwan wwan_4 wwan0_4 usb0_4 wwan0 usb0 eth2 eth1 wan $(ubus list 2>/dev/null | grep '^network.interface.' | sed 's/network.interface.//'); do
         case "$i" in
             lan|loopback|wan6|br-lan|tailscale*|wg*|tun*|tap*) continue ;;
         esac

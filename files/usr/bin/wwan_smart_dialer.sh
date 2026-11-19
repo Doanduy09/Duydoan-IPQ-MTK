@@ -423,6 +423,11 @@ dial_modem() {
     echo "$apn" > "$STATE_DIR/apn"
     date +%s > "$STATE_DIR/dial_time"
 
+    # Đồng bộ hóa cho file all và các watchdog toàn hệ thống
+    echo "$netdev" > /tmp/wd_interface
+    echo "$netdev" > /tmp/wd_device
+    echo "wwan_smart" > /tmp/wd_proto
+
     log "✔️ Hoàn tất thủ tục quay số trên [$netdev]! Kiểm tra kết nối Internet..."
 }
 
@@ -432,22 +437,39 @@ dial_modem() {
 check_health_and_heal() {
     local netdev=$(cat "$STATE_DIR/netdev" 2>/dev/null || echo "eth2")
     local at_port=$(cat "$STATE_DIR/at_port" 2>/dev/null || echo "/dev/ttyUSB1")
+    local apn=$(cat "$STATE_DIR/apn" 2>/dev/null || echo "v-internet")
 
-    # Kiểm tra Ping ra ngoài
+    # 1. Kiểm tra trực tiếp trạng thái PDP Context qua AT (Phát hiện nhà mạng ngắt 24h)
+    if [ -n "$at_port" ] && [ -c "$at_port" ]; then
+        local cgact_res=$(safe_at "$at_port" "AT+CGACT?" 2)
+        if echo "$cgact_res" | grep -q "+CGACT: 1,0"; then
+            log "🚨 Phát hiện phiên PDP bị nhà mạng ngắt sau 24h (+CGACT: 1,0)! Tái kích hoạt tức thì..."
+            safe_at "$at_port" "AT+CGDCONT=1,"IPV4V6","$apn"" 2 >/dev/null
+            safe_at "$at_port" "AT+CGACT=1,1" 3 >/dev/null
+            udhcpc -i "$netdev" -n -q -R >/dev/null 2>&1
+            sleep 2
+            if ping -I "$netdev" -c 1 -W 2 8.8.8.8 >/dev/null 2>&1; then
+                log "✔️ Tái cấp phát IP mới sau thu hồi 24h thành công!"
+                rm -f "$STATE_DIR/fail_count" 2>/dev/null
+                return 0
+            fi
+        fi
+    fi
+
+    # 2. Kiểm tra Ping ra ngoài (1.1.1.1 / 8.8.8.8)
     if ping -I "$netdev" -c 2 -W 2 8.8.8.8 >/dev/null 2>&1 || ping -I "$netdev" -c 2 -W 2 1.1.1.1 >/dev/null 2>&1; then
         rm -f "$STATE_DIR/fail_count" 2>/dev/null
         return 0
     fi
 
-    # Tăng bộ đếm thất bại
+    # 3. Tăng bộ đếm thất bại
     local fails=$(cat "$STATE_DIR/fail_count" 2>/dev/null || echo 0)
     fails=$((fails + 1))
     echo "$fails" > "$STATE_DIR/fail_count"
     log "⚠️ Mất kết nối Internet trên [$netdev] (Lần $fails/3)!"
 
-    if [ "$fails" -ge 3 ]; then
-        log "🚨 Bắt đầu chu trình tự phục hồi mạng 3 cấp (Self-Healing)..."
-        # Cấp 1: Cấp lại DHCP
+    # Cấp 1 (Lần 1): Thử làm mới DHCP
+    if [ "$fails" -eq 1 ]; then
         log ">> [Cấp 1] Renew DHCP lease..."
         udhcpc -i "$netdev" -n -q -R 2>/dev/null
         sleep 2
@@ -456,9 +478,25 @@ check_health_and_heal() {
             rm -f "$STATE_DIR/fail_count"
             return 0
         fi
+    fi
 
-        # Cấp 2: Tái khởi động sóng di động (CFUN Toggle)
-        log ">> [Cấp 2] Tái tạo kết nối sóng RF (AT+CFUN=0 -> CFUN=1)..."
+    # Cấp 2 (Lần 2): Tái kích hoạt PDP Bearer
+    if [ "$fails" -eq 2 ]; then
+        log ">> [Cấp 2] Tái kích hoạt mạng di động & APN..."
+        safe_at "$at_port" "AT+CGDCONT=1,"IPV4V6","$apn"" 2 >/dev/null
+        safe_at "$at_port" "AT+CGACT=1,1" 3 >/dev/null
+        udhcpc -i "$netdev" -n -q -R 2>/dev/null
+        sleep 2
+        if ping -I "$netdev" -c 1 -W 2 8.8.8.8 >/dev/null 2>&1; then
+            log "✔️ Phục hồi thành công ở Cấp 2!"
+            rm -f "$STATE_DIR/fail_count"
+            return 0
+        fi
+    fi
+
+    # Cấp 3 (Lần 3+): Tái khởi động sóng Baseband (CFUN Toggle) chuyển trạm phát mới
+    if [ "$fails" -ge 3 ]; then
+        log "🚨 [Cấp 3] Tái tạo kết nối sóng RF (AT+CFUN=0 -> CFUN=1) & Quay số lại toàn diện..."
         safe_at "$at_port" "AT+CFUN=0" 2 >/dev/null
         sleep 2
         safe_at "$at_port" "AT+CFUN=1" 2 >/dev/null
