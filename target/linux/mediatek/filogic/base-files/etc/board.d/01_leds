@@ -9,6 +9,8 @@ case $board in
 	wirelesstag,zx7981pd)
 		ucidef_set_led_default "power" "POWER" "wt:power:blue" "1"
 		ucidef_set_led_netdev "wifi" "WIFI" "wt:wifi:blue" "phy0-ap0" "link tx rx"
+		ucidef_set_led_netdev "4g" "4G" "wt:4g:blue" "eth2" "link tx rx"
+		ucidef_set_led_netdev "5g" "5G" "wt:5g:blue" "eth2" "link tx rx"
 		;;
 abt,asr3000)
 	ucidef_set_led_netdev "wan" "WAN" "green:wan" "eth1"
