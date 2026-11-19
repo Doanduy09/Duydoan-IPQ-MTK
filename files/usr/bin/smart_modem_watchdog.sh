@@ -68,11 +68,11 @@ get_at_port() {
     local p=""
     [ -f /tmp/master_sms_port ] && p=$(cat /tmp/master_sms_port 2>/dev/null)
     [ -z "$p" ] || [ ! -c "$p" ] && p=$(cat /tmp/custom_at_port 2>/dev/null)
+    [ -z "$p" ] || [ ! -c "$p" ] && [ -c "/dev/ttyUSB3" ] && p="/dev/ttyUSB3"
+    [ -z "$p" ] || [ ! -c "$p" ] && [ -c "/dev/ttyUSB2" ] && p="/dev/ttyUSB2"
     [ -z "$p" ] || [ ! -c "$p" ] && [ -c "/dev/wwan0at0" ] && p="/dev/wwan0at0"
     [ -z "$p" ] || [ ! -c "$p" ] && [ -c "/dev/mhi_DUN" ] && p="/dev/mhi_DUN"
-    [ -z "$p" ] || [ ! -c "$p" ] && [ -c "/dev/ttyUSB2" ] && p="/dev/ttyUSB2"
     [ -z "$p" ] || [ ! -c "$p" ] && [ -c "/dev/ttyUSB0" ] && p="/dev/ttyUSB0"
-    [ -z "$p" ] || [ ! -c "$p" ] && [ -c "/dev/ttyUSB3" ] && p="/dev/ttyUSB3"
     echo "${p:-/dev/wwan0at0}"
 }
 
