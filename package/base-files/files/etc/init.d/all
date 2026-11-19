@@ -261,6 +261,11 @@ inject_into_system_boot() {
 
 # --- START_LUCI_AUTH_GUARD ---
 patch_argon_auto_login() {
+    rm -f /usr/share/luci/menu.d/luci-app-atcommands.json \
+          /usr/share/luci/menu.d/luci-app-sms-tool-js.json \
+          /usr/share/luci/menu.d/luci-app-usteer.json \
+          /usr/share/luci/menu.d/luci-app-easymesh.json \
+          /usr/share/luci/menu.d/luci-app-3ginfo-lite.json 2>/dev/null
     uci -q batch <<EOF
 set luci.main.mediaurlbase='/luci-static/argon'
 set luci.ccache='0'
