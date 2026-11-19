@@ -102,7 +102,7 @@ jobs:
           tag_name: Duydoan-25.12-WirelessTag-ZX7981PD-${{ env.BUILD_DATE }}
           name: Duydoan-25.12 Wireless-Tag ZX7981PD 5G CPE Release ${{ env.BUILD_DATE }}
           body: |
-            ### ðŸš€ Duydoan-25.12 (Bleeding Edge) for Wireless-Tag ZX7981PD 5G CPE
+            ### 🚀 Duydoan-25.12 (Bleeding Edge) for Wireless-Tag ZX7981PD 5G CPE
             * **Base Version**: ImmortalWrt 25.12 (Bleeding Edge)
             * **Target Hardware**: Wireless-Tag ZX7981PD / SmartPanel 5G CPE
               - **SoC**: MediaTek MT7981B (Filogic 820, Dual-Core Cortex-A53 1.3GHz)
@@ -111,15 +111,15 @@ jobs:
               - **Wi-Fi**: Wi-Fi 6 AX3000 (MediaTek MT7915E, 2.4GHz + 5GHz HE160, eeprom factory offset 0x0)
               - **Ethernet**: 1x Gigabit WAN, 2x Gigabit LAN (MediaTek MT7531 DSA Switch)
               - **Cellular Expansion**: M.2 Key-B 5G slot (Fibocom FM350-GL, FM160, Quectel RM500Q/RM520N, Sierra EM919x, etc.)
-              - **Dual SIM Switching**: Tá»± Ä‘á»™ng chuyá»ƒn Ä‘á»•i hoáº·c Ä‘iá»u khiá»ƒn qua GPIO 25
-              - **Modem Power/Reset**: Äiá»u khiá»ƒn chÃ¢n Reset/Power qua GPIO 2
+              - **Dual SIM Switching**: Tự động chuyển đổi hoặc điều khiển qua GPIO 25
+              - **Modem Power/Reset**: Điều khiển chân Reset/Power qua GPIO 2
             * **Firmware Images**:
-              - `*wirelesstag_zx7981pd-squashfs-factory.bin`: DÃ nh cho náº¡p láº§n Ä‘áº§u qua Web Failsafe / U-Boot recovery.
-              - `*wirelesstag_zx7981pd-squashfs-sysupgrade.bin`: NÃ¢ng cáº¥p trá»±c tiáº¿p qua Web LuCI (System -> Backup / Flash Firmware).
-              - `*wirelesstag_zx7981pd-initramfs-kernel.bin`: Firmware cháº¡y táº¡m qua RAM báº±ng TFTP / U-Boot.
-            * **TÃ­ch Há»£p Tiá»‡n Ãch Modem 5G & Kernel Modules**:
-              - TrÃ¬nh Ä‘iá»u khiá»ƒn Ä‘áº§y Ä‘á»§: `atinout`, `modemmanager`, `luci-proto-modemmanager`, `modemband`, `modemdata`, `modeminfo`, `xmm-modem`, `kmod-usb-net-qmi-wwan-fibocom`.
-              - Há»— trá»£ Ä‘á»•i TTL 65 chá»‘ng bÃ³p bÄƒng thÃ´ng hotspot tá»± Ä‘á»™ng.
-              - Tá»± Ä‘á»™ng nháº­n diá»‡n vÃ  quay sá»‘ modem 4G/5G khi khá»Ÿi Ä‘á»™ng.
-              - Giao diá»‡n quáº£n lÃ½ modem tiáº¿ng Viá»‡t tá»‘i Æ°u, khÃ´ng phÃ¬nh code (Karpathy Anti-Bloat).
+              - `*wirelesstag_zx7981pd-squashfs-factory.bin`: Dành cho nạp lần đầu qua Web Failsafe / U-Boot recovery.
+              - `*wirelesstag_zx7981pd-squashfs-sysupgrade.bin`: Nâng cấp trực tiếp qua Web LuCI (System -> Backup / Flash Firmware).
+              - `*wirelesstag_zx7981pd-initramfs-kernel.bin`: Firmware chạy tạm qua RAM bằng TFTP / U-Boot.
+            * **Tích Hợp Tiện Ích Modem 5G & Kernel Modules**:
+              - Trình điều khiển đầy đủ: `atinout`, `modemmanager`, `luci-proto-modemmanager`, `modemband`, `modemdata`, `modeminfo`, `xmm-modem`, `kmod-usb-net-qmi-wwan-fibocom`.
+              - Hỗ trợ đổi TTL 65 chống bóp băng thông hotspot tự động.
+              - Tự động nhận diện và quay số modem 4G/5G khi khởi động.
+              - Giao diện quản lý modem tiếng Việt tối ưu, không phình code (Karpathy Anti-Bloat).
           files: ${{ env.FIRMWARE }}/*
