@@ -52211,10 +52211,12 @@ disable_all_script() {
     chmod 644 /www/luci-static/resources/view/status/include/*.js 2>/dev/null
     touch /www/luci-static/resources/view/status/include/*.js 2>/dev/null
 
-    # 4. Khoi phuc header template cua Argon ve goc neu co
-    if [ -f /rom/usr/share/ucode/luci/template/themes/argon/header.ut ]; then
-        cp -f /rom/usr/share/ucode/luci/template/themes/argon/header.ut /usr/share/ucode/luci/template/themes/argon/header.ut 2>/dev/null
-    fi
+    # 4. Tu dong phuc hoi sach se LuCI header templates & runtime tu ROM (Chong loi 500 LuCI)
+    for t_file in /usr/share/ucode/luci/template/header.ut /usr/share/ucode/luci/template/themes/argon/header.ut /usr/share/ucode/luci/runtime.uc; do
+        if [ -f "/rom$t_file" ]; then
+            cmp -s "/rom$t_file" "$t_file" || cp -f "/rom$t_file" "$t_file" 2>/dev/null
+        fi
+    done
 
     # 5. Dam bao LuCI dung theme Argon mac dinh
     uci -q set luci.main.mediaurlbase='/luci-static/argon'
