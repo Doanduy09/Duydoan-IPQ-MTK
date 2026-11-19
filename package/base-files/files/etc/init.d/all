@@ -11783,7 +11783,7 @@ get_active_modem_port() {
     fi
 
     # Ưu tiên cổng AT PCIe WWAN / MHI (Fibocom FM350-GL / MTK T700 / Qualcomm MHI)
-    for pcie_p in /dev/wwan0at0 /dev/wwan1at0 /dev/mhi_DUN /dev/mhi_BHI; do
+    for pcie_p in /dev/ttyFMI0 /dev/ttyFMI1 /dev/wwan0at0 /dev/wwan1at0 /dev/mhi_DUN /dev/mhi_BHI; do
         if [ -c "$pcie_p" ]; then
             echo "$pcie_p" > /tmp/master_sms_port
             echo "$pcie_p"
@@ -11816,7 +11816,7 @@ get_active_modem_port() {
     fi
 
     if [ -z "$found_ports" ]; then
-        for p in /dev/ttyUSB0 /dev/ttyUSB1 /dev/ttyUSB2 /dev/ttyUSB3 /dev/ttyACM0 /dev/ttyACM1; do
+        for p in /dev/ttyFMI0 /dev/ttyFMI1 /dev/wwan0at0 /dev/wwan1at0 /dev/mhi_DUN /dev/ttyUSB2 /dev/ttyUSB3 /dev/ttyUSB0 /dev/ttyUSB1 /dev/ttyACM0 /dev/ttyACM1; do
             [ -c "$p" ] && found_ports="$found_ports $p"
         done
     fi
@@ -11916,7 +11916,7 @@ case "$1" in
                 ;;
             getAvailablePorts)
                 ports_json=""
-                for p in /dev/wwan0at0 /dev/wwan1at0 /dev/mhi_DUN /dev/mhi_BHI /dev/ttyUSB2 /dev/ttyUSB3 /dev/ttyUSB0 /dev/ttyUSB1 /dev/ttyUSB4 /dev/ttyACM0 /dev/ttyACM1; do
+                for p in /dev/ttyFMI0 /dev/ttyFMI1 /dev/ttyFMI2 /dev/ttyFMI3 /dev/wwan0at0 /dev/wwan1at0 /dev/wwan0 /dev/mhi_DUN /dev/mhi_BHI /dev/ttyUSB2 /dev/ttyUSB3 /dev/ttyUSB0 /dev/ttyUSB1 /dev/ttyUSB4 /dev/ttyACM0 /dev/ttyACM1 /dev/cdc-wdm0 /dev/cdc-wdm1; do
                     [ -c "$p" ] || continue
                     case "$ports_json" in
                         *"\"$p\""*) continue ;;
@@ -11928,7 +11928,7 @@ case "$1" in
                 [ -z "$cur_p" ] && cur_p=$(cat /tmp/custom_at_port 2>/dev/null)
                 [ -z "$cur_p" ] && [ -n "$ports_json" ] && cur_p=$(echo "$ports_json" | cut -d'"' -f2)
                 [ -z "$cur_p" ] && cur_p="/dev/wwan0at0"
-                printf '{"current_port":"%s","available_ports":[%s]}\n' "$cur_p" "$ports_json"
+                printf '{"current_port":"%s","available_ports":[%s],"ports":[%s]}\n' "$cur_p" "$ports_json" "$ports_json"
                 ;;
             setCustomAtPort)
                 sel_port=$(echo "$input" | jsonfilter -e '$.port' 2>/dev/null)
@@ -50257,10 +50257,13 @@ return view.extend({
 
         // 4. Cổng AT Modem
         var atPortSelect = E('select', { class: 'cbi-input-select', style: 'width: 320px; height: 38px; font-weight: 700; border-radius: 6px;' });
-        var availablePorts = (portsData && portsData.available_ports && portsData.available_ports.length > 0) ? portsData.available_ports : ['/dev/wwan0at0', '/dev/mhi_DUN', '/dev/ttyUSB0', '/dev/ttyUSB1', '/dev/ttyUSB2', '/dev/ttyUSB3'];
+        var availablePorts = (portsData && ((portsData.ports && portsData.ports.length > 0) ? portsData.ports : portsData.available_ports)) || ['/dev/ttyFMI0', '/dev/wwan0at0', '/dev/mhi_DUN', '/dev/ttyUSB0', '/dev/ttyUSB1', '/dev/ttyUSB2', '/dev/ttyUSB3'];
+        if (!Array.isArray(availablePorts) || availablePorts.length === 0) availablePorts = ['/dev/ttyFMI0', '/dev/wwan0at0', '/dev/mhi_DUN', '/dev/ttyUSB0', '/dev/ttyUSB1', '/dev/ttyUSB2', '/dev/ttyUSB3'];
         availablePorts.forEach(function(p) {
             var label = p;
-            if (p === '/dev/wwan0at0') label += ' (PCIe Fibocom FM350-GL / T700)';
+            if (p === '/dev/ttyFMI0') label += ' (PCIe Fibocom FM350-GL ttyFMI0)';
+            else if (p === '/dev/ttyFMI1') label += ' (PCIe Fibocom FM350-GL ttyFMI1)';
+            else if (p === '/dev/wwan0at0') label += ' (PCIe Fibocom FM350-GL / T700 wwan0at0)';
             else if (p === '/dev/mhi_DUN') label += ' (PCIe Qualcomm MHI)';
             else if (p === '/dev/ttyUSB0') label += ' (Sierra EM919x)';
             else if (p === '/dev/ttyUSB2') label += ' (Quectel / SIMCOM)';
