@@ -660,7 +660,8 @@ return view.extend({
         ]);
 
         // 3. Giao thức Interface Modem
-        var ifaceSelect = E('select', { class: 'cbi-input-select', style: 'width: 340px; height: 38px; font-weight: 700; border-radius: 6px;' }, [
+        var ifaceSelect = E('select', { class: 'cbi-input-select', style: 'width: 360px; height: 38px; font-weight: 700; border-radius: 6px;' }, [
+            E('option', { value: 'wwan_smart|auto' }, '⭐ WWAN Smart Tự Động (Tất Cả Modem 4G/5G, PCIe, USB, Điện thoại)'),
             E('option', { value: 'xmm|wwan0' }, 'Fibocom FM350-GL USB (proto: xmm / wwan0)'),
             E('option', { value: 'mbim|wwan0' }, 'MBIM / Sierra EM919x / PCIe 5G (proto: mbim / wwan0)'),
             E('option', { value: 'quectel|wwan0' }, 'Quectel RM500Q / RM520N (proto: quectel / wwan0)'),

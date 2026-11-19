@@ -3,7 +3,7 @@
 # 🚀 UNIVERSAL WWAN & TETHERING NETIFD PROTOCOL HANDLER (OPENWRT / IMMORTALWRT)
 # Thống nhất 1 PROTOCOL duy nhất: 'wwan_smart' (hoặc 'wwan')
 # Tương thích 100% mọi Card WWAN 4G/5G (PCIe & USB) và Mọi Smartphone (Android & iOS)
-# Tự động nhận diện phần cứng, gửi lệnh AT đặc thù, quay số và cấp phát IP qua netifd
+# Tích hợp cơ chế tự động giật lại IP khi bị nhà mạng thu hồi sau 24h
 # ==============================================================================
 
 . /lib/functions.sh
@@ -79,6 +79,11 @@ proto_wwan_smart_setup() {
 			-P0 \
 			${metric:+-m $metric} \
 			"$netdev"
+	fi
+
+	# 7. Khởi chạy Watchdog tự động giật lại IP khi nhà mạng thu hồi sau 24h
+	if [ -x "/lib/netifd/wwan_carrier_watchdog.sh" ]; then
+		proto_run_command "$interface" /lib/netifd/wwan_carrier_watchdog.sh "$interface" "$netdev"
 	fi
 }
 
