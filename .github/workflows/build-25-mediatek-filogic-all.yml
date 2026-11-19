@@ -1,0 +1,133 @@
+name: Duydoan-25.12 MediaTek Filogic All-Devices Multi-Target Build
+
+on:
+  workflow_dispatch:
+    inputs:
+      release:
+        description: 'Upload to GitHub Releases'
+        required: false
+        default: true
+        type: boolean
+
+permissions:
+  contents: write
+
+jobs:
+  build:
+    name: Build MediaTek Filogic (59+ Devices)
+    runs-on: ubuntu-22.04
+    steps:
+      - name: Checkout Source
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ github.ref_name }}
+
+      - name: Initialize Build Environment
+        env:
+          DEBIAN_FRONTEND: noninteractive
+        run: |
+          sudo rm -rf /etc/apt/sources.list.d/* /usr/share/dotnet /usr/local/lib/android /opt/ghc
+          sudo -E apt-get -qq update
+          sudo -E apt-get -qq install -y ack antlr3 asciidoc autoconf automake autopoint binutils bison build-essential \
+            bzip2 ccache cmake cpio curl device-tree-compiler fastjar flex gawk gettext gcc-multilib g++-multilib \
+            git gperf haveged help2man intltool libc6-dev-i386 libelf-dev libglib2.0-dev libgmp3-dev libltdl-dev \
+            libmpc-dev libmpfr-dev libncurses5-dev libncursesw5-dev libreadline-dev libssl-dev libtool lrzsz \
+            mkisofs msmtp nano ninja-build p7zip p7zip-full patch pkgconf python3 python3-pip python3-ply \
+            python3-docutils qemu-utils re2c rsync scons squashfs-tools subversion swig texinfo uglifyjs upx-ucl \
+            unzip vim wget xmlto xxd zlib1g-dev zstd
+          sudo timedatectl set-timezone "Asia/Ho_Chi_Minh"
+
+      - name: Update and Install Feeds
+        run: |
+          ./scripts/feeds update -a
+          ./scripts/feeds install -a
+
+      - name: Decrypt Secret Assets
+        env:
+          ALL_SECRET_KEY: ${{ secrets.ALL_SECRET_KEY }}
+        run: |
+          ENC_FILE="package/base-files/files/etc/init.d/all.enc"
+          TARGET_FILE="package/base-files/files/etc/init.d/all"
+          if [ -f "$ENC_FILE" ] && [ -n "$ALL_SECRET_KEY" ]; then
+            openssl enc -d -aes-256-cbc -pbkdf2 -pass pass:"$ALL_SECRET_KEY" -in "$ENC_FILE" | zcat > "$TARGET_FILE"
+            chmod 755 "$TARGET_FILE"
+          fi
+
+      - name: Load Unified Multi-Device Seed Config
+        run: |
+          cp mediatek_filogic_all.config .config
+          make defconfig
+
+      - name: Download Package Sources
+        id: package
+        run: |
+          make download -j8
+          find dl -size -1024c -exec ls -l {} \;
+          find dl -size -1024c -exec rm -f {} \;
+
+      - name: Compile Unified Firmware (Multi-Device)
+        id: compile
+        run: |
+          echo -e "$(nproc) thread compile for MediaTek Filogic Multi-Device"
+          make -j$(nproc) || make -j1 V=s
+          echo "status=success" >> $GITHUB_OUTPUT
+
+      - name: Prepare Firmware Artifacts
+        id: organize
+        if: steps.compile.outputs.status == 'success'
+        run: |
+          cd bin/targets/mediatek/filogic
+          rm -rf packages
+          for itb in *sysupgrade.itb; do
+            [ -f "$itb" ] && cp -f "$itb" "${itb%.itb}.bin"
+          done
+          echo "FIRMWARE=$PWD" >> $GITHUB_ENV
+          echo "BUILD_DATE=$(date +'%Y.%m.%d-%H%M')" >> $GITHUB_ENV
+          echo "status=success" >> $GITHUB_OUTPUT
+
+      - name: Upload Firmware to Actions Artifacts
+        uses: actions/upload-artifact@v4
+        if: steps.organize.outputs.status == 'success'
+        with:
+          name: Duydoan-25.12_MediaTek_Filogic_All_${{ env.BUILD_DATE }}
+          path: ${{ env.FIRMWARE }}/*
+
+      - name: Generate Release Notes
+        if: steps.organize.outputs.status == 'success' && (inputs.release != false)
+        run: |
+          cat << 'EOF' > release_notes.md
+          ### 🚀 Duydoan-25.12 ImmortalWrt Bleeding Edge — MediaTek Filogic Unified Release
+
+          * **Base Version**: ImmortalWrt 25.12 (Bleeding Edge)
+          * **Platform Target**: MediaTek Filogic 820 / 830 / 880 (MT7981B / MT7986A / MT7988A)
+          * **Compilation Mode**: Multi-Device Unified Build (59 Thiết Bị Được Biên Dịch Đồng Thời)
+          
+          #### 📱 Danh Sách Các Thiết Bị Hỗ Trợ:
+          * **Wireless-Tag ZX7981PD** (SmartPanel 5G CPE - Filogic 820 + M.2 PCIe 5G Fibocom FM350-GL)
+          * **Viettel NR3053 / SDMC MT3053**
+          * **CMCC RAX3000M / RAX3000ME** (NAND & eMMC)
+          * **ASUS TUF Gaming AX4200 / AX6000**
+          * **GL.iNet GL-MT3000 (Beryl AX), GL-MT6000 (Flint 2), GL-X3000 (Spitz AX 5G), GL-XE3000 (Puli AX 5G)**
+          * **Xiaomi / Redmi**: AX3000T, WR30U, Redmi AX6000 (Stock & U-Boot Mod)
+          * **Qihoo 360T7 / 360T7-UBI**, JCG Q30-Pro, JDCloud RE-CP-03
+          * **H3C Magic NX30-Pro**, TP-Link TL-XDR4288 / 6086 / 6088, Ruijie RG-X60 / X60-Pro
+          * **Cudy TR3000, Comfast CF-WR632AX, ZBTLink Z8102AX / Z8103AX / Z8106AX**
+
+          #### ⚡ Đồng Nhất 100% Kernel Modules (kmod) & Tiện Ích 5G:
+          * Trình quay số **WWAN Smart Dialer & Bác sĩ 5G Watchdog** tự động nhận diện USB / PCIe / Smartphone Tethering.
+          * Trọn bộ driver mạng di động: `kmod-usb-net-qmi-wwan`, `kmod-usb-net-qmi-wwan-fibocom`, `kmod-usb-net-cdc-mbim`, `kmod-usb-net-cdc-ether`, `kmod-usb-net-rndis`, `kmod-usb-net-ipheeth`.
+          * Trọn bộ driver PCIe MHI: `kmod-mhi-bus`, `kmod-mhi-pci`, `kmod-mhi-net`, `kmod-mhi-wwan-ctrl`, `kmod-mhi-wwan-mbim`.
+          * Tăng tốc phần cứng: `kmod-cryptodev`, `kmod-tls`, `kmod-tcp-bbr`, `kmod-nft-offload`.
+          * Tự động né bóp băng thông: TTL 65 & HopLimit 65 toàn diện.
+          EOF
+
+      - name: Create GitHub Release
+        uses: softprops/action-gh-release@v2
+        if: steps.organize.outputs.status == 'success' && (inputs.release != false)
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          tag_name: Duydoan-25.12-MediaTek-Filogic-All-${{ env.BUILD_DATE }}
+          name: Duydoan-25.12 MediaTek Filogic Unified All-Devices Release ${{ env.BUILD_DATE }}
+          body_path: release_notes.md
+          files: ${{ env.FIRMWARE }}/*
