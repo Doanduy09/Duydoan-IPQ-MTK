@@ -1,31 +1,17 @@
 #!/bin/sh
-# Custom First-Boot Initialization for JDCloud RE-CS-02 (Duydoan-24.10)
+# Custom system initialization and tuning script
 
-# 0. Upgrade HNAT Toggle Button in Master Script
-if [ -f /etc/init.d/all ] && command -v lua >/dev/null 2>&1; then
-    lua /etc/uci-defaults/patch_hnat.lua /etc/init.d/all >/dev/null 2>&1
+# 1. TCP BBR & Kernel Performance tuning
+if [ -f /etc/sysctl.d/99-custom-tuning.conf ]; then
+    sysctl -p /etc/sysctl.d/99-custom-tuning.conf 2>/dev/null
 fi
 
-# 1. Symlink /usr/bin/all and /etc/init.d/all to sysfixtine
-if [ -f /etc/init.d/all ] && [ ! -f /usr/bin/sysfixtine ]; then
-    cp -f /etc/init.d/all /usr/bin/sysfixtine
-    chmod 755 /usr/bin/sysfixtine
-fi
+# 2. Timezone & NTP setup (Asia/Ho_Chi_Minh - UTC+7)
+uci -q set system.@system[0].zonename='Asia/Ho_Chi_Minh'
+uci -q set system.@system[0].timezone='<+07>-7'
+uci commit system 2>/dev/null
 
-if [ -f /usr/bin/sysfixtine ]; then
-    ln -sf /usr/bin/sysfixtine /usr/bin/all
-    ln -sf /usr/bin/sysfixtine /etc/init.d/all
-    chmod 755 /usr/bin/all /etc/init.d/all 2>/dev/null
-fi
-
-# 2. Prevent ModemManager from conflicting with MBIM on /dev/cdc-wdm0
-if [ -f /etc/init.d/modemmanager ]; then
-    /etc/init.d/modemmanager disable 2>/dev/null
-    /etc/init.d/modemmanager stop 2>/dev/null
-fi
-[ -f /usr/libexec/mbim-proxy ] && chmod 000 /usr/libexec/mbim-proxy 2>/dev/null
-
-# 3. Hardware Flow Offload by default
+# 3. Enable Hardware Flow Offloading (MediaTek / Qualcomm NSS)
 uci -q set firewall.@defaults[0].flow_offloading='1'
 uci -q set firewall.@defaults[0].flow_offloading_hw='1'
 uci commit firewall 2>/dev/null
@@ -51,8 +37,10 @@ done
 uci commit wireless 2>/dev/null
 
 # 5. Set WWAN0 delay 5s for stable MBIM initialization
-uci -q set network.wwan0.delay='5'
-uci commit network 2>/dev/null
+if uci -q get network.wwan0 >/dev/null 2>&1; then
+    uci -q set network.wwan0.delay='5'
+    uci commit network 2>/dev/null
+fi
 
 # 6. Enable Master / all service
 if [ -f /etc/init.d/all ]; then
@@ -66,12 +54,25 @@ uci -q batch <<-EOF
 	commit luci
 EOF
 
-# 8. Clean up conflicting legacy modem/SMS menu entries and irqbalance
-rm -f /usr/share/luci/menu.d/luci-app-3ginfo-lite.json \
+# 8. Clean up conflicting legacy menu entries (AT commands, SMS, Usteer, Easymesh) and redundant services
+rm -f /usr/share/luci/menu.d/luci-app-atcommands.json \
       /usr/share/luci/menu.d/luci-app-sms-tool-js.json \
+      /usr/share/luci/menu.d/luci-app-usteer.json \
+      /usr/share/luci/menu.d/luci-app-easymesh.json \
+      /usr/share/luci/menu.d/luci-app-3ginfo-lite.json \
       /etc/uci-defaults/setup_sms_tool_js.sh \
       /etc/uci-defaults/set_3ginfo_port.sh \
-      /etc/init.d/my_new_sms 2>/dev/null
+      /etc/init.d/my_new_sms \
+      /etc/init.d/easymesh \
+      /etc/init.d/usteer 2>/dev/null
+if [ -f /etc/init.d/easymesh ]; then
+    /etc/init.d/easymesh disable 2>/dev/null
+    /etc/init.d/easymesh stop 2>/dev/null
+fi
+if [ -f /etc/init.d/usteer ]; then
+    /etc/init.d/usteer disable 2>/dev/null
+    /etc/init.d/usteer stop 2>/dev/null
+fi
 if [ -f /etc/init.d/irqbalance ]; then
     /etc/init.d/irqbalance disable 2>/dev/null
     /etc/init.d/irqbalance stop 2>/dev/null
