@@ -1,0 +1,6 @@
+#!/bin/sh
+case "$INTERFACE" in
+    eth2|wwan*|usb*|rmnet_mhi*)
+        /usr/bin/wt_led_sync.sh &
+        ;;
+esac
