@@ -1367,7 +1367,6 @@ return view.extend({
             navBar,
             simTabContent,
             modemTabContent,
-            atTabContent,
             meshTabContent,
             sentinelTabContent
         ]);
