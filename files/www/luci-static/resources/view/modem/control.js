@@ -631,50 +631,8 @@ return view.extend({
         ]);
         tabPanes['sms'] = simTabContent;
 
-        // ---------------- TAB 2: MODEM 5G, WI-FI & BĂNG TẦN ----------------
-        // 1. Cấu hình Wi-Fi nhanh 3 Băng Tần (Tối ưu cho Default Theme)
-        var s2g = E('input', { type: 'text', class: 'cbi-input-text', value: (wifiData && wifiData.s2g) ? wifiData.s2g : 'TPT Lam', style: 'width: 150px; font-weight: 700;' });
-        var p2g = E('input', { type: 'password', class: 'cbi-input-password', value: (wifiData && wifiData.p2g) ? wifiData.p2g : '12345678', style: 'width: 150px;' });
-        var s5g = E('input', { type: 'text', class: 'cbi-input-text', value: (wifiData && wifiData.s5g) ? wifiData.s5g : 'TPTLam', style: 'width: 150px; font-weight: 700;' });
-        var p5g = E('input', { type: 'password', class: 'cbi-input-password', value: (wifiData && wifiData.p5g) ? wifiData.p5g : '12345678', style: 'width: 150px;' });
-        var s5g2 = E('input', { type: 'text', class: 'cbi-input-text', value: (wifiData && wifiData.s5g2) ? wifiData.s5g2 : 'TPT Lam 5G1', style: 'width: 150px; font-weight: 700;' });
-        var p5g2 = E('input', { type: 'password', class: 'cbi-input-password', value: (wifiData && wifiData.p5g2) ? wifiData.p5g2 : '12345678', style: 'width: 150px;' });
-
-        var saveWifiBtn = E('button', {
-            class: 'btn cbi-button cbi-button-action',
-            style: 'font-weight: 750; font-size: 12.5px; padding: 6px 16px; border-radius: 6px; margin-top: 10px;',
-            click: function() {
-                saveWifiBtn.textContent = '⏳ Đang lưu Wi-Fi...';
-                callSetWifi(s5g.value, p5g.value, 'HE160', s2g.value, p2g.value, 'HE20', s5g2.value, p5g2.value, 'HE160').then(function() {
-                    saveWifiBtn.textContent = '💾 Lưu Cấu Hình Wi-Fi';
-                    ui.addNotification(null, E('p', '✅ Đã lưu cấu hình Wi-Fi 3 băng tần thành công!'), 'info');
-                }).catch(function(err) {
-                    saveWifiBtn.textContent = '💾 Lưu Cấu Hình Wi-Fi';
-                    ui.addNotification(null, E('p', '❌ Lỗi: ' + err), 'error');
-                });
-            }
-        }, '💾 Lưu Cấu Hình Wi-Fi');
-
-        var wifiConfigSection = E('div', { style: 'border: 1px solid #e2e8f0; border-radius: 8px; padding: 14px; background: #fafafa; margin-bottom: 16px;' }, [
-            E('div', { style: 'font-weight: 800; font-size: 14px; margin-bottom: 10px; color: #1e293b;' }, '📶 Cấu Hình Wi-Fi Nhanh (3 Băng Tần AX6600):'),
-            E('div', { style: 'display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 12px;' }, [
-                E('div', {}, [
-                    E('div', { style: 'font-size: 12.5px; font-weight: 700; color: #475569; margin-bottom: 4px;' }, '📻 2.4GHz:'),
-                    E('div', { style: 'display: flex; gap: 6px;' }, [ s2g, p2g ])
-                ]),
-                E('div', {}, [
-                    E('div', { style: 'font-size: 12.5px; font-weight: 700; color: #475569; margin-bottom: 4px;' }, '⚡ 5GHz (Chính):'),
-                    E('div', { style: 'display: flex; gap: 6px;' }, [ s5g, p5g ])
-                ]),
-                E('div', {}, [
-                    E('div', { style: 'font-size: 12.5px; font-weight: 700; color: #475569; margin-bottom: 4px;' }, '🚀 5GHz-2 (Trò chơi / Backhaul):'),
-                    E('div', { style: 'display: flex; gap: 6px;' }, [ s5g2, p5g2 ])
-                ])
-            ]),
-            saveWifiBtn
-        ]);
-
-        // 2. Đổi TTL Né Bóp Băng Thông
+        // ---------------- TAB 2: MODEM 5G & BĂNG TẦN ----------------
+        // 1. Đổi TTL Né Bóp Băng Thông
         var ttlInput = E('input', { type: 'number', class: 'cbi-input-text', value: '65', style: 'width: 80px; height: 36px; text-align: center; font-weight: 800; border-radius: 6px;' });
         var saveTtlBtn = E('button', {
             class: 'btn cbi-button cbi-button-action',
