@@ -1,8 +1,8 @@
 #!/bin/sh
 # ==============================================================================
 # 🚀 TỰ ĐỘNG QUAY SỐ MODEM 5G/LTE KHI ĐỦ ĐIỀU KIỆN (AUTO-DIAL ENGINE)
-# Hỗ trợ: Fibocom FM350-GL / MTK T700 (PCIe MBIM), Qualcomm MHI, Quectel/Sierra/SIMCOM USB
-# Tác giả: DOANDUY - Swaiot S10-SKY (IPQ8071/IPQ8074)
+# Hỗ trợ: Fibocom FM350-GL USB (xmm) & PCIe (mbim), Qualcomm MHI, Quectel/Sierra
+# Tác giả: DOANDUY
 # ==============================================================================
 
 IFACE="wwan0"
@@ -17,6 +17,12 @@ if [ -c "/dev/wwan0mbim0" ] || [ -c "/dev/wwan0at0" ] || [ -d "/sys/bus/pci/driv
     PROTO="mbim"
     IFACE="wwan0"
     echo "Fibocom FM350-GL 5G (PCIe MTK T700)" > /tmp/master_m_type
+elif lsusb 2>/dev/null | grep -iqE "0e8d:7127|fm350" || [ -c "/dev/ttyUSB3" -a -f "/lib/netifd/proto/xmm.sh" ]; then
+    DEV="/dev/ttyUSB3"
+    PORT="/dev/ttyUSB1"
+    PROTO="xmm"
+    IFACE="wwan0"
+    echo "Fibocom FM350-GL 5G (USB XMM)" > /tmp/master_m_type
 elif [ -c "/dev/mhi_DUN" ] || [ -d "/sys/bus/mhi" ]; then
     PORT="/dev/mhi_DUN"
     if [ -c "/dev/mhi_MBIM" ]; then
@@ -55,14 +61,17 @@ if [ -c "$PORT" ] && command -v atinout >/dev/null 2>&1; then
     if echo "$cpin_res" | grep -qi "READY"; then
         SIM_READY=1
     fi
+elif [ -c "$PORT" ] && command -v gcom >/dev/null 2>&1; then
+    cpin_res=$(printf 'send "AT+CPIN?\\r"\nwait 1 "READY"\n' | timeout 3 gcom -d "$PORT" -s /dev/stdin 2>/dev/null)
+    if echo "$cpin_res" | grep -qi "READY"; then
+        SIM_READY=1
+    fi
 elif [ "$PROTO" = "mbim" ] && [ -c "$DEV" ] && command -v umbim >/dev/null 2>&1; then
-    # Kiểm tra qua MBIM
     mbim_sub=$(umbim -n -d "$DEV" subscriber 2>/dev/null)
     if echo "$mbim_sub" | grep -qiE 'ready|subscriber|ready_state: 1'; then
         SIM_READY=1
     fi
 else
-    # Mặc định thử quay số
     SIM_READY=1
 fi
 
@@ -97,7 +106,19 @@ cur_proto=$(uci -q get network.$IFACE.proto)
 cur_dev=$(uci -q get network.$IFACE.device)
 
 if [ "$cur_proto" != "$PROTO" ] || [ "$cur_dev" != "$DEV" ]; then
-    uci -q batch <<EOF
+    if [ "$PROTO" = "xmm" ]; then
+        uci -q batch <<EOF
+set network.$IFACE=interface
+set network.$IFACE.proto='xmm'
+set network.$IFACE.device='$DEV'
+set network.$IFACE.apn='$APN'
+set network.$IFACE.auth='auto'
+set network.$IFACE.pdp='ipv4v6'
+set network.$IFACE.metric='1'
+commit network
+EOF
+    else
+        uci -q batch <<EOF
 set network.$IFACE=interface
 set network.$IFACE.proto='$PROTO'
 set network.$IFACE.device='$DEV'
@@ -107,6 +128,8 @@ set network.$IFACE.pdptype='ipv4v6'
 set network.$IFACE.metric='10'
 commit network
 EOF
+    fi
+
     zone_idx=0
     target_zone=""
     while true; do
@@ -121,6 +144,7 @@ EOF
     [ -z "$target_zone" ] && target_zone="firewall.@zone[1]"
     uci -q add_list "$target_zone".network="$IFACE" 2>/dev/null
     uci -q add_list "$target_zone".device="wwan0" 2>/dev/null
+    uci -q add_list "$target_zone".device="eth2" 2>/dev/null
     uci commit firewall
 fi
 

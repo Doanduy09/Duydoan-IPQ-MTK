@@ -11548,8 +11548,14 @@ LUATGOK
                         target_at_port="/dev/mhi_DUN"
                     elif lsusb 2>/dev/null | grep -iqE "1199:|sierra|em919" && [ -c "/dev/ttyUSB0" ]; then
                         target_at_port="/dev/ttyUSB0"
-                    elif [ "$proto" = "xmm" ] && [ -c "/dev/ttyUSB3" ]; then
+                    elif [ "$proto" = "xmm" ]; then
+                    if [ -c "/dev/ttyUSB1" ]; then
+                        target_at_port="/dev/ttyUSB1"
+                    elif [ -c "/dev/wwan0at0" ]; then
+                        target_at_port="/dev/wwan0at0"
+                    elif [ -c "/dev/ttyUSB3" ]; then
                         target_at_port="/dev/ttyUSB3"
+                    fi
                     elif [ -c "/dev/ttyUSB0" ] && lsusb 2>/dev/null | grep -iqE "1199:|sierra"; then
                         target_at_port="/dev/ttyUSB0"
                     elif [ -c "/dev/ttyUSB2" ]; then
@@ -41617,7 +41623,7 @@ return baseclass.extend({
         } else if (isXMM || defaultProto === 'xmm') {
             defaultProto = res.active_proto || 'xmm';
             currentIface = 'wwan0';
-            recommendText = '\uD83D\uDCA1 T\u1EF1 \u0111\u1ED9ng nh\u1EADn di\u1EC7n: MediaTek / Fibocom FM350-GL -> Giao th\u1EE9c XMM (wwan0) & C\u1ED5ng AT /dev/ttyUSB3';
+            recommendText = '\uD83D\uDCA1 T\u1EF1 \u0111\u1ED9ng nh\u1EADn di\u1EC7n: MediaTek / Fibocom FM350-GL -> Giao th\u1EE9c XMM (wwan0) & C\u1ED5ng AT /dev/ttyUSB1';
         } else if (isDHCP || defaultProto === 'dhcp') {
             defaultProto = res.active_proto || 'dhcp';
             currentIface = 'usb0';
@@ -41643,7 +41649,7 @@ return baseclass.extend({
                 } else if (val === 'xmm') {
                     ifaceInput.value = 'wwan0';
                     if (portSel) portSel.value = '/dev/ttyUSB3';
-                    if (recDiv) recDiv.textContent = '\uD83D\uDCA1 \u0110\u00E3 ch\u1ECDn: MediaTek / Fibocom FM350-GL -> Giao th\u1EE9c XMM (wwan0) & C\u1ED5ng AT /dev/ttyUSB3';
+                    if (recDiv) recDiv.textContent = '\uD83D\uDCA1 \u0110\u00E3 ch\u1ECDn: MediaTek / Fibocom FM350-GL -> Giao th\u1EE9c XMM (wwan0) & C\u1ED5ng AT /dev/ttyUSB1';
                 } else if (val === 'mbim') {
                     ifaceInput.value = 'wwan0';
                     if (portSel) portSel.value = '/dev/ttyUSB0';
@@ -41671,7 +41677,7 @@ return baseclass.extend({
         ]);
         protoSelect.value = defaultProto;
         if (defaultProto === 'mbim' || isSierra) { if (portSelectInline) portSelectInline.value = '/dev/ttyUSB0'; if (ifaceInput) ifaceInput.value = 'wwan0'; }
-        else if (defaultProto === 'xmm' || isXMM) { if (portSelectInline) portSelectInline.value = '/dev/ttyUSB3'; if (ifaceInput) ifaceInput.value = 'wwan0'; }
+        else if (defaultProto === 'xmm' || isXMM) { if (portSelectInline) portSelectInline.value = '/dev/ttyUSB1'; if (ifaceInput) ifaceInput.value = 'wwan0'; }
         else if (defaultProto === 'dhcp' || isDHCP) { if (portSelectInline) portSelectInline.value = '/dev/ttyUSB2'; if (ifaceInput) ifaceInput.value = 'usb0'; }
 
 
@@ -41980,7 +41986,7 @@ return baseclass.extend({
                 var activeAtPort = (smsRes && smsRes.port && smsRes.port.indexOf('/dev/') !== -1) ? smsRes.port : '';
         if (!activeAtPort || ((isSierra || defaultProto === 'mbim') && (activeAtPort === '/dev/ttyUSB2' || activeAtPort === '/dev/ttyUSB3'))) {
             if (isSierra || defaultProto === 'mbim') activeAtPort = '/dev/ttyUSB0';
-            else if (isXMM || defaultProto === 'xmm') activeAtPort = '/dev/ttyUSB3';
+            else if (isXMM || defaultProto === 'xmm') activeAtPort = '/dev/ttyUSB1';
             else activeAtPort = '/dev/ttyUSB2';
         }
         if (isSierra || defaultProto === 'mbim') {
@@ -41988,7 +41994,7 @@ return baseclass.extend({
         }
 
         var portSelectInline = E('select', { id: 'at-port-select-inline', class: 'cbi-input-select', style: 'font-weight: 800; height: 36px; flex: 1 1 auto; min-width: 140px;' });
-        var portList = (isSierra || defaultProto === 'mbim') ? ['/dev/ttyUSB0', '/dev/ttyUSB1', '/dev/ttyUSB2', '/dev/ttyUSB3'] : (isXMM ? ['/dev/ttyUSB3', '/dev/ttyUSB2', '/dev/ttyUSB0', '/dev/ttyUSB1'] : ['/dev/ttyUSB2', '/dev/ttyUSB3', '/dev/ttyUSB0', '/dev/ttyUSB1']);
+        var portList = (isSierra || defaultProto === 'mbim') ? ['/dev/ttyUSB0', '/dev/ttyUSB1', '/dev/ttyUSB2', '/dev/ttyUSB3'] : (isXMM ? ['/dev/ttyUSB1', '/dev/ttyUSB2', '/dev/ttyUSB0', '/dev/ttyUSB3'] : ['/dev/ttyUSB2', '/dev/ttyUSB3', '/dev/ttyUSB0', '/dev/ttyUSB1']);
         portList.forEach(function(p) {
             var opt = E('option', { value: p }, p);
             if (p === activeAtPort) opt.selected = true;
@@ -42019,7 +42025,7 @@ return baseclass.extend({
         }, [
             E('div', { style: 'color: #000000; font-weight: 800;' }, '💡 Cổng AT Tiêu Chuẩn:'),
             E('div', { style: 'color: #000000; font-size: 11.5px;' }, '• SIMCOM / Quectel / FM150: /dev/ttyUSB2'),
-            E('div', { style: 'color: #000000; font-size: 11.5px;' }, '• Fibocom FM350-GL: /dev/ttyUSB3'),
+            E('div', { style: 'color: #000000; font-size: 11.5px;' }, '• Fibocom FM350-GL: /dev/ttyUSB1'),
             E('div', { style: 'color: #000000; font-size: 11.5px;' }, '• Sierra Wireless (EM919x / EM929x): /dev/ttyUSB0')
         ]);
 
@@ -50223,9 +50229,12 @@ return view.extend({
         ]);
 
         // 3. Giao thức Interface Modem
-        var ifaceSelect = E('select', { class: 'cbi-input-select', style: 'width: 320px; height: 38px; font-weight: 700; border-radius: 6px;' }, [
-            E('option', { value: 'mbim|wwan0' }, 'MBIM / Sierra EM919x (proto: mbim / wwan0)'),
-            E('option', { value: 'qmi|wwan0' }, 'QMI / Quectel RM500Q (proto: qmi / wwan0)'),
+        var ifaceSelect = E('select', { class: 'cbi-input-select', style: 'width: 340px; height: 38px; font-weight: 700; border-radius: 6px;' }, [
+            E('option', { value: 'xmm|wwan0' }, 'Fibocom FM350-GL USB (proto: xmm / wwan0)'),
+            E('option', { value: 'mbim|wwan0' }, 'MBIM / Sierra EM919x / PCIe 5G (proto: mbim / wwan0)'),
+            E('option', { value: 'quectel|wwan0' }, 'Quectel RM500Q / RM520N (proto: quectel / wwan0)'),
+            E('option', { value: 'qmi|wwan0' }, 'QMI / Chuẩn cũ (proto: qmi / wwan0)'),
+            E('option', { value: 'modemmanager|wwan0' }, 'ModemManager Tự Động (proto: modemmanager / wwan0)'),
             E('option', { value: 'ecm|usb0' }, 'ECM / Driver chuẩn (proto: dhcp / usb0)'),
             E('option', { value: 'rndis|usb0' }, 'RNDIS / Tethering USB (proto: dhcp / usb0)')
         ]);
@@ -50265,6 +50274,8 @@ return view.extend({
             else if (p === '/dev/ttyFMI1') label += ' (PCIe Fibocom FM350-GL ttyFMI1)';
             else if (p === '/dev/wwan0at0') label += ' (PCIe Fibocom FM350-GL / T700 wwan0at0)';
             else if (p === '/dev/mhi_DUN') label += ' (PCIe Qualcomm MHI)';
+            else if (p === '/dev/ttyUSB1') label += ' (Fibocom FM350-GL AT Port)';
+            else if (p === '/dev/ttyUSB3') label += ' (Fibocom FM350-GL Data Port)';
             else if (p === '/dev/ttyUSB0') label += ' (Sierra EM919x)';
             else if (p === '/dev/ttyUSB2') label += ' (Quectel / SIMCOM)';
             atPortSelect.appendChild(E('option', { value: p, selected: (p === activePort) }, label + (p === activePort ? ' (Đang dùng)' : '')));
@@ -50289,7 +50300,7 @@ return view.extend({
             ]),
             E('div', { style: 'background: #ffffff; border: 1px solid #e2e8f0; padding: 8px 12px; border-radius: 6px; font-size: 12px; line-height: 1.6; color: #475569;' }, [
                 E('b', {}, '💡 Cổng AT Tiêu Chuẩn: '),
-                E('span', {}, '• PCIe 5G (Fibocom FM350-GL / T700): /dev/wwan0at0 | • PCIe Qualcomm (MHI): /dev/mhi_DUN | • Sierra (EM919x): /dev/ttyUSB0 | • Quectel/SIMCOM: /dev/ttyUSB2')
+                E('span', {}, '• Fibocom FM350-GL: /dev/ttyUSB1 (USB) | /dev/wwan0at0 (PCIe) | • Quectel/SIMCOM: /dev/ttyUSB2 | • Sierra (EM919x): /dev/ttyUSB0')
             ])
         ]);
 
