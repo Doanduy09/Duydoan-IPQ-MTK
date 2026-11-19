@@ -1,0 +1,7 @@
+#!/bin/sh
+/etc/init.d/network_optimizer enable
+/etc/init.d/network_optimizer start
+uci -q set wireless.radio1.htmode='HE160'
+uci -q set wireless.radio0.htmode='HE40'
+uci -q commit wireless
+exit 0

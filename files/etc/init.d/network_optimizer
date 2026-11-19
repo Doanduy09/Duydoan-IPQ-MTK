@@ -1,0 +1,20 @@
+#!/bin/sh /etc/rc.common
+
+START=99
+USE_PROCD=1
+
+start_service() {
+    [ -f /etc/sysctl.d/99-performance.conf ] && sysctl -p /etc/sysctl.d/99-performance.conf >/dev/null 2>&1
+
+    for f in /sys/class/net/*/queues/rx-*/rps_cpus; do
+        [ -f "$f" ] && echo 3 > "$f" 2>/dev/null
+    done
+
+    for f in /sys/class/net/*/queues/rx-*/rps_flow_cnt; do
+        [ -f "$f" ] && echo 4096 > "$f" 2>/dev/null
+    done
+
+    for iface in eth0 eth1 eth2 lan1 lan2 wan br-lan phy0-ap0 phy1-ap0; do
+        [ -d "/sys/class/net/$iface" ] && ip link set "$iface" txqueuelen 2048 2>/dev/null
+    done
+}
