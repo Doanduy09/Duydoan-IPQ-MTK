@@ -44,35 +44,15 @@ clean_stale_lock() {
     fi
 }
 
-get_active_wwan_iface() {
-    local dev=""
-    [ -s /tmp/wwan_state/netdev ] && dev=$(cat /tmp/wwan_state/netdev 2>/dev/null | tr -d ' \r\n')
-    if [ -n "$dev" ] && [ -d "/sys/class/net/$dev" ]; then
-        echo "$dev" > /tmp/wd_interface 2>/dev/null
-        echo "$dev"
-        return 0
-    fi
-    for cand in eth2 wwan0 usb0 rndis0 mhi_hwip0 rmnet0; do
-        if [ -d "/sys/class/net/$cand" ] && ip -4 addr show dev "$cand" 2>/dev/null | grep -q "inet "; then
-            echo "$cand" > /tmp/wd_interface 2>/dev/null
-            echo "$cand"
-            return 0
-        fi
-    done
-    dev=$(cat /tmp/wd_interface 2>/dev/null | tr -d ' \r\n')
-    [ -n "$dev" ] && [ -d "/sys/class/net/$dev" ] && echo "$dev" && return 0
-    echo "eth2"
-}
-
 get_at_port() {
     local p=""
     [ -f /tmp/master_sms_port ] && p=$(cat /tmp/master_sms_port 2>/dev/null)
     [ -z "$p" ] || [ ! -c "$p" ] && p=$(cat /tmp/custom_at_port 2>/dev/null)
-    [ -z "$p" ] || [ ! -c "$p" ] && [ -c "/dev/ttyUSB3" ] && p="/dev/ttyUSB3"
-    [ -z "$p" ] || [ ! -c "$p" ] && [ -c "/dev/ttyUSB2" ] && p="/dev/ttyUSB2"
     [ -z "$p" ] || [ ! -c "$p" ] && [ -c "/dev/wwan0at0" ] && p="/dev/wwan0at0"
     [ -z "$p" ] || [ ! -c "$p" ] && [ -c "/dev/mhi_DUN" ] && p="/dev/mhi_DUN"
+    [ -z "$p" ] || [ ! -c "$p" ] && [ -c "/dev/ttyUSB2" ] && p="/dev/ttyUSB2"
     [ -z "$p" ] || [ ! -c "$p" ] && [ -c "/dev/ttyUSB0" ] && p="/dev/ttyUSB0"
+    [ -z "$p" ] || [ ! -c "$p" ] && [ -c "/dev/ttyUSB3" ] && p="/dev/ttyUSB3"
     echo "${p:-/dev/wwan0at0}"
 }
 
@@ -105,10 +85,27 @@ LUAPOST
 }
 
 check_internet_status() {
+    local act_iface=$(cat /tmp/wd_interface 2>/dev/null || echo "wwan0")
+    [ -z "$act_iface" ] && act_iface="wwan0"
+    local l3_dev=$(cat /tmp/wd_device 2>/dev/null || echo "$act_iface")
+    [ -z "$l3_dev" ] && l3_dev="$act_iface"
+
+    # Kiểm tra trạng thái Netifd interface - Nếu bị DỪNG/TẮT trên LuCI thì báo rớt mạng ngay lập tức
+    if command -v ubus >/dev/null 2>&1; then
+        local if_up=$(ubus call network.interface."$act_iface" status 2>/dev/null | jsonfilter -e '@.up' 2>/dev/null)
+        if [ "$if_up" != "true" ]; then
+            return 1
+        fi
+    fi
+
     # 0. ĐẶC TRỊ PHÁT HIỆN TRANG CHẶN CƯỚC data.viettel.vn (CAPTIVE PORTAL / WALLED GARDEN)
-    # Nếu bị chuyển hướng về data.viettel.vn thì ping vẫn có thể thông nhưng duyệt web bị khóa hoàn toàn!
     if command -v curl >/dev/null 2>&1; then
-        local probe_hdr=$(curl -4 -s -I -m 3 "http://connectivitycheck.gstatic.com/generate_204" 2>/dev/null)
+        local probe_hdr
+        if [ -d "/sys/class/net/$l3_dev" ]; then
+            probe_hdr=$(curl --interface "$l3_dev" -4 -s -I -m 3 "http://connectivitycheck.gstatic.com/generate_204" 2>/dev/null)
+        else
+            probe_hdr=$(curl -4 -s -I -m 3 "http://connectivitycheck.gstatic.com/generate_204" 2>/dev/null)
+        fi
         local probe_loc=$(echo "$probe_hdr" | grep -i "^location:" | head -n1)
         local probe_code=$(echo "$probe_hdr" | awk '/HTTP/ {print $2}' | tail -n1)
         if echo "$probe_loc" | grep -qiE "viettel\.vn|data\.viettel" || [ "$probe_code" = "302" ] || [ "$probe_code" = "301" ]; then
@@ -117,9 +114,15 @@ check_internet_status() {
         fi
     fi
 
-    # 1. Fast Anycast Ping check (1.1.1.1, 8.8.8.8, 9.9.9.9) - chuẩn xác và chống rớt ảo
-    if ping -c 2 -W 3 1.1.1.1 >/dev/null 2>&1 || ping -c 2 -W 3 8.8.8.8 >/dev/null 2>&1 || ping -c 2 -W 3 9.9.9.9 >/dev/null 2>&1; then
-        return 0
+    # 1. Fast Anycast Ping check (Ràng buộc qua l3_dev nếu có để kiểm tra thực tế trên đường truyền 4G/5G)
+    if [ -d "/sys/class/net/$l3_dev" ]; then
+        if ping -I "$l3_dev" -c 2 -W 3 1.1.1.1 >/dev/null 2>&1 || ping -I "$l3_dev" -c 2 -W 3 8.8.8.8 >/dev/null 2>&1 || ping -I "$l3_dev" -c 2 -W 3 9.9.9.9 >/dev/null 2>&1; then
+            return 0
+        fi
+    else
+        if ping -c 2 -W 3 1.1.1.1 >/dev/null 2>&1 || ping -c 2 -W 3 8.8.8.8 >/dev/null 2>&1 || ping -c 2 -W 3 9.9.9.9 >/dev/null 2>&1; then
+            return 0
+        fi
     fi
     # 2. Probe HTTP 204 qua Google & Cloudflare
     if command -v curl >/dev/null 2>&1; then
@@ -241,19 +244,10 @@ heal_tier2_wwan_session() {
     for p in $(pgrep -f "umbim.*cdc-wdm" 2>/dev/null); do
         [ "$p" != "$$" ] && kill -9 "$p" 2>/dev/null
     done
-    # Làm mới DHCP trực tiếp trên interface dữ liệu
-    udhcpc -i "$iface" -n -q -R 2>/dev/null &
-
-    # Làm mới qua ubus netifd (nếu có interface tương ứng hoặc interface wwan/wan)
     if command -v ubus >/dev/null 2>&1; then
-        for u_if in "$iface" "wwan" "wan"; do
-            if ubus list network.interface."$u_if" 2>/dev/null | grep -q "$u_if"; then
-                ubus call network.interface."$u_if" down 2>/dev/null
-                sleep 1
-                ubus call network.interface."$u_if" up 2>/dev/null
-                break
-            fi
-        done
+        ubus call network.interface."$iface" down 2>/dev/null
+        sleep 2
+        ubus call network.interface."$iface" up 2>/dev/null
     elif command -v ifdown >/dev/null 2>&1; then
         ifdown "$iface" 2>/dev/null; sleep 2; ifup "$iface" 2>/dev/null
     fi
@@ -610,7 +604,7 @@ case "$1" in
     tier2|test-tier2)
         echo "=== BẮT ĐẦU TEST KỊCH BẢN TẦNG 2: FAST WWAN SESSION RESET ==="
         t_start=$(date +%s)
-        w_if=$(get_active_wwan_iface)
+        w_if=$(cat /tmp/wd_interface 2>/dev/null || echo "wwan0")
         if heal_tier2_wwan_session "$w_if"; then
             t_dur=$(( $(date +%s) - t_start ))
             echo ">> KẾT QUẢ: TẦNG 2 THÀNH CÔNG! Thời gian: ${t_dur}s. Wi-Fi giữ nguyên 100%!"
@@ -623,7 +617,7 @@ case "$1" in
     tier3|test-tier3)
         echo "=== BẮT ĐẦU TEST KỊCH BẢN TẦNG 3: BASEBAND CFUN RESET & CELL FAILOVER ==="
         t_start=$(date +%s)
-        w_if=$(get_active_wwan_iface)
+        w_if=$(cat /tmp/wd_interface 2>/dev/null || echo "wwan0")
         if heal_tier3_cfun_cell_failover "$w_if"; then
             t_dur=$(( $(date +%s) - t_start ))
             echo ">> KẾT QUẢ: TẦNG 3 THÀNH CÔNG! Thời gian: ${t_dur}s. Sóng modem đã phục hồi!"
@@ -715,15 +709,17 @@ proactive_rf_health_guard() {
 
 check_silent_pdp_freeze() {
     local iface="${1:-wwan0}"
-    [ ! -d "/sys/class/net/$iface" ] && return 0
+    local dev=$(cat /tmp/wd_device 2>/dev/null)
+    [ -z "$dev" ] || [ ! -d "/sys/class/net/$dev" ] && dev="$iface"
+    [ ! -d "/sys/class/net/$dev" ] && return 0
     
-    local tx_before=$(cat "/sys/class/net/$iface/statistics/tx_packets" 2>/dev/null || echo 0)
-    local rx_before=$(cat "/sys/class/net/$iface/statistics/rx_packets" 2>/dev/null || echo 0)
+    local tx_before=$(cat "/sys/class/net/$dev/statistics/tx_packets" 2>/dev/null || echo 0)
+    local rx_before=$(cat "/sys/class/net/$dev/statistics/rx_packets" 2>/dev/null || echo 0)
     
-    ping -c 2 -W 1 1.1.1.1 >/dev/null 2>&1
+    ping -I "$dev" -c 2 -W 1 1.1.1.1 >/dev/null 2>&1
     
-    local tx_after=$(cat "/sys/class/net/$iface/statistics/tx_packets" 2>/dev/null || echo 0)
-    local rx_after=$(cat "/sys/class/net/$iface/statistics/rx_packets" 2>/dev/null || echo 0)
+    local tx_after=$(cat "/sys/class/net/$dev/statistics/tx_packets" 2>/dev/null || echo 0)
+    local rx_after=$(cat "/sys/class/net/$dev/statistics/rx_packets" 2>/dev/null || echo 0)
     
     local tx_diff=$(( tx_after - tx_before ))
     local rx_diff=$(( rx_after - rx_before ))
@@ -738,6 +734,19 @@ HEALTHY_STREAK=0
 SLEEP_INTERVAL=20
 
 while true; do
+    ACT_IFACE=$(cat /tmp/wd_interface 2>/dev/null || echo "wwan0")
+    [ -z "$ACT_IFACE" ] && ACT_IFACE="wwan0"
+
+    # [ZERO-DELAY INTERFACE GUARD] Tự động bật lại NGAY LẬP TỨC nếu LuCI bấm Dừng hoặc interface bị ngắt
+    if command -v ubus >/dev/null 2>&1; then
+        if_state=$(ubus call network.interface."$ACT_IFACE" status 2>/dev/null | jsonfilter -e '@.up' 2>/dev/null)
+        if [ "$if_state" != "true" ]; then
+            echo "$(date): [Interface Guard] ⚠️ Phát hiện giao diện $ACT_IFACE đang TẮT/DỪNG! Tự động bật lại ngay lập tức (ifup $ACT_IFACE)..." >> "$LOG_FILE"
+            ubus call network.interface."$ACT_IFACE" up 2>/dev/null || ifup "$ACT_IFACE" 2>/dev/null
+            sleep 2
+        fi
+    fi
+
     sleep "$SLEEP_INTERVAL"
 
     if check_internet_status; then
@@ -757,7 +766,7 @@ while true; do
         if [ "$cur_hm" -ge "0415" ] && [ "$cur_hm" -le "0420" ] && [ "$LAST_PROACTIVE_RENEW_DATE" != "$today_str" ]; then
             LAST_PROACTIVE_RENEW_DATE="$today_str"
             echo "$(date): [PROACTIVE RENEWAL 04:15 AM] Khung giờ thấp điểm: Tự động làm mới phiên 5G để reset bộ đếm 24h nhà mạng..." >> "$LOG_FILE"
-            ACT_IFACE=$(get_active_wwan_iface)
+            ACT_IFACE=$(cat /tmp/wd_interface 2>/dev/null || echo "wwan0")
             [ -z "$ACT_IFACE" ] && ACT_IFACE="wwan0"
             heal_tier2_wwan_session "$ACT_IFACE" >/dev/null 2>&1
         fi
@@ -769,11 +778,11 @@ while true; do
 
     # Kiểm tra Silent PDP Freeze (TX > 0 nhưng RX = 0)
     # Kiểm tra Silent PDP Freeze (TX > 0 nhưng RX = 0)
-    if ! check_silent_pdp_freeze "$ACT_IFACE"; then
+    if ! check_silent_pdp_freeze "wwan0"; then
         SILENT_FREEZE_CNT=$(( ${SILENT_FREEZE_CNT:-0} + 1 ))
         if [ "$SILENT_FREEZE_CNT" -ge 5 ]; then
             echo "$(date): [SILENT FREEZE] Xác nhận nghẽn gateway 5 lần liên tiếp (TX tăng nhưng RX=0)! Tự hồi sinh PDP Context..." >> "$LOG_FILE"
-            heal_tier2_wwan_session "$ACT_IFACE"
+            heal_tier2_wwan_session "wwan0"
             SILENT_FREEZE_CNT=0
             FAIL_STREAK=0
             continue
@@ -809,7 +818,7 @@ while true; do
 
     echo "$(date): === 🩺 KHỞI ĐỘNG BÁC SĨ 5G TỰ ĐỘNG CHỮA LÀNH MẠNG (FAIL_STREAK=${FAIL_STREAK}) ===" >> "$LOG_FILE"
     START_HEAL_S=$(date +%s)
-    ACT_IFACE=$(get_active_wwan_iface)
+    ACT_IFACE=$(cat /tmp/wd_interface 2>/dev/null || echo "wwan0")
     [ -z "$ACT_IFACE" ] && ACT_IFACE="wwan0"
 
     # TẦNG 1: SỬA DNS & TCP MSS CLAMPING (~1.5s - ZERO DOWNTIME)

@@ -6973,7 +6973,7 @@ get_physical_lan_ports() {
         local dev_name=$(basename "$iface")
         [ -d "$iface/dsa" ] && continue
         case "$dev_name" in
-            lan*|eth0|eth1|enp*)
+            lan*|eth[0-9]|enp*|eth1|eth2)
                 # Loại trừ bridge, wireless và modem
                 [ "$dev_name" = "br-lan" ] && continue
                 ports="$ports $dev_name"
@@ -15261,10 +15261,27 @@ LUAPOST
 }
 
 check_internet_status() {
+    local act_iface=$(cat /tmp/wd_interface 2>/dev/null || echo "wwan0")
+    [ -z "$act_iface" ] && act_iface="wwan0"
+    local l3_dev=$(cat /tmp/wd_device 2>/dev/null || echo "$act_iface")
+    [ -z "$l3_dev" ] && l3_dev="$act_iface"
+
+    # Kiểm tra trạng thái Netifd interface - Nếu bị DỪNG/TẮT trên LuCI thì báo rớt mạng ngay lập tức
+    if command -v ubus >/dev/null 2>&1; then
+        local if_up=$(ubus call network.interface."$act_iface" status 2>/dev/null | jsonfilter -e '@.up' 2>/dev/null)
+        if [ "$if_up" != "true" ]; then
+            return 1
+        fi
+    fi
+
     # 0. ĐẶC TRỊ PHÁT HIỆN TRANG CHẶN CƯỚC data.viettel.vn (CAPTIVE PORTAL / WALLED GARDEN)
-    # Nếu bị chuyển hướng về data.viettel.vn thì ping vẫn có thể thông nhưng duyệt web bị khóa hoàn toàn!
     if command -v curl >/dev/null 2>&1; then
-        local probe_hdr=$(curl -4 -s -I -m 3 "http://connectivitycheck.gstatic.com/generate_204" 2>/dev/null)
+        local probe_hdr
+        if [ -d "/sys/class/net/$l3_dev" ]; then
+            probe_hdr=$(curl --interface "$l3_dev" -4 -s -I -m 3 "http://connectivitycheck.gstatic.com/generate_204" 2>/dev/null)
+        else
+            probe_hdr=$(curl -4 -s -I -m 3 "http://connectivitycheck.gstatic.com/generate_204" 2>/dev/null)
+        fi
         local probe_loc=$(echo "$probe_hdr" | grep -i "^location:" | head -n1)
         local probe_code=$(echo "$probe_hdr" | awk '/HTTP/ {print $2}' | tail -n1)
         if echo "$probe_loc" | grep -qiE "viettel\.vn|data\.viettel" || [ "$probe_code" = "302" ] || [ "$probe_code" = "301" ]; then
@@ -15273,9 +15290,15 @@ check_internet_status() {
         fi
     fi
 
-    # 1. Fast Anycast Ping check (1.1.1.1, 8.8.8.8, 9.9.9.9) - chuẩn xác và chống rớt ảo
-    if ping -c 2 -W 3 1.1.1.1 >/dev/null 2>&1 || ping -c 2 -W 3 8.8.8.8 >/dev/null 2>&1 || ping -c 2 -W 3 9.9.9.9 >/dev/null 2>&1; then
-        return 0
+    # 1. Fast Anycast Ping check (Ràng buộc qua l3_dev nếu có để kiểm tra thực tế trên đường truyền 4G/5G)
+    if [ -d "/sys/class/net/$l3_dev" ]; then
+        if ping -I "$l3_dev" -c 2 -W 3 1.1.1.1 >/dev/null 2>&1 || ping -I "$l3_dev" -c 2 -W 3 8.8.8.8 >/dev/null 2>&1 || ping -I "$l3_dev" -c 2 -W 3 9.9.9.9 >/dev/null 2>&1; then
+            return 0
+        fi
+    else
+        if ping -c 2 -W 3 1.1.1.1 >/dev/null 2>&1 || ping -c 2 -W 3 8.8.8.8 >/dev/null 2>&1 || ping -c 2 -W 3 9.9.9.9 >/dev/null 2>&1; then
+            return 0
+        fi
     fi
     # 2. Probe HTTP 204 qua Google & Cloudflare
     if command -v curl >/dev/null 2>&1; then
@@ -15862,15 +15885,17 @@ proactive_rf_health_guard() {
 
 check_silent_pdp_freeze() {
     local iface="${1:-wwan0}"
-    [ ! -d "/sys/class/net/$iface" ] && return 0
+    local dev=$(cat /tmp/wd_device 2>/dev/null)
+    [ -z "$dev" ] || [ ! -d "/sys/class/net/$dev" ] && dev="$iface"
+    [ ! -d "/sys/class/net/$dev" ] && return 0
     
-    local tx_before=$(cat "/sys/class/net/$iface/statistics/tx_packets" 2>/dev/null || echo 0)
-    local rx_before=$(cat "/sys/class/net/$iface/statistics/rx_packets" 2>/dev/null || echo 0)
+    local tx_before=$(cat "/sys/class/net/$dev/statistics/tx_packets" 2>/dev/null || echo 0)
+    local rx_before=$(cat "/sys/class/net/$dev/statistics/rx_packets" 2>/dev/null || echo 0)
     
-    ping -c 2 -W 1 1.1.1.1 >/dev/null 2>&1
+    ping -I "$dev" -c 2 -W 1 1.1.1.1 >/dev/null 2>&1
     
-    local tx_after=$(cat "/sys/class/net/$iface/statistics/tx_packets" 2>/dev/null || echo 0)
-    local rx_after=$(cat "/sys/class/net/$iface/statistics/rx_packets" 2>/dev/null || echo 0)
+    local tx_after=$(cat "/sys/class/net/$dev/statistics/tx_packets" 2>/dev/null || echo 0)
+    local rx_after=$(cat "/sys/class/net/$dev/statistics/rx_packets" 2>/dev/null || echo 0)
     
     local tx_diff=$(( tx_after - tx_before ))
     local rx_diff=$(( rx_after - rx_before ))
@@ -15885,6 +15910,19 @@ HEALTHY_STREAK=0
 SLEEP_INTERVAL=20
 
 while true; do
+    ACT_IFACE=$(cat /tmp/wd_interface 2>/dev/null || echo "wwan0")
+    [ -z "$ACT_IFACE" ] && ACT_IFACE="wwan0"
+
+    # [ZERO-DELAY INTERFACE GUARD] Tự động bật lại NGAY LẬP TỨC nếu LuCI bấm Dừng hoặc interface bị ngắt
+    if command -v ubus >/dev/null 2>&1; then
+        if_state=$(ubus call network.interface."$ACT_IFACE" status 2>/dev/null | jsonfilter -e '@.up' 2>/dev/null)
+        if [ "$if_state" != "true" ]; then
+            echo "$(date): [Interface Guard] ⚠️ Phát hiện giao diện $ACT_IFACE đang TẮT/DỪNG! Tự động bật lại ngay lập tức (ifup $ACT_IFACE)..." >> "$LOG_FILE"
+            ubus call network.interface."$ACT_IFACE" up 2>/dev/null || ifup "$ACT_IFACE" 2>/dev/null
+            sleep 2
+        fi
+    fi
+
     sleep "$SLEEP_INTERVAL"
 
     if check_internet_status; then
@@ -49741,7 +49779,7 @@ return view.extend({
 
         var tabButtons = [
             { id: 'tab-btn-sms', key: 'sms', icon: '📬', title: 'Quản Lý SIM & Tin Nhắn SMS' },
-            { id: 'tab-btn-modem', key: 'modem', icon: '📶', title: 'Modem 5G & Băng Tần' },
+            { id: 'tab-btn-modem', key: 'modem', icon: '📶', title: 'Modem 5G, Wi-Fi & Băng Tần' },
             { id: 'tab-btn-at', key: 'at', icon: '💻', title: 'Lệnh AT Trực Tiếp' },
             { id: 'tab-btn-mesh', key: 'mesh', icon: '⚡', title: '1-Click Auto Mesh' },
             { id: 'tab-btn-sentinel', key: 'sentinel', icon: '🤖', title: 'Telegram & AI Sentinel' }
@@ -50163,8 +50201,50 @@ return view.extend({
         ]);
         tabPanes['sms'] = simTabContent;
 
-        // ---------------- TAB 2: MODEM 5G & BĂNG TẦN ----------------
-        // 1. Đổi TTL Né Bóp Băng Thông
+        // ---------------- TAB 2: MODEM 5G, WI-FI & BĂNG TẦN ----------------
+        // 1. Cấu hình Wi-Fi nhanh 3 Băng Tần (Tối ưu cho Default Theme)
+        var s2g = E('input', { type: 'text', class: 'cbi-input-text', value: (wifiData && wifiData.s2g) ? wifiData.s2g : 'TPT Lam', style: 'width: 150px; font-weight: 700;' });
+        var p2g = E('input', { type: 'password', class: 'cbi-input-password', value: (wifiData && wifiData.p2g) ? wifiData.p2g : '12345678', style: 'width: 150px;' });
+        var s5g = E('input', { type: 'text', class: 'cbi-input-text', value: (wifiData && wifiData.s5g) ? wifiData.s5g : 'TPTLam', style: 'width: 150px; font-weight: 700;' });
+        var p5g = E('input', { type: 'password', class: 'cbi-input-password', value: (wifiData && wifiData.p5g) ? wifiData.p5g : '12345678', style: 'width: 150px;' });
+        var s5g2 = E('input', { type: 'text', class: 'cbi-input-text', value: (wifiData && wifiData.s5g2) ? wifiData.s5g2 : 'TPT Lam 5G1', style: 'width: 150px; font-weight: 700;' });
+        var p5g2 = E('input', { type: 'password', class: 'cbi-input-password', value: (wifiData && wifiData.p5g2) ? wifiData.p5g2 : '12345678', style: 'width: 150px;' });
+
+        var saveWifiBtn = E('button', {
+            class: 'btn cbi-button cbi-button-action',
+            style: 'font-weight: 750; font-size: 12.5px; padding: 6px 16px; border-radius: 6px; margin-top: 10px;',
+            click: function() {
+                saveWifiBtn.textContent = '⏳ Đang lưu Wi-Fi...';
+                callSetWifi(s5g.value, p5g.value, 'HE160', s2g.value, p2g.value, 'HE20', s5g2.value, p5g2.value, 'HE160').then(function() {
+                    saveWifiBtn.textContent = '💾 Lưu Cấu Hình Wi-Fi';
+                    ui.addNotification(null, E('p', '✅ Đã lưu cấu hình Wi-Fi 3 băng tần thành công!'), 'info');
+                }).catch(function(err) {
+                    saveWifiBtn.textContent = '💾 Lưu Cấu Hình Wi-Fi';
+                    ui.addNotification(null, E('p', '❌ Lỗi: ' + err), 'error');
+                });
+            }
+        }, '💾 Lưu Cấu Hình Wi-Fi');
+
+        var wifiConfigSection = E('div', { style: 'border: 1px solid #e2e8f0; border-radius: 8px; padding: 14px; background: #fafafa; margin-bottom: 16px;' }, [
+            E('div', { style: 'font-weight: 800; font-size: 14px; margin-bottom: 10px; color: #1e293b;' }, '📶 Cấu Hình Wi-Fi Nhanh (3 Băng Tần AX6600):'),
+            E('div', { style: 'display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 12px;' }, [
+                E('div', {}, [
+                    E('div', { style: 'font-size: 12.5px; font-weight: 700; color: #475569; margin-bottom: 4px;' }, '📻 2.4GHz:'),
+                    E('div', { style: 'display: flex; gap: 6px;' }, [ s2g, p2g ])
+                ]),
+                E('div', {}, [
+                    E('div', { style: 'font-size: 12.5px; font-weight: 700; color: #475569; margin-bottom: 4px;' }, '⚡ 5GHz (Chính):'),
+                    E('div', { style: 'display: flex; gap: 6px;' }, [ s5g, p5g ])
+                ]),
+                E('div', {}, [
+                    E('div', { style: 'font-size: 12.5px; font-weight: 700; color: #475569; margin-bottom: 4px;' }, '🚀 5GHz-2 (Trò chơi / Backhaul):'),
+                    E('div', { style: 'display: flex; gap: 6px;' }, [ s5g2, p5g2 ])
+                ])
+            ]),
+            saveWifiBtn
+        ]);
+
+        // 2. Đổi TTL Né Bóp Băng Thông
         var ttlInput = E('input', { type: 'number', class: 'cbi-input-text', value: '65', style: 'width: 80px; height: 36px; text-align: center; font-weight: 800; border-radius: 6px;' });
         var saveTtlBtn = E('button', {
             class: 'btn cbi-button cbi-button-action',
@@ -50326,7 +50406,8 @@ return view.extend({
         }, '🔒 Khóa Băng Tần');
 
         var modemTabContent = E('div', { class: 'cbi-section', style: 'display: none; padding: 20px; background: #ffffff; border-radius: 10px; border: 1px solid #e2e8f0;' }, [
-            E('h3', { style: 'margin-top: 0; font-size: 18px; font-weight: 800; color: #1e293b; border-bottom: 1px solid #f1f5f9; padding-bottom: 10px;' }, '📶 Quản Trị Modem 5G & Băng Tần'),
+            E('h3', { style: 'margin-top: 0; font-size: 18px; font-weight: 800; color: #1e293b; border-bottom: 1px solid #f1f5f9; padding-bottom: 10px;' }, '📶 Quản Trị Modem 5G, Wi-Fi & Băng Tần'),
+            wifiConfigSection,
             ttlSection,
             ifaceSection,
             atPortSection,
@@ -50868,7 +50949,6 @@ return view.extend({
     handleReset: null
 });
 
-
 VIEW_MODEM_EOF
 
     # Direct write to rootfs automatically persists in overlayfs
@@ -51220,70 +51300,82 @@ schedule_next() {
 }
 
 detect_network_hardware() {
-    # 0. Ưu tiên kiểm tra interface mạng từ wwan_smart_dialer
+    local target_dev=""
+    local target_iface=""
+    local target_ip=""
+    local target_gw=""
+    local target_proto=""
+
+    # 1. Xác định thiết bị mạng vật lý / L3 device (eth2, mhi_hwip0, usb0, ...)
     if [ -s /tmp/wwan_state/netdev ]; then
-        local w_dev=$(cat /tmp/wwan_state/netdev 2>/dev/null | tr -d ' \r\n')
-        if [ -n "$w_dev" ] && [ -d "/sys/class/net/$w_dev" ]; then
-            local w_ip=$(ip -4 addr show dev "$w_dev" 2>/dev/null | grep -oE 'inet [0-9.]+' | awk '{print $2}' | head -n 1)
-            if [ -n "$w_ip" ] && [ "$w_ip" != "0.0.0.0" ]; then
-                local w_gw=$(ip route show dev "$w_dev" 2>/dev/null | awk '/default/ {print $3}' | head -n 1)
-                IFACE="wwan"
-                DEV="$w_dev"
-                echo "$w_dev" > /tmp/wd_interface
-                echo "wwan_smart" > /tmp/wd_proto
-                echo "$w_dev" > /tmp/wd_device
-                echo "$w_ip" > /tmp/wd_wanip
-                echo "${w_gw:-0.0.0.0}" > /tmp/wd_gateway
-                return 0
-            fi
-        fi
+        target_dev=$(cat /tmp/wwan_state/netdev 2>/dev/null | tr -d ' \r\n')
     fi
+    [ -z "$target_dev" ] || [ ! -d "/sys/class/net/$target_dev" ] && target_dev=""
+    if [ -z "$target_dev" ]; then
+        for cand_d in eth2 wwan0 usb0 rndis0 mhi_hwip0 rmnet0; do
+            if [ -d "/sys/class/net/$cand_d" ]; then
+                target_dev="$cand_d"
+                break
+            fi
+        done
+    fi
+    [ -z "$target_dev" ] && target_dev="eth2"
 
-    for i in wwan wwan_4 wwan0_4 usb0_4 wwan0 usb0 eth2 eth1 wan $(ubus list 2>/dev/null | grep '^network.interface.' | sed 's/network.interface.//'); do
-        case "$i" in
-            lan|loopback|wan6|br-lan|tailscale*|wg*|tun*|tap*) continue ;;
-        esac
-
-        local status_json=$(ubus call network.interface.$i status 2>/dev/null)
-        [ -z "$status_json" ] && continue
-
-        local up=$(echo "$status_json" | jsonfilter -e '@.up' 2>/dev/null)
-        [ "$up" = "true" ] || continue
-
-        local dev_name=$(echo "$status_json" | jsonfilter -e '@.l3_device' 2>/dev/null)
-        [ -z "$dev_name" ] && dev_name=$(echo "$status_json" | jsonfilter -e '@.device' 2>/dev/null)
-        
-        case "$dev_name" in
-            tailscale*|tun*|tap*) continue ;;
-        esac
-
-        local wanip=$(echo "$status_json" | jsonfilter -e '@["ipv4-address"][0].address' 2>/dev/null)
-        if [ -z "$wanip" ]; then
-            wanip=$(ubus call network.interface.${i}_4 status 2>/dev/null | jsonfilter -e '@["ipv4-address"][0].address' 2>/dev/null)
-        fi
-        if [ -z "$wanip" ] && [ -n "$dev_name" ]; then
-            wanip=$(ip -4 addr show dev "$dev_name" 2>/dev/null | grep -oE 'inet [0-9.]+' | awk '{print $2}' | head -n 1)
-        fi
-
-        if [ -n "$dev_name" ] && [ -n "$wanip" ] && [ "$wanip" != "0.0.0.0" ]; then
-            local clean_iface=$(echo "$i" | sed 's/_4$//')
-            local proto=$(uci -q get network.${clean_iface}.proto)
-            [ -z "$proto" ] && proto=$(echo "$status_json" | jsonfilter -e '@.proto' 2>/dev/null)
-
-            local gateway=$(echo "$status_json" | jsonfilter -e '@["route"][0].nexthop' 2>/dev/null)
-            [ -z "$gateway" ] && gateway=$(ip route show dev "$dev_name" 2>/dev/null | awk '/default/ {print $3}' | head -n 1)
-
-            IFACE="$clean_iface"
-            DEV="$dev_name"
-
-            echo "$IFACE" > /tmp/wd_interface
-            echo "${proto:-mbim}" > /tmp/wd_proto
-            echo "$DEV" > /tmp/wd_device
-            echo "$wanip" > /tmp/wd_wanip
-            echo "${gateway:-0.0.0.0}" > /tmp/wd_gateway
-            return 0
+    # 2. Xác định tên giao diện Netifd / UCI Interface (wwan0, wwan, wan, ...)
+    for cand_i in wwan0 wwan cellular 4g 5g wan; do
+        if uci -q get network."$cand_i" >/dev/null; then
+            target_iface="$cand_i"
+            break
         fi
     done
+    if [ -z "$target_iface" ]; then
+        for s in $(uci show network 2>/dev/null | grep '\.proto=' | grep -iE 'xmm|mbim|qmi|ncm|qmi_wwan|wwan|modemmanager' | cut -d'.' -f2); do
+            if [ -n "$s" ]; then
+                target_iface="$s"
+                break
+            fi
+        done
+    fi
+    [ -z "$target_iface" ] && target_iface="wwan0"
+
+    # 3. KIỂM TRA TRẠNG THÁI INTERFACE TRONG NETIFD (TỰ ĐỘNG BẬT NẾU BỊ TẮT TỪ LUCI HOẶC RỚT GIAO DIỆN)
+    local if_status=$(ubus call network.interface."$target_iface" status 2>/dev/null)
+    local if_up=$(echo "$if_status" | jsonfilter -e '@.up' 2>/dev/null)
+    local l3_d=$(echo "$if_status" | jsonfilter -e '@.l3_device' 2>/dev/null)
+    [ -n "$l3_d" ] && [ -d "/sys/class/net/$l3_d" ] && target_dev="$l3_d"
+
+    if [ "$if_up" != "true" ]; then
+        echo "[Watchdog] ⚠️ Interface $target_iface đang tắt/dừng! Tự động bật lại (ifup $target_iface)..." > /tmp/master_watchdog_live
+        ubus call network.interface."$target_iface" up 2>/dev/null || ifup "$target_iface" 2>/dev/null
+        sleep 3
+        if_status=$(ubus call network.interface."$target_iface" status 2>/dev/null)
+        if_up=$(echo "$if_status" | jsonfilter -e '@.up' 2>/dev/null)
+        l3_d=$(echo "$if_status" | jsonfilter -e '@.l3_device' 2>/dev/null)
+        [ -n "$l3_d" ] && [ -d "/sys/class/net/$l3_d" ] && target_dev="$l3_d"
+    fi
+
+    target_ip=$(echo "$if_status" | jsonfilter -e '@["ipv4-address"][0].address' 2>/dev/null)
+    [ -z "$target_ip" ] && target_ip=$(ip -4 addr show dev "$target_dev" 2>/dev/null | grep -oE 'inet [0-9.]+' | awk '{print $2}' | head -n 1)
+
+    target_gw=$(echo "$if_status" | jsonfilter -e '@["route"][0].nexthop' 2>/dev/null)
+    [ -z "$target_gw" ] && target_gw=$(ip route show dev "$target_dev" 2>/dev/null | awk '/default/ {print $3}' | head -n 1)
+
+    target_proto=$(uci -q get network."$target_iface".proto)
+    [ -z "$target_proto" ] && target_proto=$(echo "$if_status" | jsonfilter -e '@.proto' 2>/dev/null)
+    [ -z "$target_proto" ] && target_proto="xmm"
+
+    IFACE="$target_iface"
+    DEV="$target_dev"
+
+    echo "$IFACE" > /tmp/wd_interface
+    echo "$DEV" > /tmp/wd_device
+    echo "${target_proto:-xmm}" > /tmp/wd_proto
+    echo "${target_ip:-0.0.0.0}" > /tmp/wd_wanip
+    echo "${target_gw:-0.0.0.0}" > /tmp/wd_gateway
+
+    if [ -n "$target_ip" ] && [ "$target_ip" != "0.0.0.0" ]; then
+        return 0
+    fi
     return 1
 }
 
