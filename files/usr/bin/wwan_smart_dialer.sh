@@ -33,22 +33,15 @@ log() {
 safe_at() {
     local port="$1"
     local cmd="$2"
-    local timeout="${3:-2}"
+    local timeout="${3:-3}"
     [ -c "$port" ] || return 1
 
     (
-        local waited=0
-        while ! flock -n 200 2>/dev/null; do
-            sleep 0.1
-            waited=$((waited + 1))
-            if [ "$waited" -ge 15 ]; then
-                exit 1
-            fi
-        done
+        timeout 4 flock -x 200 || exit 1
         if command -v sms_tool >/dev/null 2>&1; then
-            sms_tool -d "$port" at "$cmd" 2>/dev/null
+            timeout "$timeout" sms_tool -d "$port" at "$cmd" 2>/dev/null
         elif command -v atinout >/dev/null 2>&1; then
-            echo -e "$cmd\r" | atinout - "$port" - 2>/dev/null
+            timeout "$timeout" sh -c "printf '%s\r\n' \"$cmd\" | atinout - '$port' -" 2>/dev/null
         else
             return 1
         fi
@@ -436,7 +429,7 @@ dial_modem() {
 # ------------------------------------------------------------------------------
 check_health_and_heal() {
     local netdev=$(cat "$STATE_DIR/netdev" 2>/dev/null || echo "eth2")
-    local at_port=$(cat "$STATE_DIR/at_port" 2>/dev/null || echo "/dev/ttyUSB1")
+    local at_port=$(cat "$STATE_DIR/at_port" 2>/dev/null || cat /tmp/master_sms_port 2>/dev/null || echo "/dev/ttyUSB3")
     local apn=$(cat "$STATE_DIR/apn" 2>/dev/null || echo "v-internet")
 
     # 1. Kiểm tra trực tiếp trạng thái PDP Context qua AT (Phát hiện nhà mạng ngắt 24h)
@@ -444,7 +437,7 @@ check_health_and_heal() {
         local cgact_res=$(safe_at "$at_port" "AT+CGACT?" 2)
         if echo "$cgact_res" | grep -q "+CGACT: 1,0"; then
             log "🚨 Phát hiện phiên PDP bị nhà mạng ngắt sau 24h (+CGACT: 1,0)! Tái kích hoạt tức thì..."
-            safe_at "$at_port" "AT+CGDCONT=1,"IPV4V6","$apn"" 2 >/dev/null
+            safe_at "$at_port" "AT+CGDCONT=1,\"IPV4V6\",\"$apn\"" 2 >/dev/null
             safe_at "$at_port" "AT+CGACT=1,1" 3 >/dev/null
             udhcpc -i "$netdev" -n -q -R >/dev/null 2>&1
             sleep 2
@@ -483,7 +476,7 @@ check_health_and_heal() {
     # Cấp 2 (Lần 2): Tái kích hoạt PDP Bearer
     if [ "$fails" -eq 2 ]; then
         log ">> [Cấp 2] Tái kích hoạt mạng di động & APN..."
-        safe_at "$at_port" "AT+CGDCONT=1,"IPV4V6","$apn"" 2 >/dev/null
+        safe_at "$at_port" "AT+CGDCONT=1,\"IPV4V6\",\"$apn\"" 2 >/dev/null
         safe_at "$at_port" "AT+CGACT=1,1" 3 >/dev/null
         udhcpc -i "$netdev" -n -q -R 2>/dev/null
         sleep 2
