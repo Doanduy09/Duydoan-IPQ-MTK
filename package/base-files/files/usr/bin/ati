@@ -1,8 +1,9 @@
 #!/bin/sh
 # ==============================================================================
 # 🛰️ ATI - Universal AT Command CLI & Modem Diagnostics Tool
-# Tương thích 100% PCIe (/dev/wwan0at0, /dev/mhi_DUN) và USB (/dev/ttyUSB*)
-# Tác giả: DOANDUY - Swaiot S10-SKY (Qualcomm IPQ8071/IPQ8074)
+# Hỗ trợ 100% PCIe (/dev/wwan0at0, /dev/mhi_DUN) và USB (/dev/ttyUSB*)
+# Thiết bị: WirelessTag ZX7981PD, Swaiot S10-SKY & mọi router OpenWrt
+# Tác giả: DOANDUY
 # ==============================================================================
 
 PORT=""
@@ -22,7 +23,7 @@ while [ $# -gt 0 ]; do
             echo "  ati AT+CPIN?         # Kiểm tra trạng thái SIM"
             echo "  ati AT+CSQ           # Kiểm tra cường độ sóng"
             echo "  ati AT+COPS?         # Kiểm tra nhà mạng"
-            echo "  ati -p /dev/wwan0at0 ATI # Chỉ định cổng AT cụ thể"
+            echo "  ati -p /dev/ttyUSB1 ATI # Chỉ định cổng AT cụ thể"
             exit 0
             ;;
         *)
@@ -38,7 +39,25 @@ done
 
 # Tự động dò tìm cổng AT nếu không chỉ định
 if [ -z "$PORT" ] || [ ! -c "$PORT" ]; then
-    for candidate in $(cat /tmp/master_sms_port 2>/dev/null) $(cat /tmp/custom_at_port 2>/dev/null)                      /dev/wwan0at0 /dev/wwan1at0 /dev/mhi_DUN /dev/mhi_BHI                      /dev/ttyUSB2 /dev/ttyUSB0 /dev/ttyUSB1 /dev/ttyUSB3 /dev/ttyACM0; do
+    for candidate in $(cat /tmp/master_sms_port 2>/dev/null) $(cat /tmp/custom_at_port 2>/dev/null); do
+        if [ -n "$candidate" ] && [ -c "$candidate" ]; then
+            PORT="$candidate"
+            break
+        fi
+    done
+fi
+
+if [ -z "$PORT" ] || [ ! -c "$PORT" ]; then
+    # Tự động ưu tiên cổng theo dòng modem phát hiện
+    if lsusb 2>/dev/null | grep -iqE "0e8d:7127|mediatek|fm350"; then
+        search_list="/dev/ttyUSB1 /dev/wwan0at0 /dev/ttyUSB2 /dev/ttyUSB0 /dev/ttyUSB3"
+    elif lsusb 2>/dev/null | grep -iqE "1199:|sierra"; then
+        search_list="/dev/ttyUSB0 /dev/ttyUSB2 /dev/wwan0at0 /dev/ttyUSB1"
+    else
+        search_list="/dev/wwan0at0 /dev/wwan1at0 /dev/mhi_DUN /dev/ttyFMI0 /dev/ttyUSB1 /dev/ttyUSB2 /dev/ttyUSB0 /dev/ttyUSB3 /dev/ttyACM0"
+    fi
+
+    for candidate in $search_list; do
         if [ -c "$candidate" ]; then
             PORT="$candidate"
             break
@@ -63,6 +82,12 @@ send_at() {
     if [ -z "$res" ] && command -v sms_tool >/dev/null 2>&1 && [ "${p#/dev/wwan}" = "$p" ]; then
         res=$(timeout 4 sms_tool -d "$p" at "$c" 2>/dev/null)
     fi
+    if [ -z "$res" ] && command -v gcom >/dev/null 2>&1; then
+        local gcom_script="/tmp/gcom_cmd_$$.gcom"
+        printf 'send "%s\\r"\nwait 1 "OK"\n' "$c" > "$gcom_script"
+        res=$(timeout 3 gcom -d "$p" -s "$gcom_script" 2>/dev/null)
+        rm -f "$gcom_script" 2>/dev/null
+    fi
     if [ -z "$res" ]; then
         local tmp_in="/tmp/ati_in_$$.tmp"
         local tmp_out="/tmp/ati_out_$$.tmp"
@@ -85,8 +110,10 @@ if [ -n "$CMD" ]; then
     exit $?
 fi
 
+DEVICE_MODEL=$(cat /tmp/sysinfo/model 2>/dev/null || cat /proc/cpuinfo | grep -m1 "machine" | cut -d: -f2 | xargs || echo "OpenWrt Router")
+
 echo "=============================================================="
-echo "  🛰️  THÔNG TIN MODEM 5G/LTE - THIẾT BỊ SWAIOT S10-SKY"
+echo "  🛰️  THÔNG TIN MODEM 5G/LTE - $DEVICE_MODEL"
 echo "  Cổng AT đang sử dụng: $PORT"
 echo "=============================================================="
 
