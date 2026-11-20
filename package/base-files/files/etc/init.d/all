@@ -15936,15 +15936,22 @@ while true; do
         fi
         proactive_rf_health_guard
 
-        # PROACTIVE 24H PDP RENEWAL (Chủ động làm mới phiên 5G vào 04:15 sáng để reset bộ đếm 24h của Viettel)
+        # TRAFFIC-AWARE PROACTIVE 24H PDP RENEWAL (04:15 - 04:30 AM: Chỉ làm mới khi đường truyền đang rảnh)
         cur_hm=$(date +%H%M 2>/dev/null || echo "1200")
         today_str=$(date +%Y%m%d 2>/dev/null || echo "00000000")
-        if [ "$cur_hm" -ge "0415" ] && [ "$cur_hm" -le "0420" ] && [ "$LAST_PROACTIVE_RENEW_DATE" != "$today_str" ]; then
-            LAST_PROACTIVE_RENEW_DATE="$today_str"
-            echo "$(date): [PROACTIVE RENEWAL 04:15 AM] Khung giờ thấp điểm: Tự động làm mới phiên 5G để reset bộ đếm 24h nhà mạng..." >> "$LOG_FILE"
+        if [ "$cur_hm" -ge "0415" ] && [ "$cur_hm" -le "0430" ] && [ "$LAST_PROACTIVE_RENEW_DATE" != "$today_str" ]; then
             ACT_IFACE=$(cat /tmp/wd_interface 2>/dev/null || echo "wwan0")
             [ -z "$ACT_IFACE" ] && ACT_IFACE="wwan0"
-            heal_tier2_wwan_session "$ACT_IFACE" >/dev/null 2>&1
+            L3_DEV=$(cat /tmp/wd_device 2>/dev/null || echo "$ACT_IFACE")
+            [ ! -d "/sys/class/net/$L3_DEV" ] && L3_DEV="$ACT_IFACE"
+            rx1=$(cat "/sys/class/net/$L3_DEV/statistics/rx_packets" 2>/dev/null || echo 0)
+            sleep 2
+            rx2=$(cat "/sys/class/net/$L3_DEV/statistics/rx_packets" 2>/dev/null || echo 0)
+            if [ $((rx2 - rx1)) -lt 200 ] || [ "$cur_hm" -ge "0428" ]; then
+                LAST_PROACTIVE_RENEW_DATE="$today_str"
+                echo "$(date): [PROACTIVE RENEWAL 04:15 AM] Đường truyền rảnh: Tự động làm mới phiên 5G để reset bộ đếm 24h nhà mạng..." >> "$LOG_FILE"
+                heal_tier2_wwan_session "$ACT_IFACE" >/dev/null 2>&1
+            fi
         fi
         continue
     fi
