@@ -1,83 +1,89 @@
 # SPDX-License-Identifier: MIT
-# Automated maintenance workflow: Cleans old releases, tags, workflow runs and automatically triggers fresh builds
+# Smart Maintenance Workflow: Keeps the latest release per platform, purges older releases & stale runs safely
 
 name: Auto-Clean
 
 on:
   schedule:
-    # 05:15 AM Asia/Ho_Chi_Minh daily (22:15 UTC) - Clean before fresh builds start
-    - cron: '0 20 * * *'
+    # 12:00 PM Asia/Ho_Chi_Minh daily (05:00 UTC) - Runs AFTER morning builds finish
+    - cron: '0 5 * * *'
   workflow_dispatch:
     inputs:
-      trigger_builds:
-        description: 'Tu dong kich hoat build lai toan bo firmware sau khi don sach'
+      keep_per_platform:
+        description: 'Số bản Release mới nhất giữ lại cho mỗi nền tảng (Filogic / IPQ60xx / IPQ807x)'
         required: false
-        default: true
-        type: boolean
+        default: '1'
+        type: string
 
-permissions: write-all
+permissions:
+  contents: write
+  actions: write
 
 jobs:
-  auto_clean:
+  smart_clean:
+    name: Smart Release & Workflow Run Cleanup
     runs-on: ubuntu-latest
     steps:
-      - name: Purge Old Releases and Tags
+      - name: Safe Purge Old Releases (Always Keep Latest Per Platform)
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          KEEP: ${{ inputs.keep_per_platform || '1' }}
+          REPO: ${{ github.repository }}
         run: |
-          echo "=========================================================="
-          echo ">> Dang quet va xoa toan bo Releases va Tags cu..."
-          echo "=========================================================="
-          RELEASES=$(gh release list --repo "${{ github.repository }}" --limit 100 --json tagName -q '.[].tagName' || true)
-          for tag in $RELEASES; do
-            if [ -n "$tag" ]; then
-              echo ">> Xoa release va tag: $tag"
-              gh release delete "$tag" --repo "${{ github.repository }}" -y --cleanup-tag || true
-            fi
-          done
-          TAGS=$(gh api "repos/${{ github.repository }}/git/refs/tags" --jq '.[].ref' 2>/dev/null || true)
-          for ref in $TAGS; do
-            if [ -n "$ref" ]; then
-              tag_name=${ref#refs/tags/}
-              echo ">> Xoa tag con sot: $tag_name"
-              gh api -X DELETE "repos/${{ github.repository }}/git/refs/tags/$tag_name" || true
-            fi
-          done
-          echo ">> Da don dep sach se Releases va Tags cu!"
+          python3 - << 'PYEOF'
+          import json, os, subprocess
 
-      - name: Purge Completed Workflow Runs Directly
+          repo = os.environ["REPO"]
+          keep = max(1, int(os.environ.get("KEEP", "1")))
+          prefixes = [
+              "Duydoan-25.12-MediaTek-Filogic-All-",
+              "Duydoan-25.12-Qualcomm-IPQ60xx-All-",
+              "Duydoan-25.12-Qualcomm-IPQ807x-All-",
+          ]
+
+          out = subprocess.check_output(
+              ["gh", "release", "list", "--repo", repo, "--limit", "100", "--json", "tagName,createdAt"],
+              text=True,
+          )
+          releases = json.loads(out)
+          releases.sort(key=lambda r: r.get("createdAt", ""), reverse=True)
+
+          kept_counts = {p: 0 for p in prefixes}
+          to_delete = []
+
+          for r in releases:
+              tag = r["tagName"]
+              matched = next((p for p in prefixes if tag.startswith(p)), None)
+              if matched:
+                  if kept_counts[matched] < keep:
+                      kept_counts[matched] += 1
+                      print(f"[KEEP] {tag}")
+                  else:
+                      to_delete.append(tag)
+              else:
+                  # Legacy single-device releases can be safely pruned once unified releases exist
+                  if all(c >= 1 for c in kept_counts.values()):
+                      to_delete.append(tag)
+                  else:
+                      print(f"[SAFE-KEEP-LEGACY] {tag}")
+
+          for tag in to_delete:
+              print(f"[DELETE] {tag}")
+              subprocess.run(
+                  ["gh", "release", "delete", tag, "--repo", repo, "-y", "--cleanup-tag"],
+                  check=False,
+              )
+          PYEOF
+
+      - name: Purge Old Completed Workflow Runs (Keep Latest 15)
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          REPO: ${{ github.repository }}
         run: |
-          echo "=========================================================="
-          echo ">> Dang quet va xoa toan bo workflow runs da hoan thanh..."
-          echo "=========================================================="
-          RUN_IDS=$(gh run list --repo "${{ github.repository }}" --status completed --limit 1000 --json databaseId -q '.[].databaseId' || true)
+          RUN_IDS=$(gh run list --repo "$REPO" --status completed --limit 150 --json databaseId -q '.[15:][].databaseId' || true)
           for rid in $RUN_IDS; do
             if [ -n "$rid" ]; then
-              echo ">> Xoa run: $rid"
-              gh run delete "$rid" --repo "${{ github.repository }}" || true
+              echo ">> Deleting old run: $rid"
+              gh run delete "$rid" --repo "$REPO" || true
             fi
           done
-          echo ">> Da xoa sach se tat ca workflow runs cu!"
-
-      - name: Trigger Fresh Firmware Builds
-        if: (inputs.trigger_builds == true || github.event_name == 'schedule') && !cancelled()
-        env:
-          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        run: |
-          echo "=========================================================="
-          echo ">> Dang tu dong kich hoat build lai toan bo firmware moi..."
-          echo "=========================================================="
-          gh workflow run "build-firmware.yml" --repo "${{ github.repository }}" -r main || true
-          gh workflow run "build-25-firmware.yml" --repo "${{ github.repository }}" -r openwrt-25 || true
-          gh workflow run "build-asus-24.yml" --repo "${{ github.repository }}" -r main || true
-          gh workflow run "build-asus-25.yml" --repo "${{ github.repository }}" -r openwrt-25 || true
-          gh workflow run "build-25-swaiot-s10sky.yml" --repo "${{ github.repository }}" -r openwrt-25 || true
-          gh workflow run "build-25-viettel-nr3053.yml" --repo "${{ github.repository }}" -r openwrt-25 || true
-          gh workflow run "build-viettel-nr3053.yml" --repo "${{ github.repository }}" -r main || true
-          gh workflow run "build-25-cmcc-rax3000m.yml" --repo "${{ github.repository }}" -r openwrt-25 || true
-          gh workflow run "build-25-wirelesstag-zx7981pd.yml" --repo "${{ github.repository }}" -r openwrt-25 || true
-          gh workflow run "build-wirelesstag-zx7981pd.yml" --repo "${{ github.repository }}" -r main || true
-          gh workflow run "build-cmcc-rax3000m.yml" --repo "${{ github.repository }}" -r main || true
-          echo ">> Da gui yeu cau build toan bo firmware moi thanh cong!"
