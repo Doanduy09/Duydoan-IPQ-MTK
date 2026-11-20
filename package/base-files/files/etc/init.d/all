@@ -51910,6 +51910,25 @@ while true; do
     check_log_size
     detect_network_hardware
 
+    # 1. Zero-Delay Active Interface Guard: Tự động kiểm tra và phục hồi tức thì nếu Interface bị tắt từ LuCI
+    [ -z "$IFACE" ] && IFACE=$(cat /tmp/wd_interface 2>/dev/null || echo "wwan0")
+    local cur_if_up=$(ubus call network.interface."$IFACE" status 2>/dev/null | jsonfilter -e '@.up' 2>/dev/null)
+    if [ "$cur_if_up" != "true" ]; then
+        echo "[Watchdog] ⚡ Phát hiện interface $IFACE đang tạm dừng/tắt! Tự động bật lại (Zero-Delay Auto-Recovery)..." > /tmp/master_watchdog_live
+        echo "🔄 LẤY LẠI INTERFACE..." > /tmp/wd_net_status
+        ubus call network.interface."$IFACE" up 2>/dev/null || ifup "$IFACE" 2>/dev/null
+        sleep 3
+        detect_network_hardware
+        echo "0" > /tmp/wd_renew_count
+        continue
+    fi
+
+    # 2. Cập nhật thiết bị mạng L3 thực tế (Fibocom FM350-GL -> eth2, Quectel -> wwan0, ...)
+    local cur_l3=$(ubus call network.interface."$IFACE" status 2>/dev/null | jsonfilter -e '@.l3_device' 2>/dev/null)
+    [ -n "$cur_l3" ] && [ -d "/sys/class/net/$cur_l3" ] && DEV="$cur_l3"
+    [ -z "$DEV" ] && DEV=$(cat /tmp/wd_device 2>/dev/null || echo "eth2")
+    echo "$DEV" > /tmp/wd_device
+
     if [ -f "/tmp/is_phone_tethering" ]; then
         echo "🟢 BỎ QUA GIÁM SÁT (Phone Tethering)" > /tmp/master_watchdog_live
         sleep 10
@@ -51977,6 +51996,8 @@ ALLOWED_LIST=$(cat /etc/config/allowed_iccids.dat 2>/dev/null | tr '\r\n' ' ')
 
     if check_internet; then
         echo "✔️ MẠNG ỔN ĐỊNH" > /tmp/wd_net_status
+        echo "0" > /tmp/wd_renew_count
+        rm -f /etc/wd_offline_start_ts /etc/wd_2day_reboot_done 2>/dev/null
         offline_start_time=0
         last_state=1
         random_offset=$(( ( $(date +%s) % 5 ) - 2 ))
@@ -52049,24 +52070,81 @@ ALLOWED_LIST=$(cat /etc/config/allowed_iccids.dat 2>/dev/null | tr '\r\n' ' ')
 
         if [ -n "$IFACE" ] && [ "$IFACE" != "unknown" ] && uci -q get network."$IFACE" >/dev/null; then
             read -r renew_count < /tmp/wd_renew_count 2>/dev/null || renew_count=0
-            
-            if [ $renew_count -lt 2 ]; then
-                ifdown "$IFACE"
-                sleep 4
-                ifup "$IFACE"
-                renew_count=$((renew_count + 1))
-                echo "$renew_count" > /tmp/wd_renew_count
-                
-                if post_renew_internet_check; then
-                    rm -f /etc/wd_offline_start_ts /etc/wd_2day_reboot_done /tmp/wd_offline_start_ts 2>/dev/null
-                    echo "0" > /tmp/wd_reboot_count
-                    echo "0" > /etc/wd_reboot_count_flash
-                    sync
+            renew_count=$((renew_count + 1))
+            echo "$renew_count" > /tmp/wd_renew_count
+
+            # TẦNG 1 (Lần 1-2): Làm mới IP sạch qua Netifd & UDHCPC
+            if [ "$renew_count" -le 2 ]; then
+                echo "[Watchdog] 🔄 Nhà mạng thu hồi IP/đứt phiên! Tự động làm mới IP qua Netifd ($IFACE)..." > /tmp/master_watchdog_live
+                echo "🔄 RENEW IP 5G (Lần $renew_count)..." > /tmp/wd_net_status
+                ubus call network.interface."$IFACE" renew 2>/dev/null || udhcpc -i "$DEV" -n -q -R 2>/dev/null
+                sleep 3
+                if check_internet; then
+                    echo "0" > /tmp/wd_renew_count
+                    rm -f /etc/wd_offline_start_ts /etc/wd_2day_reboot_done 2>/dev/null
                     offline_start_time=0
                     last_state=1
+                    continue
                 fi
-            else
+                ifdown "$IFACE" 2>/dev/null
+                sleep 2
+                ifup "$IFACE" 2>/dev/null
+                sleep 4
+                if check_internet; then
+                    echo "0" > /tmp/wd_renew_count
+                    rm -f /etc/wd_offline_start_ts /etc/wd_2day_reboot_done 2>/dev/null
+                    offline_start_time=0
+                    last_state=1
+                    continue
+                fi
+            # TẦNG 2 (Lần 3-5): Tái gắn kết PDP Context qua cổng AT (Đặc trị Carrier PDP Context Drop)
+            elif [ "$renew_count" -le 5 ]; then
+                echo "[Watchdog] 🚨 Nhà mạng ngắt PDP Context! Tái gắn kết phiên mạng qua AT port..." > /tmp/master_watchdog_live
+                echo "⚡ TÁI GẮN KẾT PDP CONTEXT (Lần $renew_count)..." > /tmp/wd_net_status
+                local at_p=$(cat /tmp/master_sms_port 2>/dev/null || echo "/dev/ttyUSB3")
+                [ ! -c "$at_p" ] && [ -c "/dev/ttyUSB2" ] && at_p="/dev/ttyUSB2"
+                [ ! -c "$at_p" ] && [ -c "/dev/ttyUSB0" ] && at_p="/dev/ttyUSB0"
+                if [ -c "$at_p" ]; then
+                    local apn=$(uci -q get network."$IFACE".apn || echo "v-internet")
+                    if echo "$m_type" | grep -iq "sierra"; then
+                        echo "AT+CFUN=4" | atinout - "$at_p" - 2>/dev/null
+                        sleep 2
+                        echo "AT+CFUN=1" | atinout - "$at_p" - 2>/dev/null
+                    else
+                        echo "AT+CGDCONT=1,\"IPV4V6\",\"$apn\"" | atinout - "$at_p" - 2>/dev/null
+                        echo "AT+CGACT=0,1" | atinout - "$at_p" - 2>/dev/null
+                        sleep 1
+                        echo "AT+CGACT=1,1" | atinout - "$at_p" - 2>/dev/null
+                    fi
+                fi
+                sleep 2
+                ubus call network.interface."$IFACE" down 2>/dev/null
+                sleep 2
+                ubus call network.interface."$IFACE" up 2>/dev/null || ifup "$IFACE" 2>/dev/null
                 sleep 5
+                if check_internet; then
+                    echo "0" > /tmp/wd_renew_count
+                    rm -f /etc/wd_offline_start_ts /etc/wd_2day_reboot_done 2>/dev/null
+                    offline_start_time=0
+                    last_state=1
+                    continue
+                fi
+            # TẦNG 3 (Lần 6+): Tái khởi động sóng Baseband (CFUN 0/1) để đổi trạm BTS và bắt lại sóng sạch
+            else
+                echo "[Watchdog] 🛰️ Reset sóng Radio Baseband (CFUN 0/1) để tái bắt trạm BTS sạch..." > /tmp/master_watchdog_live
+                echo "🛰️ RESET SÓNG BASEBAND..." > /tmp/wd_net_status
+                local at_p=$(cat /tmp/master_sms_port 2>/dev/null || echo "/dev/ttyUSB3")
+                [ ! -c "$at_p" ] && [ -c "/dev/ttyUSB2" ] && at_p="/dev/ttyUSB2"
+                if [ -c "$at_p" ]; then
+                    echo "AT+CFUN=0" | atinout - "$at_p" - 2>/dev/null
+                    sleep 2
+                    echo "AT+CFUN=1" | atinout - "$at_p" - 2>/dev/null
+                    sleep 3
+                fi
+                ubus call network.interface."$IFACE" up 2>/dev/null || ifup "$IFACE" 2>/dev/null
+                # Luôn reset bộ đếm sau Tầng 3 để vòng lặp tự chữa lành vĩnh cửu không bao giờ bỏ cuộc!
+                echo "0" > /tmp/wd_renew_count
+                sleep 8
             fi
         else
             detect_network_hardware
