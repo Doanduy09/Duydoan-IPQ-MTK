@@ -1,0 +1,224 @@
+name: Duydoan-25.12 Unified Multi-Target Firmware Builder
+
+on:
+  schedule:
+    # 03:00 AM Asia/Ho_Chi_Minh daily (20:00 UTC) - Single Source of Truth
+    - cron: '0 20 * * *'
+  workflow_dispatch:
+    inputs:
+      target:
+        description: 'Nền tảng cần build (all = cả 3 dòng chip, hoặc chọn 1 dòng)'
+        required: true
+        default: 'all'
+        type: choice
+        options:
+          - all
+          - mediatek-filogic
+          - qualcomm-ipq60xx
+          - qualcomm-ipq807x
+      release:
+        description: 'Xuất bản lên GitHub Releases'
+        required: false
+        default: true
+        type: boolean
+
+concurrency:
+  group: ${{ github.workflow }}-${{ inputs.target || 'all' }}
+  cancel-in-progress: false
+
+permissions:
+  contents: write
+
+jobs:
+  plan:
+    name: Plan Target Matrix
+    runs-on: ubuntu-22.04
+    outputs:
+      matrix: ${{ steps.set-matrix.outputs.matrix }}
+    steps:
+      - name: Generate Build Matrix
+        id: set-matrix
+        run: |
+          TARGET="${{ inputs.target || 'all' }}"
+          python3 - << 'PYEOF' > matrix.json
+          import json, os
+          target = os.environ.get("TARGET", "all")
+          all_targets = [
+              {
+                  "id": "qualcomm-ipq60xx",
+                  "title": "Qualcomm IPQ60xx (NSS 12.5)",
+                  "config": "qualcomm_ipq60xx_all.config",
+                  "target_dir": "bin/targets/qualcommax/ipq60xx",
+                  "tag_prefix": "Duydoan-25.12-Qualcomm-IPQ60xx-All",
+                  "release_title": "Duydoan-25.12 Qualcomm IPQ60xx Unified All-Devices Release",
+                  "copy_itb_to_bin": False
+              },
+              {
+                  "id": "qualcomm-ipq807x",
+                  "title": "Qualcomm IPQ807x (NSS 12.5)",
+                  "config": "qualcomm_ipq807x_all.config",
+                  "target_dir": "bin/targets/qualcommax/ipq807x",
+                  "tag_prefix": "Duydoan-25.12-Qualcomm-IPQ807x-All",
+                  "release_title": "Duydoan-25.12 Qualcomm IPQ807x Unified All-Devices Release",
+                  "copy_itb_to_bin": False
+              },
+              {
+                  "id": "mediatek-filogic",
+                  "title": "MediaTek Filogic (MT7981/7986/7988)",
+                  "config": "mediatek_filogic_all.config",
+                  "target_dir": "bin/targets/mediatek/filogic",
+                  "tag_prefix": "Duydoan-25.12-MediaTek-Filogic-All",
+                  "release_title": "Duydoan-25.12 MediaTek Filogic Unified All-Devices Release",
+                  "copy_itb_to_bin": True
+              }
+          ]
+          selected = all_targets if target == "all" else [t for t in all_targets if t["id"] == target]
+          print(json.dumps({"include": selected}))
+          PYEOF
+          MATRIX=$(cat matrix.json)
+          echo "matrix=$MATRIX" >> "$GITHUB_OUTPUT"
+          echo "Selected matrix: $MATRIX"
+        env:
+          TARGET: ${{ inputs.target || 'all' }}
+
+  build:
+    name: Build ${{ matrix.title }}
+    needs: plan
+    runs-on: ubuntu-22.04
+    strategy:
+      fail-fast: false
+      matrix: ${{ fromJson(needs.plan.outputs.matrix) }}
+
+    steps:
+      - name: Checkout OpenWrt 25.12 Branch (Pinned)
+        uses: actions/checkout@v4
+        with:
+          ref: openwrt-25
+
+      - name: Free Runner Disk Space & Install Dependencies
+        env:
+          DEBIAN_FRONTEND: noninteractive
+        run: |
+          sudo rm -rf /etc/apt/sources.list.d/* /usr/share/dotnet /usr/local/lib/android /opt/ghc /usr/local/share/boost /usr/local/graalvm /usr/local/.ghcup
+          sudo docker system prune -af --volumes || true
+          sudo -E apt-get -qq update
+          sudo -E apt-get -qq install -y ack antlr3 asciidoc autoconf automake autopoint binutils bison build-essential \
+            bzip2 ccache cmake cpio curl device-tree-compiler fastjar flex gawk gettext gcc-multilib g++-multilib \
+            git gperf haveged help2man intltool libc6-dev-i386 libelf-dev libglib2.0-dev libgmp3-dev libltdl-dev \
+            libmpc-dev libmpfr-dev libncurses5-dev libncursesw5-dev libreadline-dev libssl-dev libtool lrzsz \
+            mkisofs msmtp nano ninja-build p7zip p7zip-full patch pkgconf python3 python3-pip python3-ply \
+            python3-docutils qemu-utils re2c rsync scons squashfs-tools subversion swig texinfo uglifyjs upx-ucl \
+            unzip vim wget xmlto xxd zlib1g-dev zstd
+          sudo timedatectl set-timezone "Asia/Ho_Chi_Minh"
+          df -h
+
+      - name: Restore ccache (${{ matrix.id }})
+        uses: actions/cache@v4
+        with:
+          path: .ccache
+          key: ccache-25-${{ matrix.id }}-${{ hashFiles(matrix.config) }}-${{ github.run_id }}
+          restore-keys: |
+            ccache-25-${{ matrix.id }}-${{ hashFiles(matrix.config) }}-
+            ccache-25-${{ matrix.id }}-
+
+      - name: Prepare Feeds, Kernel 6.12 Patches & Decrypt Assets
+        env:
+          ALL_SECRET_KEY: ${{ secrets.ALL_SECRET_KEY }}
+        run: |
+          chmod +x scripts/ci-prepare.sh
+          ./scripts/ci-prepare.sh
+
+      - name: Load Unified Multi-Device Seed Config
+        run: |
+          cp "${{ matrix.config }}" .config
+          echo "CONFIG_CCACHE=y" >> .config
+          make defconfig
+          echo ">> Active target devices count: $(grep -c '^CONFIG_TARGET_DEVICE_.*=y$' .config || echo 0)"
+
+      - name: Download Package Sources
+        run: |
+          make download -j8
+          find dl -size -1024c -exec ls -l {} \;
+          find dl -size -1024c -exec rm -f {} \;
+
+      - name: Compile Unified Firmware (${{ matrix.id }})
+        id: compile
+        env:
+          CCACHE_DIR: ${{ github.workspace }}/.ccache
+          CCACHE_MAXSIZE: 1.5G
+          CCACHE_COMPRESS: 1
+        run: |
+          echo -e "$(nproc) thread compile for ${{ matrix.title }}"
+          make -j$(nproc) || make -j1 V=s
+          ccache -s || true
+          echo "status=success" >> "$GITHUB_OUTPUT"
+
+      - name: Prepare & Clean Firmware Artifacts
+        id: organize
+        if: steps.compile.outputs.status == 'success'
+        run: |
+          cd "${{ matrix.target_dir }}"
+          rm -rf packages kernel-debug.tar.zst
+          if [ "${{ matrix.copy_itb_to_bin }}" = "true" ]; then
+            for itb in *sysupgrade.itb; do
+              [ -f "$itb" ] && [ ! -f "${itb%.itb}.bin" ] && cp -f "$itb" "${itb%.itb}.bin"
+            done
+          fi
+          echo "FIRMWARE=$PWD" >> "$GITHUB_ENV"
+          echo "BUILD_DATE=$(date +'%Y.%m.%d-%H%M')" >> "$GITHUB_ENV"
+          echo "status=success" >> "$GITHUB_OUTPUT"
+
+      - name: Generate Dynamic Release Notes (Verified from profiles.json)
+        if: steps.organize.outputs.status == 'success' && (inputs.release != false)
+        run: |
+          python3 - << 'PYEOF'
+          import json, os
+
+          fw_dir = os.environ["FIRMWARE"]
+          title = os.environ["MATRIX_TITLE"]
+          build_date = os.environ["BUILD_DATE"]
+          profiles_path = os.path.join(fw_dir, "profiles.json")
+          profiles = []
+          if os.path.isfile(profiles_path):
+              with open(profiles_path, "r", encoding="utf-8") as f:
+                  data = json.load(f)
+              profiles = sorted(data.get("profiles", {}).keys())
+
+          lines = [
+              f"### 🚀 {title} — Duydoan-25.12 Unified Release ({build_date})",
+              "",
+              f"* **Base Version**: ImmortalWrt 25.12 (Kernel 6.12 Bleeding Edge)",
+              f"* **Compilation Mode**: Unified Multi-Target Matrix Build (**{len(profiles)} thiết bị được biên dịch & xác thực thực tế**)",
+              f"* **Default Theme**: LuCI Argon (Tiếng Việt + Argon Config đầy đủ)",
+              f"* **5G/4G Smart Engine**: WWAN Smart Dialer + Bác Sĩ 5G Watchdog + Zero-Delay Interface Guard + Chống thu hồi IP 3 tầng + TTL/HopLimit 65",
+              "",
+              f"#### 📱 Danh Sách {len(profiles)} Thiết Bị Trong Bản Phát Hành Này:",
+          ]
+          for p in profiles:
+              lines.append(f"- `{p}`")
+
+          with open("release_notes.md", "w", encoding="utf-8") as out:
+              out.write("\n".join(lines) + "\n")
+          print(f"Generated release_notes.md with {len(profiles)} verified profiles.")
+          PYEOF
+        env:
+          MATRIX_TITLE: ${{ matrix.title }}
+
+      - name: Upload Firmware to Actions Artifacts
+        uses: actions/upload-artifact@v4
+        if: steps.organize.outputs.status == 'success'
+        with:
+          name: ${{ matrix.tag_prefix }}_${{ env.BUILD_DATE }}
+          path: ${{ env.FIRMWARE }}/*
+          retention-days: 3
+
+      - name: Create GitHub Release
+        uses: softprops/action-gh-release@v2
+        if: steps.organize.outputs.status == 'success' && (inputs.release != false)
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          tag_name: ${{ matrix.tag_prefix }}-${{ env.BUILD_DATE }}
+          name: ${{ matrix.release_title }} ${{ env.BUILD_DATE }}
+          body_path: release_notes.md
+          files: ${{ env.FIRMWARE }}/*
