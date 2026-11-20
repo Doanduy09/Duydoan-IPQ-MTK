@@ -1,9 +1,7 @@
 name: Build Duydoan-25.12 CMCC RAX3000M (All Variants - Bleeding Edge)
 
 on:
-  schedule:
     # 06:25 AM Asia/Ho_Chi_Minh daily (23:25 UTC)
-    - cron: '25 23 * * *'
   workflow_dispatch:
     inputs:
       release:

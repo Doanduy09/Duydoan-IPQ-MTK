@@ -6,7 +6,7 @@ name: Auto-Clean
 on:
   schedule:
     # 05:15 AM Asia/Ho_Chi_Minh daily (22:15 UTC) - Clean before fresh builds start
-    - cron: '15 22 * * *'
+    - cron: '0 20 * * *'
   workflow_dispatch:
     inputs:
       trigger_builds:

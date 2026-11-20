@@ -1,9 +1,7 @@
 name: Build Duydoan-24.10 CMCC RAX3000M (All Variants)
 
 on:
-  schedule:
     # 06:35 AM Asia/Ho_Chi_Minh daily (23:35 UTC)
-    - cron: '35 23 * * *'
   workflow_dispatch:
     inputs:
       release:
