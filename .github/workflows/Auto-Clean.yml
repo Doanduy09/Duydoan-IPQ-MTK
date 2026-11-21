@@ -6,13 +6,13 @@ name: Auto-Clean
 on:
   schedule:
     # 12:00 PM Asia/Ho_Chi_Minh daily (05:00 UTC) - Runs AFTER morning builds finish
-    - cron: '0 5 * * *'
+    - cron: '23 5 * * *'
   workflow_dispatch:
     inputs:
       keep_per_platform:
         description: 'Số bản Release mới nhất giữ lại cho mỗi nền tảng (Filogic / IPQ60xx / IPQ807x)'
         required: false
-        default: '1'
+        default: '2'
         type: string
 
 permissions:
@@ -27,14 +27,14 @@ jobs:
       - name: Safe Purge Old Releases (Always Keep Latest Per Platform)
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          KEEP: ${{ inputs.keep_per_platform || '1' }}
+          KEEP: ${{ inputs.keep_per_platform || '2' }}
           REPO: ${{ github.repository }}
         run: |
           python3 - << 'PYEOF'
           import json, os, subprocess
 
           repo = os.environ["REPO"]
-          keep = max(1, int(os.environ.get("KEEP", "1")))
+          keep = max(1, int(os.environ.get("KEEP", "2")))
           prefixes = [
               "Duydoan-25.12-MediaTek-Filogic-All-",
               "Duydoan-25.12-Qualcomm-IPQ60xx-All-",
@@ -75,12 +75,12 @@ jobs:
               )
           PYEOF
 
-      - name: Purge Old Completed Workflow Runs (Keep Latest 15)
+      - name: Purge Old Completed Workflow Runs (Keep Latest 20)
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           REPO: ${{ github.repository }}
         run: |
-          RUN_IDS=$(gh run list --repo "$REPO" --status completed --limit 150 --json databaseId -q '.[15:][].databaseId' || true)
+          RUN_IDS=$(gh run list --repo "$REPO" --status completed --limit 150 --json databaseId -q '.[20:][].databaseId' || true)
           for rid in $RUN_IDS; do
             if [ -n "$rid" ]; then
               echo ">> Deleting old run: $rid"
