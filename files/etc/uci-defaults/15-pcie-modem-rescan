@@ -1,0 +1,6 @@
+#!/bin/sh
+# VIKINGYFY & Duydoan PCIe M.2 5G Modem Early Bus Rescan
+if [ -f /sys/bus/pci/rescan ]; then
+    echo 1 > /sys/bus/pci/rescan 2>/dev/null || true
+fi
+exit 0
