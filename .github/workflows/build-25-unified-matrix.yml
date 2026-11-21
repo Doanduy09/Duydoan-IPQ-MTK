@@ -3,7 +3,7 @@ name: Duydoan-25.12 Unified Multi-Target Firmware Builder
 on:
   schedule:
     # 03:00 AM Asia/Ho_Chi_Minh daily (20:00 UTC) - Single Source of Truth
-    - cron: '0 20 * * *'
+    - cron: '17 20 * * *'
   workflow_dispatch:
     inputs:
       target:
