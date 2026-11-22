@@ -5,7 +5,7 @@
 [![Distro Version](https://img.shields.io/badge/Duydoan-24.10%20LTS%20%26%2025.12-007ec6.svg?style=for-the-badge&logo=openwrt)](https://github.com/Doanduy09/Duydoan-IPQ-MTK)
 [![Qualcomm NSS](https://img.shields.io/badge/Qualcomm-NSS%2012.5%20Hardware%20Max-brightgreen.svg?style=for-the-badge&logo=qualcomm)](https://github.com/Doanduy09/Duydoan-IPQ-MTK)
 [![MediaTek HNAT](https://img.shields.io/badge/MediaTek-Dual--PPE%20%2B%20WED%20HNAT%20Max-ff69b4.svg?style=for-the-badge)](https://github.com/Doanduy09/Duydoan-IPQ-MTK)
-[![Multi-Build](https://img.shields.io/badge/Multi--Target-88%2B%20Devices%20Unified-purple.svg?style=for-the-badge&logo=githubactions)](https://github.com/Doanduy09/Duydoan-IPQ-MTK/actions)
+[![Multi-Build](https://img.shields.io/badge/Multi--Target-129%20Devices%20Unified-purple.svg?style=for-the-badge&logo=githubactions)](https://github.com/Doanduy09/Duydoan-IPQ-MTK/actions)
 [![Maintained By](https://img.shields.io/badge/Author-Doanduy09-blue.svg?style=for-the-badge&logo=github)](https://github.com/Doanduy09)
 
 **Hệ thống biên dịch Multi-Target CI/CD (kế thừa kiến trúc VIKINGYFY & tối ưu hóa kịch trần phần cứng cho Qualcomm NSS / MediaTek HNAT + Trình Quay Số 5G Thông Minh vượt trội QModem).**  
@@ -62,6 +62,16 @@ Biên dịch đồng loạt trong workflow `Duydoan-25.12 MediaTek Filogic All-D
 | **GL.iNet Puli AX (`glinet_gl-xe3000`)** | 512MB / 8GB eMMC | 1x 2.5G + 1x 1G | **5G CPE Di Động**: Tích hợp Pin 6400mAh + M.2 5G + Dual-SIM |
 | **GL.iNet Beryl AX (`glinet_gl-mt3000`)** | 512MB / 256MB NAND | 1x 2.5G + 1x 1G | Travel Router AX3000 nhỏ gọn + USB 3.0 cắm Modem 5G/iPhone |
 | **GL.iNet Slate 7 (`glinet_gl-mt3600be`)** | 512MB / 512MB NAND | 2x 2.5G | Travel Router Wi-Fi 7 BE3600 + USB 3.0 |
+| **ASUS ZenWiFi BT8 (`stock` & `ubootmod`)** | MT7988D / 1GB / 128MB NAND | 2x 2.5G + 2x 1G + USB 3.0 | Tri-Band **Wi-Fi 7 BE14000** (MLO 2.4G+5G+6G, `mt7996e`) |
+| **BananaPi BPi-R4 (`bananapi_bpi-r4`)** | MT7988A / 4GB-8GB DDR4 / NAND+eMMC | **2x 10G SFP+ + 4x 1G + M.2 5G + USB 3.2** | Flagship **Wi-Fi 7 BE14000** (`mt7996e`), Dual-PPE 10Gbps |
+| **BananaPi BPi-R4 PoE (`bananapi_bpi-r4-poe`)** | MT7988A / 4GB DDR4 / NAND+eMMC | **2x 10G SFP+ + 4x 2.5GbE PoE + M.2 5G** | Flagship **Wi-Fi 7 BE14000** + 2.5G PHY |
+| **BananaPi BPi-R4 Lite (`bananapi_bpi-r4-lite`)** | MT7987A / 2GB DDR4 / NAND+eMMC | **1x 2.5G SFP + 1x 2.5G + 3x 1G + M.2 5G** | **Wi-Fi 7** (`mt7992e`) + M.2 WWAN 5G |
+| **TP-Link Archer BE450 (`tplink_be450`)** | MT7988D / 512MB / 128MB NAND | 1x 10G + 1x 2.5G + 3x 1G + USB 3.0 | **Wi-Fi 7 BE7200** (MLO), HNAT 10Gbps |
+| **Routerich BE7200 (`routerich_be7200`)** | MT7987A / 512MB / 128MB NAND | 2x 2.5G + 3x 1G + USB 3.0 | **Wi-Fi 7 BE7200** (`mt7992e`), 2.5G PHY |
+| **Hiveton H5000M (`hiveton_h5000m`)** | MT7987A / 1GB / 128MB NAND | **2.5GbE + Khe M.2 5G + USB 3.0** | **5G CPE Wi-Fi 7 BE7200** (`mt7992e`), Quáº¡t PWM |
+| **Arcadyan Mozart (`arcadyan_mozart`)** | MT7988A / 2GB / 4GB eMMC | **2x 10GbE + 4x 1GbE** | Flagship **Wi-Fi 7 Tri-Band** (`mt7996e`) |
+| **SmartRG SDG-8733 / 8733A / 8734** | MT7988A/D / 1GB-2GB / 8GB eMMC | **1x 10GbE + 4x 2.5GbE + USB 3.0** | Carrier-Grade **Wi-Fi 7 Tri-Band** (`mt7996e`) |
+| **Keenetic Titan KN-1812 / Netcraze NC-1812** | MT7988D / 1GB / 512MB NAND | **1x 10G + 1x 2.5G + 4x 1G + 2x USB 3.2** | **Wi-Fi 7 BE7200** + Dual USB 3.2 Modem 5G |
 | **CMCC RAX3000M / RAX3000ME (NAND & eMMC)** | 512MB / 128MB NAND hoặc 64GB eMMC | 1x 1G WAN + 3x 1G LAN | Wi-Fi 6 AX3000 (160MHz) + USB 3.0 Modem 5G |
 | **Viettel NR3053 / SDMC MT3053** | 512MB / 128MB NAND | 1x 1G WAN + 3x 1G LAN | Wi-Fi 6 AX3000 (160MHz), hỗ trợ mod USB 3.0 5G |
 | **Xiaomi AX3000T / WR30U (`stock` & `ubootmod`)** | 256MB / 128MB NAND | 4x 1G | Wi-Fi 6 AX3000 (160MHz), HNAT WED Turbo |
