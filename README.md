@@ -98,6 +98,12 @@ Biên dịch đồng loạt trong workflow `Duydoan-25.12 Qualcomm IPQ60xx All-D
 | **Linksys MR7500 (`linksys_mr7500`)** | IPQ6018 (4x 1.8GHz) / 512MB / 256MB NAND | 1x 2.5G + 4x 1G + 1x USB 3.0 | Tri-Band AXE6600 Wi-Fi 6E, **Qualcomm NSS 12.5 Max** |
 | **Netgear WAX214 / WAX610 / WAX610Y** | IPQ6010 / 512MB / 256MB NAND | 1x 2.5G PoE+ (WAX610) | Access Point Wi-Fi 6 AX1800 Doanh Nghiệp |
 | **Yuncore FAP650 (`yuncore_fap650`)** | IPQ6010 / 512MB / 128MB NAND | 1x 2.5G + 1x 1G PoE | Access Point Wi-Fi 6 AX1800 Công Suất Cao |
+| **8devices Mango DVK (`8devices_mango-dvk`)** | IPQ6010 / 512MB / NAND+eMMC | 1x 2.5G + 1x 1G + M.2 5G + USB 3.0 | Industrial Wi-Fi 6 AX1800, **Qualcomm NSS 12.5 Max** |
+| **Alfa Network AP120C-AX (`alfa-network_ap120c-ax`)** | IPQ6018 / 512MB / 256MB NAND | 1x 2.5G PoE + 1x 1G + USB 3.0 | Enterprise Wi-Fi 6 AX3600, **Qualcomm NSS 12.5 Max** |
+| **Cambium Networks XE3-4 (`cambiumnetworks_xe3-4`)** | IPQ6018 / 1GB / 64MB NOR+NAND | 1x 2.5G + 1x 1G PoE | Tri-Radio Wi-Fi 6/6E Enterprise, **Qualcomm NSS 12.5 Max** |
+| **TP-Link Omada EAP610-Outdoor (`tplink_eap610-outdoor`)** | IPQ6018 / 512MB / 128MB NAND | 1x 1G PoE IP67 | Outdoor Wi-Fi 6 AX1800, **Qualcomm NSS 12.5 Max** |
+| **TP-Link Omada EAP623-Outdoor HD (`tplink_eap623od-hd-v1`)** | IPQ6018 / 512MB / 128MB NAND | 1x 1G PoE IP67 | High-Density Outdoor Wi-Fi 6, **Qualcomm NSS 12.5 Max** |
+| **TP-Link Omada EAP625-Outdoor HD (`tplink_eap625-outdoor-hd-v1`)** | IPQ6018 / 512MB / 128MB NAND | 1x 1G PoE IP67 | High-Density Outdoor Wi-Fi 6, **Qualcomm NSS 12.5 Max** |
 
 ---
 
@@ -117,6 +123,16 @@ Biên dịch đồng loạt trong workflow `Duydoan-25.12 Qualcomm IPQ807x All-D
 | **Dynalink DL-WRX36 (`dynalink_dl-wrx36`)** | IPQ8072A (4x 2.2GHz) / 1GB / 256MB NAND | 1x 2.5G + 4x 1G + 1x USB 3.0 Modem 5G | Dual-Band AX3600, **NSS 12.5 Max** |
 | **Linksys Velop MX (`mx4200v1`, `v2`, `mx4300`, `mx5300`, `mx8500`)** | IPQ8072A/8074 / 512MB-1GB / 256-512MB NAND | 4x-5x 1G (2.5G trên MX8500) + USB 3.0 | Tri-Band Mesh Wi-Fi 6 (AX4200–AX5300), **NSS 12.5 Max** |
 | **Aliyun AP8220 (`aliyun_ap8220`)** | IPQ8072A / 1GB / 128MB NAND | 2x 2.5G PoE | AP Doanh Nghiệp Wi-Fi 6 AX3600, **NSS 12.5 Max** |
+| **Netgear Nighthawk RAX120v2 (`netgear_rax120v2`)** | IPQ8074A (4x 2.2GHz) / 1GB / 512MB NAND | **1x 5GbE + 5x 1GbE + 2x USB 3.0 Modem 5G** | Flagship 12-Stream AX6000, **NSS 12.5 Max** |
+| **Netgear Orbi Pro SXK80 (`netgear_sxr80` / `sxs80`)** | IPQ8074A (4x 2.2GHz) / 1GB / 512MB NAND | 1x 2.5G + 4x 1G | Tri-Band AX6000 Mesh Enterprise, **NSS 12.5 Max** |
+| **Netgear WAX218 / WAX620 / WAX630** | IPQ8072A/8074A / 512MB-1GB / 256MB NAND | 1x 2.5G PoE+ (+ 1x 1G trÃªn WAX630) | Business Wi-Fi 6 AX3600â€“AX6000, **NSS 12.5 Max** |
+| **Zyxel Armor G5 (`zyxel_nbg7815`)** | IPQ8074A (4x 2.2GHz) / 1GB / 4GB eMMC | **1x 10GbE + 1x 2.5GbE + 4x 1GbE + USB 3.1** | 12-Stream AX6000 10G Router, **NSS 12.5 Max** |
+| **Zyxel NWA210AX (`zyxel_nwa210ax`)** | IPQ8072A / 512MB / 128MB NAND | 1x 2.5G PoE + 1x 1G | Dual-Radio Wi-Fi 6 AX3000, **NSS 12.5 Max** |
+| **Yuncore AX880 (`yuncore_ax880`)** | IPQ8072A / 512MB / 128MB NAND | 1x 2.5G + 1x 1G PoE | High-Power Wi-Fi 6 AX3600, **NSS 12.5 Max** |
+| **ZBTlink ZBT-Z800AX (`zbtlink_zbt-z800ax`)** | IPQ8072A / 1GB / 128MB NAND | **1x 2.5G + 4x 1G + Khe M.2 5G + Khe SIM + USB 3.0** | **5G CPE Router** AX3600, **NSS 12.5 Max** |
+| **TP-Link Omada EAP620 HD v1 / EAP660 HD v1** | IPQ8072A/8074A / 512MB-1GB / 128MB NAND | 1x 1G / 2.5G PoE+ | High-Density Enterprise Wi-Fi 6, **NSS 12.5 Max** |
+| **Spectrum SAX1V1K (`spectrum_sax1v1k`)** | IPQ8072A / 1GB / 4GB eMMC | 1x 2.5G + 3x 1G | Dual-Band AX3600 eMMC, **NSS 12.5 Max** |
+| **Linksys HomeWRK (`linksys_homewrk`) / prpl Haze (`prpl_haze`) / Edimax CAX1800** | IPQ8072A/8074A / 512MB-2GB / NAND+eMMC | 2.5GbE + Gigabit LAN + USB 3.0 | Wi-Fi 6 AX3600â€“AX6000, **NSS 12.5 Max** |
 
 ---
 
