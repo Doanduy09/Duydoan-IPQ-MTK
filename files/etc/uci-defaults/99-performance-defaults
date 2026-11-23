@@ -17,6 +17,9 @@ if grep -qiE "mediatek|mt798" /proc/cpuinfo /sys/firmware/devicetree/base/compat
         [ -f /etc/modules.d/mt7915e ] && grep -q "wed_enable" /etc/modules.d/mt7915e || echo "mt7915e wed_enable=Y" > /etc/modules.d/99-mt7915e-wed 2>/dev/null
     fi
 fi
+
+# DuyDoan 5G Cellular WAN Firewall Integration
+uci -q add_list firewall.@zone[1].network='duydoan_5g'
 uci -q commit firewall
 
 # 3. Wi-Fi High Efficiency Defaults

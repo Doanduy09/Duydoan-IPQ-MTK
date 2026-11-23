@@ -129,6 +129,9 @@ proto_duydoan5g_setup() {
 	# 6. Dang ky voi netifd
 	proto_init_update "$ifname" 1
 	proto_set_keep 1
+	proto_add_data
+	json_add_string "zone" "wan"
+	proto_close_data
 	proto_add_ipv4_address "$ip4" "30"
 	proto_add_ipv4_route "0.0.0.0" "0" "$gw" "$ip4" "$metric"
 	proto_add_dns_server "8.8.8.8"
@@ -144,6 +147,15 @@ proto_duydoan5g_setup() {
 	fi
 
 	proto_send_update "$interface"
+
+	# Tu dong gan interface vao Firewall WAN zone neu chua co
+	if command -v uci >/dev/null 2>&1; then
+		if ! uci -q get firewall.@zone[1].network | grep -qw "$interface"; then
+			uci -q add_list firewall.@zone[1].network="$interface"
+			uci -q commit firewall
+			/etc/init.d/firewall reload >/dev/null 2>&1 &
+		fi
+	fi
 }
 
 proto_duydoan5g_teardown() {
