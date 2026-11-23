@@ -5,6 +5,8 @@ on:
     branches:
       - main
       - openwrt-25
+      - openwrt-24-passwall
+      - master-passwall
   schedule:
     # 03:15 AM Asia/Ho_Chi_Minh daily (20:15 UTC) -> Kết thúc chính xác trước 08:00 AM
     - cron: '15 20 * * *'
@@ -81,8 +83,10 @@ jobs:
           
           CURRENT_BRANCH="${{ github.ref_name }}"
           UPSTREAM_BRANCH="openwrt-25.12"
-          if [ "$CURRENT_BRANCH" = "main" ]; then
+          if [ "$CURRENT_BRANCH" = "main" ] || [ "$CURRENT_BRANCH" = "openwrt-24-passwall" ]; then
             UPSTREAM_BRANCH="openwrt-24.10"
+          elif [ "$CURRENT_BRANCH" = "master-passwall" ]; then
+            UPSTREAM_BRANCH="master"
           fi
           
           echo ">> [PRE-BUILD SYNC] Đang đồng bộ nhánh $CURRENT_BRANCH với upstream immortalwrt:$UPSTREAM_BRANCH..."
@@ -133,17 +137,28 @@ jobs:
         id: set-matrix
         run: |
           TARGET="${{ inputs.target || 'all' }}"
+          REF_NAME="${{ github.ref_name }}"
           python3 - << 'PYEOF' > matrix.json
           import json, os
           target = os.environ.get("TARGET", "all")
+          ref_name = os.environ.get("REF_NAME", "openwrt-25")
+          if ref_name == "main":
+              prefix = "Duydoan-24.10"
+          elif ref_name == "openwrt-24-passwall":
+              prefix = "Duydoan-24-Passwall"
+          elif ref_name == "master-passwall":
+              prefix = "Duydoan-Master-Passwall"
+          else:
+              prefix = "Duydoan-25.12"
+
           all_targets = [
               {
                   "id": "qualcomm-ipq60xx",
                   "title": "Qualcomm IPQ60xx (NSS 12.5)",
                   "config": "qualcomm_ipq60xx_all.config",
                   "target_dir": "bin/targets/qualcommax/ipq60xx",
-                  "tag_prefix": "Duydoan-25.12-Qualcomm-IPQ60xx-All",
-                  "release_title": "Duydoan-25.12 Qualcomm IPQ60xx Unified All-Devices Release",
+                  "tag_prefix": f"{prefix}-Qualcomm-IPQ60xx-All",
+                  "release_title": f"{prefix} Qualcomm IPQ60xx Unified All-Devices Release",
                   "copy_itb_to_bin": False
               },
               {
@@ -151,17 +166,17 @@ jobs:
                   "title": "Qualcomm IPQ807x (NSS 12.5)",
                   "config": "qualcomm_ipq807x_all.config",
                   "target_dir": "bin/targets/qualcommax/ipq807x",
-                  "tag_prefix": "Duydoan-25.12-Qualcomm-IPQ807x-All",
-                  "release_title": "Duydoan-25.12 Qualcomm IPQ807x Unified All-Devices Release",
+                  "tag_prefix": f"{prefix}-Qualcomm-IPQ807x-All",
+                  "release_title": f"{prefix} Qualcomm IPQ807x Unified All-Devices Release",
                   "copy_itb_to_bin": False
               },
               {
                   "id": "mediatek-filogic",
-                  "title": "MediaTek Filogic (MT7981/7986/7988)",
+                  "title": "MediaTek Filogic (MT7981/7986/7988 HNAT)",
                   "config": "mediatek_filogic_all.config",
                   "target_dir": "bin/targets/mediatek/filogic",
-                  "tag_prefix": "Duydoan-25.12-MediaTek-Filogic-All",
-                  "release_title": "Duydoan-25.12 MediaTek Filogic Unified All-Devices Release",
+                  "tag_prefix": f"{prefix}-MediaTek-Filogic-All",
+                  "release_title": f"{prefix} MediaTek Filogic Unified All-Devices Release",
                   "copy_itb_to_bin": True
               }
           ]
@@ -173,6 +188,7 @@ jobs:
           echo "Selected matrix: $MATRIX"
         env:
           TARGET: ${{ inputs.target || 'all' }}
+          REF_NAME: ${{ github.ref_name }}
 
   build:
     name: Build ${{ matrix.title }}
@@ -183,10 +199,10 @@ jobs:
       matrix: ${{ fromJson(needs.plan.outputs.matrix) }}
 
     steps:
-      - name: Checkout OpenWrt 25.12 Branch (Pinned)
+      - name: Checkout Target Branch
         uses: actions/checkout@v4
         with:
-          ref: openwrt-25
+          ref: ${{ github.ref_name }}
 
       - name: Free Runner Disk Space & Install Dependencies
         env:

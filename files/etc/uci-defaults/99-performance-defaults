@@ -18,6 +18,13 @@ if grep -qiE "mediatek|mt798" /proc/cpuinfo /sys/firmware/devicetree/base/compat
     fi
 fi
 
+# Qualcomm IPQ NSS Hardware Acceleration & ECM Integration
+if grep -qiE "ipq807|ipq60|qualcomm" /proc/cpuinfo /sys/firmware/devicetree/base/compatible 2>/dev/null; then
+    uci -q set firewall.@defaults[0].flow_offloading='1'
+    uci -q set firewall.@defaults[0].flow_offloading_hw='1'
+    [ -x /etc/init.d/qca-nss-ecm ] && /etc/init.d/qca-nss-ecm enable
+fi
+
 # DuyDoan 5G Cellular WAN Firewall Integration
 uci -q add_list firewall.@zone[1].network='duydoan_5g'
 uci -q commit firewall
