@@ -178,6 +178,28 @@ proto_duydoan5g_setup() {
 			/etc/init.d/firewall reload >/dev/null 2>&1 &
 		fi
 	fi
+
+	# 7. Tien trinh tu dong lay lai IP khi nha mang thu hoi hoac dut song (Auto-Reconnect & IP Re-acquisition)
+	(
+		local fail_cnt=0
+		while true; do
+			sleep 15
+			[ -d "/sys/class/net/$ifname" ] || break
+			local cur_ip=$(ip -4 addr show dev "$ifname" 2>/dev/null | grep -oE 'inet [0-9.]+' | cut -d' ' -f2 | head -n 1)
+			if [ -z "$cur_ip" ] || ! ping -c 1 -W 2 -I "$ifname" 8.8.8.8 >/dev/null 2>&1; then
+				fail_cnt=$((fail_cnt + 1))
+				if [ "$fail_cnt" -ge 3 ]; then
+					logger -t "duydoan5g" "Phat hien IP bi thu hoi hoac mat mang! Tu dong ket noi va lay lai IP moi..."
+					killall -9 quectel-CM-M quectel-CM 2>/dev/null
+					sleep 1
+					ifup "$interface" >/dev/null 2>&1 &
+					break
+				fi
+			else
+				fail_cnt=0
+			fi
+		done
+	) &
 }
 
 proto_duydoan5g_teardown() {

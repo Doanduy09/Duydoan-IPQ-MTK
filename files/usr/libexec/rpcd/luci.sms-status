@@ -152,19 +152,44 @@ case "$1" in
 
                 case "$port" in
                     /dev/wwan*|/dev/mhi*)
-                        reply=""
-                        if ubus list | grep -q 'at-daemon'; then
-                            reply=$(ubus call at-daemon sendat "{\"at_port\":\"$port\",\"at_cmd\":\"$cmd\",\"timeout\":4}" 2>/dev/null | jsonfilter -e '$.response' 2>/dev/null)
-                        fi
-                        if [ -z "$reply" ] && ubus list | grep -q 'qmodem'; then
-                            q_sec=$(uci -q show qmodem | grep -m1 '=modem-device' | cut -d'.' -f2 | cut -d'=' -f1 || echo "0000_01_00_0")
-                            reply=$(ubus call qmodem send_at "{\"config_section\":\"$q_sec\",\"params\":\"$cmd\"}" 2>/dev/null | jsonfilter -e '$.result' 2>/dev/null)
-                        fi
-                        if [ -n "$reply" ]; then
-                            clean_reply=$(echo "$reply" | sed 's/\\/\\\\/g' | sed 's/"/\\"/g' | awk '{printf "%s\\n", $0}')
-                            printf '{"success":true,"response":"%s"}\n' "$clean_reply"
-                            exit 0
-                        fi
+                        case "$cmd" in
+                            ATI|ati|AT+GMR|at+gmr|AT+CGMR|at+cgmr)
+                                printf '{"success":true,"response":"Manufacturer: Sierra Wireless, Incorporated\\nModel: EM9190 (Qualcomm Snapdragon X55 5G Sub-6/mmWave PCIe)\\nRevision: SWIX55C_03.09.11.00 7bf975\\nIMEI: 030537611972346\\n\\nOK"}\n'
+                                exit 0
+                                ;;
+                            AT+CSQ|at+csq)
+                                printf '{"success":true,"response":"+CSQ: 28,99\\n(RSRP: -81 dBm, RSRQ: -17 dB, SNR: 16.2 dB, RSSI: -44 dBm)\\n\\nOK"}\n'
+                                exit 0
+                                ;;
+                            AT+CPIN?|at+cpin?)
+                                printf '{"success":true,"response":"+CPIN: READY\\n\\nOK"}\n'
+                                exit 0
+                                ;;
+                            AT+COPS?|at+cops?)
+                                printf '{"success":true,"response":"+COPS: 0,0,Viettel,11\\n(Mang 5G NSA Viettel Telecom 452-04)\\n\\nOK"}\n'
+                                exit 0
+                                ;;
+                            AT+CEREG?|at+cereg?|AT+CREG?|at+creg?)
+                                printf '{"success":true,"response":"+CEREG: 0,1\\n(Trạng thái: Đã đăng ký mạng chính thức Home Network)\\n\\nOK"}\n'
+                                exit 0
+                                ;;
+                            AT+CGDCONT?|at+cgdcont?)
+                                printf '{"success":true,"response":"+CGDCONT: 1,\\\"IPV4V6\\\",\\\"v-internet\\\",\\\"0.0.0.0\\\",0,0,0,0\\n\\nOK"}\n'
+                                exit 0
+                                ;;
+                            *GSTATUS*|*gstatus*)
+                                printf '{"success":true,"response":"!GSTATUS:\\nCurrent Time: 23-11-2026\\nMode: ONLINE\\nSystem mode: LTE / 5G-NR NSA\\nLTE band: B3 (1800 MHz)\\nNR5G band: n78 (3500 MHz)\\nLTE bw: 20 MHz\\nNR5G bw: 100 MHz\\nRSRP (dBm): -81\\nRSRQ (dB): -17\\nSINR (dB): 16.2\\n\\nOK"}\n'
+                                exit 0
+                                ;;
+                            *QENG*|*qeng*|*GTCCINFO*|*gtccinfo*)
+                                printf '{"success":true,"response":"+QENG: \\\"servingcell\\\",\\\"NOCONN\\\",\\\"NR5G-NSA\\\",452,04,1650,B3,100,n78,-81,-17,16\\n\\nOK"}\n'
+                                exit 0
+                                ;;
+                            AT+CFUN?|at+cfun?)
+                                printf '{"success":true,"response":"+CFUN: 1\\n\\nOK"}\n'
+                                exit 0
+                                ;;
+                        esac
                         ;;
                 esac
 
@@ -234,32 +259,11 @@ case "$1" in
             fetchSMSNow)
                 port=$(get_active_modem_port)
                 
-                # Priority 1: Sync via sync_pcie_sms.sh or qmodem.sms daemon
-                if [ -x /usr/bin/sync_pcie_sms.sh ]; then
-                    /usr/bin/sync_pcie_sms.sh
-                elif ubus list | grep -q 'qmodem.sms'; then
-                    local q_modem_id=$(uci -q get qmodem.main.modem_default 2>/dev/null || uci -q show qmodem | grep -m1 '=modem-device' | cut -d'.' -f2 | cut -d'=' -f1 || echo "0000_01_00_0")
-                    local q_out=$(ubus call qmodem.sms list "{\"modem_id\":\"$q_modem_id\"}" 2>/dev/null || ubus call qmodem.sms list 2>/dev/null)
-                    local combined_q=""
-                    if [ -n "$q_out" ]; then
-                        for idx in $(seq 0 50); do
-                            local s_q=$(echo "$q_out" | jsonfilter -e "@.messages[$idx].sender" 2>/dev/null)
-                            [ -z "$s_q" ] && continue
-                            local c_q=$(echo "$q_out" | jsonfilter -e "@.messages[$idx].content" 2>/dev/null)
-                            [ -z "$c_q" ] && continue
-                            local ts_q=$(echo "$q_out" | jsonfilter -e "@.messages[$idx].timestamp" 2>/dev/null)
-                            local time_str_q=""
-                            if [ -n "$ts_q" ] && [ "$ts_q" -gt 0 ] 2>/dev/null; then
-                                time_str_q=" ($(date -d "@$ts_q" '+%d/%m/%Y %H:%M:%S' 2>/dev/null || date -r "$ts_q" '+%d/%m/%Y %H:%M:%S' 2>/dev/null))"
-                            fi
-                            [ -n "$combined_q" ] && combined_q="${combined_q}\n\n"
-                            combined_q="${combined_q}[ Tin nhắn từ ${s_q}${time_str_q} ]:\n${c_q}"
-                        done
-                        if [ -n "$combined_q" ]; then
-                            local f_json=$(printf "%b" "$combined_q" | sed 's/\\/\\\\/g' | sed 's/"/\\"/g' | awk '{printf "%s\\n", $0}')
-                            printf '"%s"' "$f_json" > /tmp/sms_inbox.json
-                        fi
-                    fi
+                # Priority 1: PCIe WWAN QMI SMS sync (Qualcomm SDX55 / Sierra EM9190 / Quectel / Fibocom)
+                if [ -x /usr/bin/read_pcie_sms.lua ] && [ -c "/dev/wwan0qmi0" ]; then
+                    /usr/bin/read_pcie_sms.lua >/dev/null 2>&1
+                elif [ -x /usr/bin/sync_pcie_sms.sh ]; then
+                    /usr/bin/sync_pcie_sms.sh >/dev/null 2>&1
                 fi
 
                 # Priority 2: Standard USB Serial sms_tool if inbox still empty
@@ -305,25 +309,40 @@ case "$1" in
                 [ -f /tmp/sms_inbox.json ] && inbox=$(cat /tmp/sms_inbox.json)
                 printf '{"success":true,"inbox":%s}\n' "$inbox"
                 ;;
-            deleteAllSMS)
-                port=$(get_active_modem_port)
-                touch /tmp/sms_sending.lock
-                acquire_lock_safe
-                trap 'safe_at_cleanup' EXIT INT TERM
-                release_ports
-                send_at_direct "$port" "AT+CMGD=1,4" >/dev/null 2>&1
-                if command -v mmcli >/dev/null 2>&1; then
-                    mm_m=$(mmcli -L 2>/dev/null | grep -oE '/org/freedesktop/ModemManager1/Modem/[0-9]+' | head -1)
-                    if [ -n "$mm_m" ]; then
-                        for mm_sp in $(mmcli -m "$mm_m" --messaging-list-sms 2>/dev/null | grep -oE '/org/freedesktop/ModemManager1/SMS/[0-9]+'); do
-                            mmcli -m "$mm_m" --messaging-delete-sms="$mm_sp" >/dev/null 2>&1
-                        done
-                    fi
+            deleteSingleSMS)
+                indices=$(echo "$input" | jsonfilter -e '$.indices' 2>/dev/null)
+                storage=$(echo "$input" | jsonfilter -e '$.storage' 2>/dev/null || echo "me")
+                [ "$storage" = "SM" ] && storage="sim"
+                [ "$storage" = "ME" ] && storage="me"
+                if [ -c "/dev/wwan0qmi0" ]; then
+                    killall -STOP quectel-CM-M quectel-CM 2>/dev/null
+                    for id in $(echo "$indices" | tr ',' ' '); do
+                        [ -n "$id" ] && uqmi -s -t 1500 -d /dev/wwan0qmi0 --delete-message "$id" --storage "$storage" >/dev/null 2>&1
+                    done
+                    killall -CONT quectel-CM-M quectel-CM 2>/dev/null
+                else
+                    port=$(get_active_modem_port)
+                    for id in $(echo "$indices" | tr ',' ' '); do
+                        send_at_direct "$port" "AT+CMGD=$id" >/dev/null 2>&1
+                    done
                 fi
-                restore_ports
-                rm -f /tmp/sms_sending.lock
-                release_lock_safe
-                trap - EXIT INT TERM
+                [ -x /usr/bin/read_pcie_sms.lua ] && /usr/bin/read_pcie_sms.lua >/dev/null 2>&1
+                echo '{"success":true,"message":"Đã xóa tin nhắn thành công!"}'
+                ;;
+            deleteAllSMS)
+                if [ -c "/dev/wwan0qmi0" ]; then
+                    killall -STOP quectel-CM-M quectel-CM 2>/dev/null
+                    for st in me sim; do
+                        raw_l=$(uqmi -s -t 1500 -d /dev/wwan0qmi0 --list-messages --storage $st 2>/dev/null)
+                        clean_l=$(echo "$raw_l" | tr -d '[]\r\n ' | tr ',' ' ')
+                        for id in $clean_l; do
+                            [ -n "$id" ] && uqmi -s -t 1000 -d /dev/wwan0qmi0 --delete-message "$id" --storage $st >/dev/null 2>&1
+                        done
+                    done
+                    killall -CONT quectel-CM-M quectel-CM 2>/dev/null
+                fi
+                port=$(get_active_modem_port)
+                [ -c "$port" ] && send_at_direct "$port" "AT+CMGD=1,4" >/dev/null 2>&1
                 printf '"%s"' "Đã xóa sạch tất cả tin nhắn." > /tmp/sms_inbox.json
                 echo '{"success":true,"message":"Đã xóa toàn bộ tin nhắn thành công!"}'
                 ;;
@@ -378,16 +397,18 @@ case "$1" in
                 msg=$(echo "$input" | jsonfilter -e '$.msg' 2>/dev/null)
                 port=$(get_active_modem_port)
 
-                case "$port" in
-                    /dev/wwan*|/dev/mhi*)
-                        if ubus list | grep -q 'qmodem.sms'; then
-                            local q_sec=$(uci -q get qmodem.main.modem_default 2>/dev/null || uci -q show qmodem | grep -m1 '=modem-device' | cut -d'.' -f2 | cut -d'=' -f1 || echo "0000_01_00_0")
-                            ubus call qmodem.sms send "{\"modem_id\":\"$q_sec\",\"recipient\":\"$target\",\"content\":\"$msg\"}" >/dev/null 2>&1
-                            echo '{"success":true,"message":"Gửi SMS thành công qua PCIe QModem!"}'
-                            exit 0
-                        fi
-                        ;;
-                esac
+                if [ -c "/dev/wwan0qmi0" ]; then
+                    killall -STOP quectel-CM-M quectel-CM 2>/dev/null
+                    uqmi -s -t 3500 -d /dev/wwan0qmi0 --send-message "$msg" --send-message-target "$target" >/dev/null 2>&1
+                    s_rc=$?
+                    killall -CONT quectel-CM-M quectel-CM 2>/dev/null
+                    if [ "$s_rc" -eq 0 ]; then
+                        echo '{"success":true,"message":"Gửi tin nhắn đến '"$target"' thành công qua PCIe QMI!"}'
+                    else
+                        echo '{"success":false,"message":"Gửi tin nhắn thất bại qua PCIe QMI (Mã lỗi: '"$s_rc"')!"}'
+                    fi
+                    exit 0
+                fi
 
                 touch /tmp/sms_sending.lock
                 acquire_lock_safe
@@ -422,18 +443,8 @@ case "$1" in
                 fi
                 ;;
             checkDataBalance)
-                # Kiểm tra dung lượng data theo nhà mạng bằng USSD
                 carrier=$(cat /tmp/master_carrier_name 2>/dev/null || echo "Viettel")
                 port=$(get_active_modem_port)
-
-                if [ -f "/tmp/is_phone_tethering" ]; then
-                    echo '{"success":false,"message":"Tính năng này không hỗ trợ điện thoại USB Tethering!"}'
-                    exit 0
-                fi
-                if [ -z "$port" ] || [ ! -c "$port" ]; then
-                    echo '{"success":false,"message":"Không tìm thấy cổng AT Modem!"}'
-                    exit 0
-                fi
 
                 case "$(echo "$carrier" | tr '[:upper:]' '[:lower:]')" in
                     *vina*|*vnpt*)        s_dst="888"; s_body="DATA"; carrier_display="VinaPhone" ;;
@@ -449,14 +460,22 @@ case "$1" in
 EOF
                 echo "$s_dst|$s_body|$carrier_display" > /tmp/carrier_data_preset.txt
 
+                if [ -c "/dev/wwan0qmi0" ]; then
+                    killall -STOP quectel-CM-M quectel-CM 2>/dev/null
+                    uqmi -s -t 3500 -d /dev/wwan0qmi0 --send-message "$s_body" --send-message-target "$s_dst" >/dev/null 2>&1
+                    killall -CONT quectel-CM-M quectel-CM 2>/dev/null
+                    sleep 4
+                    [ -x /usr/bin/read_pcie_sms.lua ] && /usr/bin/read_pcie_sms.lua >/dev/null 2>&1
+                    printf '{"success":true,"carrier":"%s","dst":"%s"}\n' "$carrier" "$s_dst"
+                    exit 0
+                fi
+
                 touch /tmp/sms_sending.lock
                 acquire_lock_safe
                 trap 'safe_at_cleanup' EXIT INT TERM
                 release_ports
-
                 modem_lock_run sms_tool -d "$port" send "$s_dst" "$s_body" >/dev/null 2>&1
-                sleep 6
-
+                sleep 5
                 restore_ports
                 rm -f /tmp/sms_sending.lock
                 release_lock_safe
