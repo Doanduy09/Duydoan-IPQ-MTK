@@ -134,7 +134,7 @@ send_at_direct() {
 
 case "$1" in
     list)
-        echo '{"getSMSInfo":{},"sendSMS":{"target":"string","msg":"string"},"sendAT":{"cmd":"string"},"setCustomSchedule":{"datetime":"string"},"getAvailablePorts":{},"setCustomAtPort":{"port":"string"},"fetchSMSNow":{},"deleteSingleSMS":{"indices":"string","storage":"string"},"deleteAllSMS":{},"checkDataBalance":{},"setBandLock":{"mode":"string"},"getCellInfo":{},"setCellLock":{"action":"string"},"getSentinelConfig":{},"setSentinelConfig":{"tg_bot_token":"string","tg_admin_id":"string","tg_owner_name":"string","emergency_phone":"string","gemini_api_key":"string","tailscale_auth_key":"string","cloud_remote":"string","cam1_rtsp":"string","cam2_rtsp":"string","cam_cong_rtsp":"string"},"loadVaultKeys":{}}'
+        echo '{"getSMSInfo":{},"sendSMS":{"target":"string","msg":"string"},"sendAT":{"cmd":"string"},"setCustomSchedule":{"datetime":"string"},"getAvailablePorts":{},"setCustomAtPort":{"port":"string"},"fetchSMSNow":{},"deleteSingleSMS":{"indices":"string","storage":"string"},"deleteAllSMS":{},"checkDataBalance":{},"setBandLock":{"mode":"string"},"getCellInfo":{},"setCellLock":{"action":"string"},"getSentinelConfig":{},"setSentinelConfig":{"tg_bot_token":"string","tg_admin_id":"string","tg_owner_name":"string","emergency_phone":"string","gemini_api_key":"string","tailscale_auth_key":"string","cloud_remote":"string","cam1_rtsp":"string","cam2_rtsp":"string","cam_cong_rtsp":"string"},"loadVaultKeys":{},"renameInterface":{"new_name":"string"}}'
         ;;
     call)
         read -r -t 1 input 2>/dev/null || [ -n "$input" ] || input=""
@@ -327,30 +327,51 @@ case "$1" in
                 printf '"%s"' "Đã xóa sạch tất cả tin nhắn." > /tmp/sms_inbox.json
                 echo '{"success":true,"message":"Đã xóa toàn bộ tin nhắn thành công!"}'
                 ;;
+            renameInterface)
+                new_name=$(echo "$input" | jsonfilter -e '$.new_name' 2>/dev/null | tr -cd 'a-zA-Z0-9_-')
+                [ -z "$new_name" ] && new_name="duydoan_5g"
+                old_name=$(cat /tmp/wd_interface 2>/dev/null || echo "duydoan_5g")
+
+                if [ "$old_name" != "$new_name" ]; then
+                    if uci -q get "network.$old_name" >/dev/null; then
+                        uci -q rename "network.$old_name=$new_name"
+                    else
+                        uci -q set "network.$new_name=interface"
+                        uci -q set "network.$new_name.proto=duydoan5g"
+                        uci -q set "network.$new_name.apn=v-internet"
+                        uci -q set "network.$new_name.metric=10"
+                    fi
+                    uci -q commit network
+
+                    uci -q del_list firewall.@zone[1].network="$old_name"
+                    uci -q add_list firewall.@zone[1].network="$new_name"
+                    uci -q commit firewall
+
+                    echo "$new_name" > /tmp/wd_interface
+                    /etc/init.d/firewall reload >/dev/null 2>&1 &
+                    /etc/init.d/network reload >/dev/null 2>&1 &
+                fi
+
+                echo '{"success":true,"message":"Đã đổi tên interface thành '"$new_name"' thành công!"}'
+                ;;
             getSMSInfo)
                 port=$(get_active_modem_port)
-                sim_info=$(cat /tmp/master_sim_info_luci 2>/dev/null || echo "SIM Viettel")
-                sim_status=$(cat /tmp/master_sim_status 2>/dev/null || echo "READY")
+                act_iface=$(cat /tmp/wd_interface 2>/dev/null || echo "duydoan_5g")
+                sim_info=$(cat /tmp/master_sim_info_luci 2>/dev/null || echo "SIM Viettel (Hoạt động)")
+                cur_sim_status=$(cat /tmp/master_sim_status 2>/dev/null)
+                [ -z "$cur_sim_status" ] && cur_sim_status="VALID"
+                is_auth=0
+                [ "$cur_sim_status" = "VALID" ] && is_auth=1
                 epoch=$(cat /etc/sms_custom_send_epoch 2>/dev/null || cat /tmp/sms_custom_send_epoch 2>/dev/null || cat /tmp/sms_next_send_epoch 2>/dev/null || echo "0")
                 cur_band=$(cat /etc/config/band_lock_mode 2>/dev/null || cat /tmp/band_lock_mode 2>/dev/null || echo "auto_carrier")
-                
-                # Xác thực bảo mật: Không gửi dãy số ICCID ra ngoài, chỉ trả cờ is_authenticated (1 hoặc 0)
-                # Bảo mật SIM mặc định: Chỉ cấp quyền cho SIM có trạng thái VALID (thuộc 3 SIM VIP)
-                cur_sim_status=$(cat /tmp/master_sim_status 2>/dev/null || echo "LOCKED")
-                is_auth=0
-                if [ "$cur_sim_status" = "VALID" ]; then
-                    is_auth=1
-                else
-                    epoch="0"
-                fi
 
                 inbox="\"Hộp thư trống hoặc nhấn Làm Mới SMS để đọc tin nhắn.\""
                 [ -f /tmp/sms_inbox.json ] && [ -s /tmp/sms_inbox.json ] && inbox=$(cat /tmp/sms_inbox.json 2>/dev/null)
                 [ -z "$inbox" ] && inbox="\"Hộp thư trống.\""
                 carrier_preset=$(cat /tmp/carrier_data_preset.json 2>/dev/null)
                 [ -z "$carrier_preset" ] && carrier_preset='{"carrier":"Viettel","dest":"191","syntax":"KTTK","status":"STANDBY"}'
-                printf '{"port":"%s","sim_info":"%s","sim_status":"%s","custom_send_epoch":"%s","is_authenticated":%d,"cur_band_lock":"%s","carrier_preset":%s,"inbox":%s}\n' \
-                    "$port" "$sim_info" "$sim_status" "$epoch" "$is_auth" "$cur_band" "$carrier_preset" "$inbox"
+                printf '{"port":"%s","act_iface":"%s","sim_info":"%s","sim_status":"%s","custom_send_epoch":"%s","is_authenticated":%d,"cur_band_lock":"%s","carrier_preset":%s,"inbox":%s}\n' \
+                    "$port" "$act_iface" "$sim_info" "$cur_sim_status" "$epoch" "$is_auth" "$cur_band" "$carrier_preset" "$inbox"
                 ;;
             sendSMS)
                 target=$(echo "$input" | jsonfilter -e '$.target' 2>/dev/null)

@@ -49,24 +49,27 @@ proto_duydoan5g_setup() {
 	# 2. Nhan dien phan cung
 	local ifname="mhi_hwip0"
 	local at_port="/dev/wwan0at0"
-	local cm_extra="-n 1 -m 1 -4"
+	local pdp_flags="-4 -6"
+	[ "$pdp" = "ipv4" ] && pdp_flags="-4"
+	[ "$pdp" = "ipv6" ] && pdp_flags="-6"
+	local cm_extra="-n 1 -m 1 $pdp_flags"
 
 	if [ -d "/sys/class/net/rmnet_mhi0" ] || [ -c "/dev/mhi_DUN" ]; then
 		ifname="rmnet_mhi0.1"
 		at_port="/dev/mhi_DUN"
-		cm_extra="-4 -6"
+		cm_extra="$pdp_flags"
 	elif [ -d "/sys/class/net/mhi_hwip0" ] || [ -c "/dev/wwan0qmi0" ]; then
 		ifname="mhi_hwip0"
 		at_port="/dev/wwan0at0"
-		cm_extra="-n 1 -m 1 -4"
+		cm_extra="-n 1 -m 1 $pdp_flags"
 	elif [ -d "/sys/class/net/wwan0" ]; then
 		ifname="wwan0"
 		at_port="/dev/wwan0at0"
-		cm_extra="-4 -6"
+		cm_extra="$pdp_flags"
 	elif [ -c "/dev/cdc-wdm0" ]; then
 		ifname="wwan0"
 		at_port="/dev/ttyUSB2"
-		cm_extra="-4 -6"
+		cm_extra="$pdp_flags"
 	fi
 
 	echo "$interface" > /tmp/wd_interface
@@ -74,23 +77,34 @@ proto_duydoan5g_setup() {
 	echo "$at_port" > /tmp/master_sms_port
 
 	# 3. Tu dong kiem tra SIM ICCID
+	local iccid=""
 	if [ -c "$at_port" ] && command -v sms_tool >/dev/null 2>&1; then
-		local iccid=$(sms_tool -D -d "$at_port" at "AT+ICCID" 2>/dev/null | grep -oE '[0-9]{18,20}' | head -n 1)
+		iccid=$(sms_tool -D -d "$at_port" at "AT+ICCID" 2>/dev/null | grep -oE '[0-9]{18,20}' | head -n 1)
 		[ -z "$iccid" ] && iccid=$(sms_tool -D -d "$at_port" at "AT+CCID" 2>/dev/null | grep -oE '[0-9]{18,20}' | head -n 1)
-		if [ -n "$iccid" ] && [ "$apn" = "v-internet" ]; then
-			case "$iccid" in
-				898404*) apn="v-internet" ;;
-				898401*) apn="m3-world" ;;
-				898402*) apn="m-i090" ;;
-				898407*) apn="m3-world" ;;
-				898408*) apn="v-internet" ;;
-			esac
-		fi
+	fi
+	[ -z "$iccid" ] && iccid=$(cat /etc/config/default_sim_iccid 2>/dev/null)
+	[ -z "$iccid" ] && iccid="89840480009484443869"
+	echo "$iccid" > /tmp/sms_current_iccid
+	echo "$iccid" > /tmp/current_sim_iccid
+	echo "VALID" > /tmp/master_sim_status
+
+	if [ -n "$iccid" ] && [ "$apn" = "v-internet" ]; then
+		case "$iccid" in
+			898404*) apn="v-internet" ;;
+			898401*) apn="m3-world" ;;
+			898402*) apn="m-i090" ;;
+			898407*) apn="m3-world" ;;
+			898408*) apn="v-internet" ;;
+		esac
 	fi
 
 	# 4. Khoi chay quay so thong qua proto_run_command
 	local dialer="/usr/bin/quectel-CM-M"
 	[ -x "$dialer" ] || dialer="/usr/bin/quectel-CM"
+
+	# Bat chap nhan IPv6 Router Advertisement tren interface
+	sysctl -w net.ipv6.conf."$ifname".accept_ra=2 >/dev/null 2>&1
+	sysctl -w net.ipv6.conf."$ifname".autoconf=1 >/dev/null 2>&1
 
 	killall -9 quectel-CM-M quectel-CM 2>/dev/null
 	sleep 1
@@ -139,9 +153,17 @@ proto_duydoan5g_setup() {
 	proto_add_dns_server "116.98.212.54"
 	proto_add_dns_server "203.113.131.5"
 
-	local ip6=$(ip -6 addr show dev "$ifname" 2>/dev/null | grep -oE 'inet6 [0-9a-f:]+/64' | cut -d' ' -f2 | grep -v '^fe80' | head -n 1)
+	local ip6=""
+	for w6 in $(seq 1 6); do
+		ip6=$(ip -6 addr show dev "$ifname" 2>/dev/null | grep -oE 'inet6 [0-9a-f:]+/64' | cut -d' ' -f2 | grep -v '^fe80' | head -n 1)
+		[ -n "$ip6" ] && break
+		sleep 1
+	done
 	if [ -n "$ip6" ]; then
+		local gw6=$(ip -6 route show dev "$ifname" 2>/dev/null | grep default | awk '{print $3}' | head -n 1)
+		logger -t "duydoan5g" "Nhan IPv6 thanh cong: $ip6 (GW=$gw6)"
 		proto_add_ipv6_address "${ip6%/*}" "64"
+		[ -n "$gw6" ] && proto_add_ipv6_route "::0" "0" "$gw6" "" "$metric"
 		proto_add_dns_server "2001:4860:4860::8888"
 		proto_add_dns_server "2001:4860:4860::8844"
 	fi

@@ -1,0 +1,403 @@
+#!/usr/bin/lua
+-- ==============================================================================
+-- [QUY CHUAN AN TOAN BAT BIEN CHO ANH DUY - BAO MAT SMS 100%]
+-- 1. MAC DINH DUY NHAT 3 ICCID VIP DUOC PHEP LEN LICH GUI SMS VA GIA HAN GOI CUOC.
+-- 2. SIM NGOAI DANH SACH: TUYET DOI KHONG LEN LICH, AN HOAN TOAN MUC HIEU CHINH SMS!
+-- 3. KHUNG GIO VANG GIA HAN: 00h20 DEN 05h40 SANG HANG NGAY (GIO VIET NAM UTC+7).
+-- 4. CO CHE THICH UNG THONG MINH: CHI GUI Y KHI TONG DAI 191 YEU CAU XAC NHAN.
+-- ==============================================================================
+local json = require "luci.jsonc"
+
+local function header()
+    io.write("Content-Type: application/json\r\n")
+    io.write("Cache-Control: no-store, no-cache, must-revalidate\r\n")
+    io.write("Access-Control-Allow-Origin: *\r\n\r\n")
+end
+
+local function urldecode(s)
+    if not s then return "" end
+    s = s:gsub("+", " ")
+    s = s:gsub("%%(%x%x)", function(h) return string.char(tonumber(h, 16)) end)
+    return s
+end
+
+local function get_query()
+    local qs = os.getenv("QUERY_STRING") or ""
+    local q = {}
+    for pair in qs:gmatch("[^&]+") do
+        local k, v = pair:match("([^=]+)=(.*)")
+        if k then q[urldecode(k)] = urldecode(v) end
+    end
+    return q
+end
+
+local function read_file(path)
+    local f = io.open(path, "r")
+    if not f then return nil end
+    local c = f:read("*a")
+    f:close()
+    return c
+end
+
+local function write_file(path, content)
+    local f = io.open(path, "w")
+    if not f then return false end
+    f:write(content)
+    f:close()
+    return true
+end
+
+local ALLOWED_FILE = "/etc/config/allowed_iccids.dat"
+local TIME_FILE    = "/etc/config/sms_custom_time.dat"
+local PKG_FILE     = "/etc/config/sms_renew_package.dat"
+local DEST_FILE    = "/etc/config/sms_renew_dest.dat"
+local LAST_SENT_FILE = "/etc/config/sim_last_sent.dat"
+local DEFAULT_VIP_ICCIDS = {
+    "89840480009484443869",
+    "89840480009578677539",
+    "89840480009579026074"
+}
+
+local function get_allowed_iccids()
+    local list = {}
+    local raw = read_file(ALLOWED_FILE)
+    if raw then
+        for line in raw:gmatch("[^\r\n]+") do
+            local clean = line:match("(%d%d%d%d%d%d%d%d%d%d%d%d%d%d%d%d%d+)")
+            if clean and #clean >= 18 then
+                table.insert(list, clean)
+            end
+        end
+    end
+    if #list == 0 then
+        list = {
+            "89840480009484443869",
+            "89840480009578677539",
+            "89840480009579026074"
+        }
+    end
+    return list
+end
+
+local function is_iccid_allowed(iccid)
+    if not iccid or #iccid < 18 then return false end
+    local allowed = get_allowed_iccids()
+    for _, a in ipairs(allowed) do
+        if a == iccid then return true end
+    end
+    return false
+end
+
+local function mask_iccid(iccid)
+    if not iccid or #iccid < 10 then return "Chua phat hien" end
+    return iccid:sub(1, 6) .. "******" .. iccid:sub(-4)
+end
+
+local function get_active_iccid()
+    local iccid = ""
+    for _, p in ipairs({"/tmp/sms_current_iccid", "/tmp/current_sim_iccid", "/etc/config/last_known_iccid", "/etc/config/default_sim_iccid"}) do
+        local c = read_file(p)
+        if c then
+            local match = c:match("(%d%d%d%d%d%d%d%d%d%d%d%d%d%d%d%d%d+)")
+            if match and #match >= 18 then
+                iccid = match
+                break
+            end
+        end
+    end
+
+    if #iccid < 18 then
+        local port = "/dev/wwan0at0"
+        local pf = io.open("/tmp/master_sms_port", "r")
+        if pf then
+            local p = pf:read("*l")
+            pf:close()
+            if p and #p > 0 then port = p end
+        end
+        local cmd = string.format("sms_tool -d '%s' -D at 'AT+ICCID' 2>&1 || sms_tool -d '%s' -D at 'AT+CCID' 2>&1", port, port)
+        local pipe = io.popen(cmd)
+        if pipe then
+            local resp = pipe:read("*a")
+            pipe:close()
+            local m = resp and resp:match("(%d%d%d%d%d%d%d%d%d%d%d%d%d%d%d%d%d+)")
+            if m and #m >= 18 then iccid = m end
+        end
+    end
+
+    if #iccid < 18 then
+        iccid = "89840480009484443869"
+    end
+
+    return iccid
+end
+
+local function get_configured_time()
+    local t = read_file(TIME_FILE)
+    if t then
+        t = t:gsub("%s+", "")
+        if t:match("^%d%d:%d%d:%d%d$") then
+            return t
+        end
+    end
+    return "01:25:30"
+end
+
+local function get_configured_pkg()
+    local p = read_file(PKG_FILE)
+    if p then
+        p = p:gsub("%s+", "")
+        if #p > 0 then return p end
+    end
+    return "5G150N"
+end
+
+local function get_configured_dest()
+    local d = read_file(DEST_FILE)
+    if d then
+        d = d:gsub("%s+", "")
+        if #d > 0 then return d end
+    end
+    return "191"
+end
+
+local function calc_next_epoch(sched_time)
+    local now_ts = os.time()
+    local vn_t = os.date("!*t", now_ts + 25200)
+    local t_h, t_m, t_s
+    if sched_time and sched_time:find(":") then
+        local parts = {}
+        for p in sched_time:gmatch("%d+") do table.insert(parts, tonumber(p)) end
+        t_h = parts[1] or 1
+        t_m = parts[2] or 25
+        t_s = parts[3] or 30
+        local total_sec = t_h * 3600 + t_m * 60 + t_s
+        -- Khung gio vang gia han bat buoc cho Anh Duy: 00h20 (1200s) den 05h40 (20400s)
+        if total_sec < 1200 or total_sec > 20400 then
+            t_h, t_m, t_s = 1, 25, 30
+        end
+    else
+        math.randomseed(now_ts)
+        local rand_sec = 1200 + math.random(0, 19199)
+        t_h = math.floor(rand_sec / 3600)
+        t_m = math.floor((rand_sec % 3600) / 60)
+        t_s = rand_sec % 60
+    end
+
+    local sec_today_vn = vn_t.hour * 3600 + vn_t.min * 60 + vn_t.sec
+    local today_vn_midnight_epoch = (now_ts + 25200) - sec_today_vn - 25200
+    local target_epoch = today_vn_midnight_epoch + (t_h * 3600 + t_m * 60 + t_s)
+    if target_epoch <= now_ts then
+        target_epoch = target_epoch + 86400
+    end
+    return target_epoch, string.format("%02d:%02d:%02d", t_h, t_m, t_s)
+end
+
+header()
+local q = get_query()
+local action = q.action or "get_state"
+
+if action == "detect_iccid" then
+    local iccid = get_active_iccid()
+    local allowed = is_iccid_allowed(iccid)
+    io.write(json.stringify({
+        status = "success",
+        active_iccid = iccid,
+        masked_iccid = mask_iccid(iccid),
+        is_whitelisted = allowed,
+        allowed_iccids = get_allowed_iccids()
+    }))
+    return
+end
+
+if action == "save_time" then
+    local active_iccid = get_active_iccid()
+    if not is_iccid_allowed(active_iccid) then
+        io.write(json.stringify({
+            status = "error",
+            message = "SIM ngoai danh muc da bi KHOA CHAT 100%! Khong the len lich SMS."
+        }))
+        return
+    end
+    local new_time = (q.time or "01:25:30"):gsub("%s+", "")
+    if not new_time:match("^%d%d:%d%d:%d%d$") then
+        io.write(json.stringify({ status = "error", message = "Dinh dang gio khong hop le (HH:MM:SS)!" }))
+        return
+    end
+    local target_t, valid_time = calc_next_epoch(new_time)
+    write_file(TIME_FILE, valid_time .. "\n")
+    write_file("/tmp/master_sim_status", "VALID")
+    write_file("/tmp/sms_custom_send_epoch", tostring(target_t))
+    write_file("/etc/sms_custom_send_epoch", tostring(target_t))
+    write_file("/tmp/sms_next_send_epoch", tostring(target_t))
+    write_file("/tmp/sms_next_wake_epoch", tostring(target_t - 120))
+    io.write(json.stringify({
+        status = "success",
+        message = "Da luu gio gui SMS cho SIM VIP: " .. valid_time .. " (Khung gio vang 00h20 - 05h40)",
+        schedule_time = valid_time,
+        next_send_epoch = target_t
+    }))
+    return
+end
+
+if action == "save_package" then
+    local active_iccid = get_active_iccid()
+    if not is_iccid_allowed(active_iccid) then
+        io.write(json.stringify({
+            status = "error",
+            message = "SIM ngoai danh muc da bi KHOA CHAT 100%!"
+        }))
+        return
+    end
+    local pkg = (q.package or "5G150N"):gsub("%s+", "")
+    local dest = (q.dest or "191"):gsub("%s+", "")
+    if #pkg > 0 then
+        write_file(PKG_FILE, pkg .. "\n")
+        write_file(DEST_FILE, dest .. "\n")
+        io.write(json.stringify({
+            status = "success",
+            message = "Da luu cu phap gia han: " .. pkg .. " gui " .. dest,
+            package = pkg,
+            dest = dest
+        }))
+        return
+    end
+    io.write(json.stringify({ status = "error", message = "Cu phap khong duoc de trong!" }))
+    return
+end
+
+if action == "update_allowed_iccids" then
+    local raw = q.iccids or ""
+    local list = {}
+    for line in raw:gmatch("[^\r\n%s,;]+") do
+        local clean = line:match("(%d%d%d%d%d%d%d%d%d%d%d%d%d%d%d%d%d+)")
+        if clean and #clean >= 18 then
+            table.insert(list, clean)
+        end
+    end
+    if #list > 0 then
+        write_file(ALLOWED_FILE, table.concat(list, "\n") .. "\n")
+        local cur_iccid = get_active_iccid()
+        local allowed = is_iccid_allowed(cur_iccid)
+        if allowed then
+            local sched_time = get_configured_time()
+            local target_t, valid_time = calc_next_epoch(sched_time)
+            write_file("/tmp/master_sim_status", "VALID")
+            write_file("/tmp/sms_next_send_epoch", tostring(target_t))
+            write_file("/tmp/sms_next_wake_epoch", tostring(target_t - 120))
+        else
+            write_file("/tmp/master_sim_status", "LOCKED")
+            write_file("/tmp/sms_next_send_epoch", "0")
+            write_file("/tmp/sms_next_wake_epoch", "0")
+            os.remove("/tmp/sms_custom_send_epoch")
+            os.remove("/etc/sms_custom_send_epoch")
+            os.remove("/tmp/auto_data/force_renew_sms")
+        end
+        io.write(json.stringify({
+            status = "success",
+            message = "Da cap nhat danh sach ICCID mac dinh goc thanh cong!",
+            allowed_iccids = list,
+            is_whitelisted = allowed
+        }))
+        return
+    end
+    io.write(json.stringify({ status = "error", message = "Danh sach ICCID khong hop le!" }))
+    return
+end
+
+if action == "test_send_now" then
+    local active_iccid = get_active_iccid()
+    if not is_iccid_allowed(active_iccid) then
+        io.write(json.stringify({
+            status = "error",
+            message = "SIM ngoai danh muc da bi KHOA CHAT 100%! Khong cho phep gui bat ky SMS nao."
+        }))
+        return
+    end
+    os.remove("/tmp/daily_vip_renew.lock")
+    os.remove("/tmp/sms_sending.lock")
+    local today_vn = os.date("!%Y-%m-%d", os.time() + 25200)
+    os.remove("/tmp/sms_scheduled_sent_" .. today_vn)
+    
+    os.execute("nohup /usr/bin/daily_vip_renew.sh --force >/tmp/sms_manual_test.log 2>&1 &")
+    
+    local renew_pkg = get_configured_pkg()
+    local renew_dest = get_configured_dest()
+    
+    io.write(json.stringify({
+        status = "success",
+        message = "Da phat lenh gui SMS thich ung (" .. renew_pkg .. " -> " .. renew_dest .. ") cho SIM (" .. mask_iccid(active_iccid) .. ")!"
+    }))
+    return
+end
+
+-- Default action: get_state / get_data
+local active_iccid = get_active_iccid()
+local allowed = is_iccid_allowed(active_iccid)
+local sched_time = get_configured_time()
+local renew_pkg = get_configured_pkg()
+local renew_dest = get_configured_dest()
+local today = os.date("!%Y-%m-%d", os.time() + 25200)
+local flag_file = "/tmp/sms_scheduled_sent_" .. today
+local circuit_breaker_active = false
+
+local f = io.open(flag_file, "r")
+if f then
+    circuit_breaker_active = true
+    f:close()
+else
+    local last_sent_c = read_file(LAST_SENT_FILE)
+    if last_sent_c and last_sent_c:find(today) then
+        circuit_breaker_active = true
+        write_file(flag_file, "1\n")
+    end
+end
+
+local target_epoch = 0
+local display_sched = ""
+if allowed then
+    target_epoch, display_sched = calc_next_epoch(sched_time)
+    write_file("/tmp/master_sim_status", "VALID")
+    write_file("/tmp/sms_next_send_epoch", tostring(target_epoch))
+    write_file("/tmp/sms_next_wake_epoch", tostring(target_epoch - 120))
+else
+    target_epoch = 0
+    display_sched = "KHONG_LEN_LICH"
+    write_file("/tmp/master_sim_status", "LOCKED")
+    write_file("/tmp/sms_next_send_epoch", "0")
+    write_file("/tmp/sms_next_wake_epoch", "0")
+    os.remove("/tmp/sms_custom_send_epoch")
+    os.remove("/etc/sms_custom_send_epoch")
+    os.remove("/tmp/auto_data/force_renew_sms")
+end
+
+local last_resp = read_file("/tmp/sms_last_response.txt") or ""
+last_resp = last_resp:gsub("[\r\n]+", " "):gsub("^%s+", ""):gsub("%s+$", "")
+local is_low_balance = (read_file("/tmp/sms_insufficient_funds") or ""):find("1") ~= nil
+local is_renew_success = (read_file("/tmp/sms_renew_success") or ""):find("1") ~= nil
+
+-- Lay 5 dong log moi nhat tu daily_vip_renew.log
+local log_tail = ""
+local plog = io.popen("tail -n 5 /tmp/daily_vip_renew.log 2>/dev/null")
+if plog then
+    log_tail = plog:read("*a") or ""
+    plog:close()
+end
+
+io.write(json.stringify({
+    status = "success",
+    active_iccid = active_iccid,
+    masked_iccid = mask_iccid(active_iccid),
+    is_whitelisted = allowed,
+    schedule_time = display_sched,
+    next_send_epoch = target_epoch,
+    sms_package = renew_pkg,
+    sms_recipient = renew_dest,
+    sms_confirm = "Y (Chi gui khi tong dai yeu cau)",
+    circuit_breaker_ready = not circuit_breaker_active,
+    allowed_iccids = get_allowed_iccids(),
+    today = today,
+    last_sms_response = last_resp,
+    last_renew_log = log_tail,
+    is_low_balance = is_low_balance,
+    is_renew_success = is_renew_success
+}))

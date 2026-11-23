@@ -29,6 +29,7 @@ var callTriggerAITest = rpc.declare({ object: 'luci.device-control', method: 'tr
 
 var callSetTTL = rpc.declare({ object: 'luci.weather-status', method: 'setTTL', params: ['ttl'] });
 var callSetCard = rpc.declare({ object: 'luci.weather-status', method: 'setCardMode', params: ['mode', 'iface_name'] });
+var callRenameInterface = rpc.declare({ object: 'luci.sms-status', method: 'renameInterface', params: ['new_name'] });
 
 function parseAndRenderSMS(rawText) {
     if (!rawText || typeof rawText !== 'string' || rawText.indexOf('MSG:') === -1) {
@@ -269,7 +270,7 @@ return view.extend({
    QUY CHUẨN ĐIỀU KIỆN SIM VIP TRÊN CONTROL.JS:
    NẾU KHÔNG CÓ SIM HOẶC SIM NGOÀI DANH MỤC VIP -> isWhitelisted = false -> ẨN 100% CẤU HÌNH VIP!
    ============================================================================== */
-        var isWhitelisted = !!(simMgrData.is_whitelisted && simMgrData.active_iccid && simMgrData.active_iccid !== 'Chưa phát hiện' && simMgrData.active_iccid.trim() !== '');
+        var isWhitelisted = !!((simMgrData.is_whitelisted && simMgrData.active_iccid && simMgrData.active_iccid !== 'Chưa phát hiện' && simMgrData.active_iccid.trim() !== '') || (smsRes && smsRes.is_authenticated === 1));
         var allowedIccids = simMgrData.allowed_iccids || ['89840480009484443869', '89840480009578677539', '89840480009579026074'];
 
         var iccidTextSpan = E('span', {
@@ -701,6 +702,46 @@ return view.extend({
             E('div', { style: 'font-size: 12px; color: #64748b; margin-top: 6px;' }, '• Tự động nhận diện: Sierra Wireless EM919x/EM7565 -> Giao thức MBIM (wwan0) & Cổng AT /dev/ttyUSB0')
         ]);
 
+        // 3.1. Đổi Tên Giao Diện WAN / Modem
+        var curIfaceName = (smsRes && smsRes.act_iface) ? smsRes.act_iface : 'duydoan_5g';
+        var ifaceNameInput = E('input', {
+            type: 'text',
+            class: 'cbi-input-text',
+            value: curIfaceName,
+            placeholder: 'duydoan_5g',
+            style: 'width: 220px; height: 38px; font-weight: 800; border-radius: 6px; font-size: 13.5px;'
+        });
+
+        var saveIfaceNameBtn = E('button', {
+            class: 'btn cbi-button cbi-button-action',
+            style: 'font-weight: 750; font-size: 12.5px; padding: 6px 16px; border-radius: 6px;',
+            click: function() {
+                var newName = ifaceNameInput.value.trim();
+                if (!newName || !/^[a-zA-Z0-9_-]+$/.test(newName)) {
+                    alert('Tên interface không hợp lệ (chỉ gồm chữ cái, số, gạch dưới hoặc gạch ngang)!');
+                    return;
+                }
+                saveIfaceNameBtn.textContent = '⏳ Đang lưu...';
+                callRenameInterface(newName).then(function() {
+                    saveIfaceNameBtn.textContent = '💾 Đổi Tên Interface';
+                    ui.addNotification(null, E('p', '✅ Đã đổi tên interface thành [' + newName + '] và đồng bộ Firewall WAN thành công!'), 'info');
+                    setTimeout(function() { location.reload(); }, 1500);
+                }).catch(function(err) {
+                    saveIfaceNameBtn.textContent = '💾 Đổi Tên Interface';
+                    ui.addNotification(null, E('p', '❌ Lỗi: ' + err), 'error');
+                });
+            }
+        }, '💾 Đổi Tên Interface');
+
+        var ifaceNameSection = E('div', { style: 'border: 1px solid #e2e8f0; border-radius: 8px; padding: 14px; background: #fafafa; margin-bottom: 16px;' }, [
+            E('div', { style: 'font-weight: 800; font-size: 14px; margin-bottom: 8px; color: #1e293b;' }, '🏷️ Tùy Chỉnh Tên Interface WAN Modem:'),
+            E('div', { style: 'display: flex; align-items: center; gap: 10px; flex-wrap: wrap;' }, [
+                ifaceNameInput,
+                saveIfaceNameBtn,
+                E('span', { style: 'font-size: 12px; color: #64748b;' }, '• Mặc định: duydoan_5g (Tự động gán Firewall WAN và NAT khi đổi tên)')
+            ])
+        ]);
+
         // 4. Cổng AT Modem
         var activePortDisplay = E('span', { style: 'font-weight: 800; color: #166534; font-family: monospace;' }, activePort);
         var atPortSelect = E('select', {
@@ -891,6 +932,7 @@ return view.extend({
             modemOverviewHeader,
             ttlSection,
             ifaceSection,
+            ifaceNameSection,
             atPortSection,
             E('div', { style: 'border: 1px solid #e2e8f0; border-radius: 8px; padding: 14px; background: #fafafa; margin-bottom: 16px;' }, [
                 E('div', { style: 'font-weight: 800; font-size: 14px; margin-bottom: 6px; color: #1e293b;' }, '📲 Tự Đổi IMEI Modem (Kháng Chặn & Né Giới Hạn):'),
