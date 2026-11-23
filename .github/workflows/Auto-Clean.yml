@@ -1,18 +1,23 @@
 # SPDX-License-Identifier: MIT
-# Smart Maintenance Workflow: Keeps the latest release per platform, purges older releases & stale runs safely
+# Smart Maintenance Workflow: Purge old releases & obsolete runs safely (NEVER TOUCH IN-PROGRESS RUNS)
 
-name: Auto-Clean
+name: Auto-Clean & Release Purge
 
 on:
   schedule:
-    # 12:00 PM Asia/Ho_Chi_Minh daily (05:00 UTC) - Runs AFTER morning builds finish
-    - cron: '23 5 * * *'
+    # 02:30 AM Asia/Ho_Chi_Minh daily (19:30 UTC) - Chạy trước lịch build sáng 03:15 AM
+    - cron: '30 19 * * *'
   workflow_dispatch:
     inputs:
-      keep_per_platform:
-        description: 'Số bản Release mới nhất giữ lại cho mỗi nền tảng (Filogic / IPQ60xx / IPQ807x)'
+      delete_all_old_releases:
+        description: 'Xóa toàn bộ các bản phát hành cũ trên GitHub Releases (true/false)'
         required: false
-        default: '2'
+        default: false
+        type: boolean
+      keep_success_runs:
+        description: 'Số run thành công giữ lại (Mặc định 1. Run đang build được BẢO TỒN NGUYÊN VẸN)'
+        required: false
+        default: '1'
         type: string
 
 permissions:
@@ -21,69 +26,142 @@ permissions:
 
 jobs:
   smart_clean:
-    name: Smart Release & Workflow Run Cleanup
+    name: Clean Old Runs & Releases
     runs-on: ubuntu-latest
     steps:
-      - name: Safe Purge Old Releases (Always Keep Latest Per Platform)
+      - name: Purge Obsolete Workflow Runs (BẢO VỆ TIẾN TRÌNH ĐANG BUILD)
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          KEEP: ${{ inputs.keep_per_platform || '2' }}
           REPO: ${{ github.repository }}
+          CURRENT_RUN_ID: ${{ github.run_id }}
+          KEEP_SUCCESS: ${{ inputs.keep_success_runs || '1' }}
         run: |
           python3 - << 'PYEOF'
           import json, os, subprocess
 
-          repo = os.environ["REPO"]
-          keep = max(1, int(os.environ.get("KEEP", "2")))
+          repo = os.environ.get("REPO", "")
+          current_run_id = int(os.environ.get("CURRENT_RUN_ID", "0"))
+          keep_success = max(1, int(os.environ.get("KEEP_SUCCESS", "1")))
+
+          try:
+              out = subprocess.check_output(
+                  ["gh", "run", "list", "--repo", repo, "--limit", "100", "--json", "databaseId,status,conclusion,name,headBranch"],
+                  text=True,
+              )
+              runs = json.loads(out)
+          except Exception as e:
+              print(f"Error listing runs: {e}")
+              exit(0)
+
+          print(f"Tìm thấy {len(runs)} workflow runs.")
+          success_count = 0
+          deleted_count = 0
+
+          for r in runs:
+              rid = r.get("databaseId")
+              status = r.get("status")
+              conclusion = r.get("conclusion")
+              branch = r.get("headBranch", "")
+              name = r.get("name", "")
+
+              # BẢO TỒN TUYỆT ĐỐI TIẾN TRÌNH ĐANG CHẠY / HÀNG ĐỢI
+              if status in ["in_progress", "queued"]:
+                  print(f"🛡️ [GIỮ LẠI - ĐANG BUILD] Run {rid} ({name} - {branch})")
+                  continue
+
+              # Bỏ qua chính bản thân job Auto-Clean này nếu nó đang chạy
+              if rid == current_run_id:
+                  continue
+
+              # Xóa toàn bộ các run thất bại, hủy hoặc lỗi khởi động
+              if conclusion in ["failure", "cancelled", "startup_failure", "timed_out"]:
+                  print(f"🗑️ [XÓA LỖI/HỦY] Run {rid} ({conclusion})")
+                  subprocess.run(["gh", "run", "delete", str(rid), "--repo", repo], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+                  deleted_count += 1
+                  continue
+
+              # Các run thành công: chỉ giữ lại số lượng theo cấu hình, xóa các run cũ
+              if conclusion == "success":
+                  if success_count < keep_success:
+                      success_count += 1
+                      print(f"✅ [GIỮ THÀNH CÔNG GẦN NHẤT] Run {rid}")
+                  else:
+                      print(f"🗑️ [XÓA RUN CŨ] Run {rid}")
+                      subprocess.run(["gh", "run", "delete", str(rid), "--repo", repo], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+                      deleted_count += 1
+
+          print(f"Hoàn tất dọn dẹp workflow runs! Đã xóa: {deleted_count} runs.")
+          PYEOF
+
+      - name: Purge Old Releases (Xóa Releases cũ theo yêu cầu)
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          REPO: ${{ github.repository }}
+          PURGE_ALL: ${{ inputs.delete_all_old_releases || 'false' }}
+        run: |
+          python3 - << 'PYEOF'
+          import json, os, subprocess
+
+          repo = os.environ.get("REPO", "")
+          purge_all = os.environ.get("PURGE_ALL", "false").lower() == "true"
+
+          try:
+              out = subprocess.check_output(
+                  ["gh", "release", "list", "--repo", repo, "--limit", "100", "--json", "tagName,createdAt,isLatest"],
+                  text=True,
+              )
+              releases = json.loads(out)
+          except Exception as e:
+              print(f"Error listing releases: {e}")
+              exit(0)
+
+          if not releases:
+              print("Không có release nào trên kho lưu trữ.")
+              exit(0)
+
+          print(f"Tìm thấy {len(releases)} bản phát hành.")
+          
+          # Nếu chọn xóa sạch (purge_all=True) hoặc giữ lại tối đa 1 bản mới nhất cho mỗi nền tảng
           prefixes = [
               "Duydoan-25.12-MediaTek-Filogic-All-",
               "Duydoan-25.12-Qualcomm-IPQ60xx-All-",
               "Duydoan-25.12-Qualcomm-IPQ807x-All-",
+              "Duydoan-Master-MediaTek-Filogic-All-",
+              "Duydoan-Master-Qualcomm-IPQ60xx-All-",
+              "Duydoan-Master-Qualcomm-IPQ807x-All-",
+              "Duydoan-Master-Passwall-MediaTek-Filogic-All-",
+              "Duydoan-Master-Passwall-Qualcomm-IPQ60xx-All-",
+              "Duydoan-Master-Passwall-Qualcomm-IPQ807x-All-",
+              "Duydoan-24.10-MediaTek-Filogic-All-",
+              "Duydoan-24.10-Qualcomm-IPQ60xx-All-",
+              "Duydoan-24.10-Qualcomm-IPQ807x-All-",
+              "Duydoan-24.10-Passwall-MediaTek-Filogic-All-",
+              "Duydoan-24.10-Passwall-Qualcomm-IPQ60xx-All-",
+              "Duydoan-24.10-Passwall-Qualcomm-IPQ807x-All-",
           ]
 
-          out = subprocess.check_output(
-              ["gh", "release", "list", "--repo", repo, "--limit", "100", "--json", "tagName,createdAt"],
-              text=True,
-          )
-          releases = json.loads(out)
-          releases.sort(key=lambda r: r.get("createdAt", ""), reverse=True)
-
-          kept_counts = {p: 0 for p in prefixes}
           to_delete = []
+          kept = set()
 
           for r in releases:
-              tag = r["tagName"]
-              matched = next((p for p in prefixes if tag.startswith(p)), None)
-              if matched:
-                  if kept_counts[matched] < keep:
-                      kept_counts[matched] += 1
-                      print(f"[KEEP] {tag}")
-                  else:
-                      to_delete.append(tag)
+              tag = r.get("tagName", "")
+              if purge_all:
+                  to_delete.append(tag)
               else:
-                  # Legacy single-device releases can be safely pruned once unified releases exist
-                  if all(c >= 1 for c in kept_counts.values()):
-                      to_delete.append(tag)
+                  matched = next((p for p in prefixes if tag.startswith(p)), None)
+                  if matched:
+                      if matched not in kept:
+                          kept.add(matched)
+                          print(f"🛡️ [GIỮ LATEST PER PLATFORM] {tag}")
+                      else:
+                          to_delete.append(tag)
                   else:
-                      print(f"[SAFE-KEEP-LEGACY] {tag}")
+                      # Release cũ đơn lẻ
+                      to_delete.append(tag)
 
           for tag in to_delete:
-              print(f"[DELETE] {tag}")
-              subprocess.run(
-                  ["gh", "release", "delete", tag, "--repo", repo, "-y", "--cleanup-tag"],
-                  check=False,
-              )
-          PYEOF
+              print(f"🗑️ [XÓA RELEASE CŨ] {tag}")
+              subprocess.run(["gh", "release", "delete", tag, "--repo", repo, "-y", "--cleanup-tag"], check=False)
 
-      - name: Purge Old Completed Workflow Runs (Keep Latest 20)
-        env:
-          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          REPO: ${{ github.repository }}
-        run: |
-          RUN_IDS=$(gh run list --repo "$REPO" --status completed --limit 150 --json databaseId -q '.[20:][].databaseId' || true)
-          for rid in $RUN_IDS; do
-            if [ -n "$rid" ]; then
-              echo ">> Deleting old run: $rid"
-              gh run delete "$rid" --repo "$REPO" || true
-            fi
-          done
+          print(f"Hoàn tất dọn dẹp Releases! Đã xóa: {len(to_delete)} bản.")
+          PYEOF

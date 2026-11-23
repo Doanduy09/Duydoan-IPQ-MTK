@@ -4,12 +4,9 @@ on:
   push:
     branches:
       - master
-      - openwrt-24.10
       - master-passwall
-      - openwrt-24.10-passwall
-      - main
-      - openwrt-25
-      - openwrt-24-passwall
+      - immortalwrt-24
+      - immortalwrt-24-passwall
   schedule:
     # 03:15 AM Asia/Ho_Chi_Minh daily (20:15 UTC) -> Kết thúc chính xác trước 08:00 AM
     - cron: '15 20 * * *'
@@ -50,32 +47,58 @@ jobs:
         with:
           fetch-depth: 0
 
-      - name: Pre-Build Auto-Clean (Giữ GitHub luôn sạch sẽ & nhẹ nhàng)
+      - name: Pre-Build Auto-Clean (Bảo vệ tiến trình đang build & xóa dọn Releases cũ)
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           REPO: ${{ github.repository }}
+          CURRENT_RUN_ID: ${{ github.run_id }}
         run: |
           python3 - << 'PYEOF'
           import json, os, subprocess
+
           repo = os.environ.get("REPO", "")
-          token = os.environ.get("GH_TOKEN", "")
+          current_run_id = int(os.environ.get("CURRENT_RUN_ID", "0"))
           if not repo:
               exit(0)
+
+          # 1. Dọn dẹp Workflow Runs: BẢO VỆ TUYỆT ĐỐI CÁC RUN ĐANG CHẠY / QUEUED
           try:
               out = subprocess.check_output(
-                  ["gh", "run", "list", "--repo", repo, "--limit", "60", "--json", "databaseId,status,conclusion"],
+                  ["gh", "run", "list", "--repo", repo, "--limit", "80", "--json", "databaseId,status,conclusion,name"],
                   text=True,
               )
               runs = json.loads(out)
-              completed = [r for r in runs if r.get("status") == "completed"]
-              to_delete = completed[1:] if len(completed) > 1 else []
-              print(f"Cleaning {len(to_delete)} obsolete runs...")
-              for r in to_delete:
-                  run_id = r["databaseId"]
-                  subprocess.run(["gh", "run", "delete", str(run_id), "--repo", repo], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
-              print("Pre-build cleanup completed!")
+              for r in runs:
+                  rid = r.get("databaseId")
+                  status = r.get("status")
+                  conclusion = r.get("conclusion")
+                  if rid == current_run_id:
+                      continue
+                  if status in ["in_progress", "queued"]:
+                      print(f"🛡️ [GIỮ NGUYÊN TIẾN TRÌNH ĐANG BUILD] Run {rid}")
+                      continue
+                  if conclusion in ["failure", "cancelled", "startup_failure", "timed_out"]:
+                      subprocess.run(["gh", "run", "delete", str(rid), "--repo", repo], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
           except Exception as e:
-              print(f"Cleanup non-fatal warning: {e}")
+              print(f"Workflow clean warning: {e}")
+
+          # 2. Dọn dẹp Releases cũ để không bị quá tải
+          try:
+              out = subprocess.check_output(
+                  ["gh", "release", "list", "--repo", repo, "--limit", "50", "--json", "tagName"],
+                  text=True,
+              )
+              releases = json.loads(out)
+              if len(releases) > 6:
+                  # Giữ lại 6 bản phát hành mới nhất (2 bản cho mỗi dòng chip), xóa các bản còn lại
+                  for old_rel in releases[6:]:
+                      tag = old_rel.get("tagName")
+                      print(f"🗑️ [PRE-BUILD CLEAN RELEASE] {tag}")
+                      subprocess.run(["gh", "release", "delete", tag, "--repo", repo, "-y", "--cleanup-tag"], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+          except Exception as e:
+              print(f"Release clean warning: {e}")
+
+          print(">> [PRE-BUILD CLEAN] Dọn dẹp an toàn hoàn tất.")
           PYEOF
 
       - name: Sync Upstream ImmortalWrt Before Build (Bảo đảm luôn có mã nguồn mới nhất)
@@ -86,10 +109,10 @@ jobs:
           
           CURRENT_BRANCH="${{ github.ref_name }}"
           UPSTREAM_BRANCH="openwrt-25.12"
-          if [ "$CURRENT_BRANCH" = "openwrt-24.10" ] || [ "$CURRENT_BRANCH" = "openwrt-24.10-passwall" ] || [ "$CURRENT_BRANCH" = "main" ] || [ "$CURRENT_BRANCH" = "openwrt-24-passwall" ]; then
+          if [ "$CURRENT_BRANCH" = "immortalwrt-24" ] || [ "$CURRENT_BRANCH" = "immortalwrt-24-passwall" ]; then
             UPSTREAM_BRANCH="openwrt-24.10"
-          elif [ "$CURRENT_BRANCH" = "master-passwall" ]; then
-            UPSTREAM_BRANCH="master"
+          elif [ "$CURRENT_BRANCH" = "master" ] || [ "$CURRENT_BRANCH" = "master-passwall" ]; then
+            UPSTREAM_BRANCH="openwrt-25.12"
           fi
           
           echo ">> [PRE-BUILD SYNC] Đang đồng bộ nhánh $CURRENT_BRANCH với upstream immortalwrt:$UPSTREAM_BRANCH..."
@@ -248,9 +271,52 @@ jobs:
           cp "${{ matrix.config }}" .config
           echo "CONFIG_CCACHE=y" >> .config
           
-          # Đảm bảo toàn bộ router đều có Passwall khi nhánh được kích hoạt Passwall
-          if grep -q "CONFIG_PACKAGE_luci-app-passwall=y" "${{ matrix.config }}"; then
-            echo ">> [PASSWALL AUTO-INJECT] Đang nhúng đầy đủ Passwall Suite vào toàn bộ thiết bị router..."
+          # 1. Kích hoạt tăng tốc phần cứng Qualcomm NSS 12.5 (IPQ60xx / IPQ807x)
+          if [ "${{ matrix.id }}" = "qualcomm-ipq60xx" ] || [ "${{ matrix.id }}" = "qualcomm-ipq807x" ]; then
+            echo ">> [NSS 12.5 ACCELERATION] Kích hoạt Qualcomm NSS & ECM Engine cho ${{ matrix.id }}..."
+            cat << 'EOF' >> .config
+          CONFIG_FEED_nss_packages=y
+          CONFIG_PACKAGE_kmod-qca-nss-dp=y
+          CONFIG_PACKAGE_kmod-qca-nss-drv=y
+          CONFIG_PACKAGE_kmod-qca-nss-ecm=y
+          CONFIG_PACKAGE_nss-utils=y
+          CONFIG_PACKAGE_nss-firmware=y
+          CONFIG_PACKAGE_luci-app-turboacc=y
+          CONFIG_PACKAGE_TURBOACC_INCLUDE_FLOW_OFFLOADING=y
+          CONFIG_PACKAGE_TURBOACC_INCLUDE_BBR_CCA=y
+          EOF
+            if [ "${{ matrix.id }}" = "qualcomm-ipq807x" ]; then
+              cat << 'EOF' >> .config
+          CONFIG_PACKAGE_nss-firmware-ipq807x=y
+          CONFIG_PACKAGE_kmod-pcie_mhi_nss=y
+          CONFIG_PACKAGE_kmod-qmi_wwan_q_nss=y
+          CONFIG_PACKAGE_qmodem_INCLUDE_nss-qmi-wwan=y
+          CONFIG_PACKAGE_qmodem_NSS_MHI_PCIe_DRIVER=y
+          CONFIG_PACKAGE_wwand-datapath-rmnet_nss=y
+          CONFIG_PACKAGE_wwand-datapath-rmnet_nss_mhi=y
+          EOF
+            else
+              cat << 'EOF' >> .config
+          CONFIG_PACKAGE_nss-firmware-ipq60xx=y
+          EOF
+            fi
+          fi
+
+          # 2. Kích hoạt tăng tốc phần cứng MediaTek HNAT / PPE / WED
+          if [ "${{ matrix.id }}" = "mediatek-filogic" ]; then
+            echo ">> [HNAT ACCELERATION] Kích hoạt MediaTek MT798x HNAT & TurboACC MTK..."
+            cat << 'EOF' >> .config
+          CONFIG_PACKAGE_kmod-mediatek_hnat=y
+          CONFIG_PACKAGE_luci-app-turboacc-mtk=y
+          CONFIG_PACKAGE_TURBOACC_INCLUDE_FLOW_OFFLOADING=y
+          CONFIG_PACKAGE_TURBOACC_INCLUDE_BBR_CCA=y
+          CONFIG_MTK_WHNAT_SUPPORT=m
+          EOF
+          fi
+
+          # 3. Kích hoạt Passwall Suite khi chạy trên nhánh có Passwall
+          if [[ "${{ github.ref_name }}" == *"passwall"* ]] || grep -q "CONFIG_PACKAGE_luci-app-passwall=y" "${{ matrix.config }}"; then
+            echo ">> [PASSWALL AUTO-INJECT] Kích hoạt đầy đủ Passwall Suite cho toàn bộ router..."
             cat << 'EOF' >> .config
           CONFIG_PACKAGE_luci-app-passwall=y
           CONFIG_PACKAGE_luci-app-passwall_INCLUDE_Xray=y
@@ -261,6 +327,8 @@ jobs:
           CONFIG_PACKAGE_luci-app-passwall_INCLUDE_Geoip=y
           CONFIG_PACKAGE_xray-core=y
           CONFIG_PACKAGE_sing-box=y
+          CONFIG_PACKAGE_chinadns-ng=y
+          CONFIG_PACKAGE_haproxy=y
           EOF
           fi
           
