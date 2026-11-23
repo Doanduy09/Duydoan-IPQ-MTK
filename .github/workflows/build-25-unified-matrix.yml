@@ -29,7 +29,7 @@ on:
         type: boolean
 
 concurrency:
-  group: ${{ github.workflow }}-${{ github.ref }}-${{ inputs.target || 'all' }}
+  group: duydoan-firmware-builder
   cancel-in-progress: true
 
 permissions:
@@ -196,6 +196,7 @@ jobs:
     runs-on: ubuntu-22.04
     strategy:
       fail-fast: false
+      max-parallel: 1
       matrix: ${{ fromJson(needs.plan.outputs.matrix) }}
 
     steps:
@@ -241,6 +242,23 @@ jobs:
         run: |
           cp "${{ matrix.config }}" .config
           echo "CONFIG_CCACHE=y" >> .config
+          
+          # Đảm bảo toàn bộ router đều có Passwall khi nhánh được kích hoạt Passwall
+          if grep -q "CONFIG_PACKAGE_luci-app-passwall=y" "${{ matrix.config }}"; then
+            echo ">> [PASSWALL AUTO-INJECT] Đang nhúng đầy đủ Passwall Suite vào toàn bộ thiết bị router..."
+            cat << 'EOF' >> .config
+          CONFIG_PACKAGE_luci-app-passwall=y
+          CONFIG_PACKAGE_luci-app-passwall_INCLUDE_Xray=y
+          CONFIG_PACKAGE_luci-app-passwall_INCLUDE_SingBox=y
+          CONFIG_PACKAGE_luci-app-passwall_INCLUDE_ChinaDNS_NG=y
+          CONFIG_PACKAGE_luci-app-passwall_INCLUDE_Haproxy=y
+          CONFIG_PACKAGE_luci-app-passwall_INCLUDE_Geosite=y
+          CONFIG_PACKAGE_luci-app-passwall_INCLUDE_Geoip=y
+          CONFIG_PACKAGE_xray-core=y
+          CONFIG_PACKAGE_sing-box=y
+          EOF
+          fi
+          
           make defconfig
           echo ">> Active target devices count: $(grep -c '^CONFIG_TARGET_DEVICE_.*=y$' .config || echo 0)"
 
