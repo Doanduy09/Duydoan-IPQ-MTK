@@ -120,13 +120,15 @@ define Device/abt_asr3000
   PAGESIZE := 2048
   KERNEL_IN_UBI := 1
   UBOOTENV_IN_UBI := 1
-  IMAGES := sysupgrade.itb
+  IMAGES := sysupgrade.itb sysupgrade.bin
   KERNEL_INITRAMFS_SUFFIX := -recovery.itb
   KERNEL := kernel-bin | gzip
   KERNEL_INITRAMFS := kernel-bin | lzma | \
         fit lzma $$(KDIR)/image-$$(firstword $$(DEVICE_DTS)).dtb with-initrd | pad-to 64k
   IMAGE/sysupgrade.itb := append-kernel | \
-        fit gzip $$(KDIR)/image-$$(firstword $$(DEVICE_DTS)).dtb external-static-with-rootfs | append-metadata
+	fit gzip $$(KDIR)/image-$$(firstword $$(DEVICE_DTS)).dtb external-static-with-rootfs | append-metadata
+  IMAGE/sysupgrade.bin := sysupgrade-tar | append-metadata
+
   ARTIFACTS := preloader.bin bl31-uboot.fip
   ARTIFACT/preloader.bin := mt7981-bl2 spim-nand-ddr3
   ARTIFACT/bl31-uboot.fip := mt7981-bl31-uboot abt_asr3000
@@ -622,13 +624,14 @@ define Device/cmcc_a10-ubootmod
   PAGESIZE := 2048
   KERNEL_IN_UBI := 1
   UBOOTENV_IN_UBI := 1
-  IMAGES := sysupgrade.itb
+  IMAGES := sysupgrade.itb sysupgrade.bin
   KERNEL_INITRAMFS_SUFFIX := -recovery.itb
   KERNEL := kernel-bin | gzip
   KERNEL_INITRAMFS := kernel-bin | lzma | \
 	fit lzma $$(KDIR)/image-$$(firstword $$(DEVICE_DTS)).dtb with-initrd | pad-to 64k
   IMAGE/sysupgrade.itb := append-kernel | \
 	fit gzip $$(KDIR)/image-$$(firstword $$(DEVICE_DTS)).dtb external-static-with-rootfs | append-metadata
+  IMAGE/sysupgrade.bin := sysupgrade-tar | append-metadata
   ARTIFACTS := preloader.bin bl31-uboot.fip
   ARTIFACT/preloader.bin := mt7981-bl2 spim-nand-ddr3
   ARTIFACT/bl31-uboot.fip := mt7981-bl31-uboot cmcc_a10
@@ -721,6 +724,47 @@ define Device/comfast_cf-e393ax
 endef
 TARGET_DEVICES += comfast_cf-e393ax
 
+define Device/comfast_cf-wr632ax-common
+  DEVICE_VENDOR := COMFAST
+  DEVICE_MODEL := CF-WR632AX
+  DEVICE_DTS_DIR := ../dts
+  DEVICE_PACKAGES := kmod-mt7915e kmod-mt7981-firmware mt7981-wo-firmware \
+	kmod-hwmon-pwmfan kmod-usb3 automount
+  UBINIZE_OPTS := -E 5
+  BLOCKSIZE := 128k
+  PAGESIZE := 2048
+  KERNEL_IN_UBI := 1
+endef
+
+define Device/comfast_cf-wr632ax
+  DEVICE_DTS := mt7981b-comfast-cf-wr632ax
+  IMAGE_SIZE := 65536k
+  IMAGE/sysupgrade.bin := sysupgrade-tar | append-metadata
+  SUPPORTED_DEVICES += cf-wr632ax
+  $(call Device/comfast_cf-wr632ax-common)
+endef
+TARGET_DEVICES += comfast_cf-wr632ax
+
+define Device/comfast_cf-wr632ax-ubootmod
+  DEVICE_VARIANT := (OpenWrt U-Boot layout)
+  DEVICE_DTS := mt7981b-comfast-cf-wr632ax-ubootmod
+  UBOOTENV_IN_UBI := 1
+  IMAGES := sysupgrade.itb sysupgrade.bin
+  KERNEL_INITRAMFS_SUFFIX := -recovery.itb
+  KERNEL := kernel-bin | gzip
+  KERNEL_INITRAMFS := kernel-bin | lzma | \
+	fit lzma $$(KDIR)/image-$$(firstword $$(DEVICE_DTS)).dtb with-initrd | pad-to 64k
+  IMAGE/sysupgrade.itb := append-kernel | \
+	fit gzip $$(KDIR)/image-$$(firstword $$(DEVICE_DTS)).dtb external-static-with-rootfs | append-metadata
+  IMAGE/sysupgrade.bin := sysupgrade-tar | append-metadata
+  ARTIFACTS := preloader.bin bl31-uboot.fip
+  ARTIFACT/preloader.bin := mt7981-bl2 spim-nand-ddr3-1866
+  ARTIFACT/bl31-uboot.fip := mt7981-bl31-uboot comfast_cf-wr632ax
+  $(call Device/comfast_cf-wr632ax-common)
+endef
+TARGET_DEVICES += comfast_cf-wr632ax-ubootmod
+
+
 define Device/confiabits_mt7981
   DEVICE_VENDOR := Confiabits
   DEVICE_MODEL := MT7981
@@ -737,6 +781,68 @@ define Device/confiabits_mt7981
 	kmod-usb3 automount
 endef
 TARGET_DEVICES += confiabits_mt7981
+
+define Device/creatlentem_clt-r30b1-common
+  DEVICE_VENDOR := CreatLentem
+  DEVICE_MODEL := CLT-R30B1
+  DEVICE_ALT0_VENDOR := EDUP
+  DEVICE_ALT0_MODEL := RT2980
+  DEVICE_ALT1_VENDOR := Dragonglass
+  DEVICE_ALT1_MODEL := DGX21
+  DEVICE_ALT2_VENDOR := Livinet
+  DEVICE_ALT2_MODEL := Li228
+  DEVICE_DTS_DIR := ../dts
+  DEVICE_PACKAGES := kmod-mt7915e kmod-mt7981-firmware mt7981-wo-firmware
+  UBINIZE_OPTS := -E 5
+  BLOCKSIZE := 128k
+  PAGESIZE := 2048
+  KERNEL_IN_UBI := 1
+endef
+
+define Device/creatlentem_clt-r30b1-112m
+  DEVICE_VARIANT := 112M
+  DEVICE_ALT0_VARIANT := 112M
+  DEVICE_ALT1_VARIANT := 112M
+  DEVICE_ALT2_VARIANT := 112M
+  DEVICE_DTS := mt7981b-creatlentem-clt-r30b1-112m
+  SUPPORTED_DEVICES += clt,r30b1 clt,r30b1-112m
+  IMAGE_SIZE := 114688k
+  IMAGE/sysupgrade.bin := sysupgrade-tar | append-metadata
+  $(call Device/creatlentem_clt-r30b1-common)
+endef
+TARGET_DEVICES += creatlentem_clt-r30b1-112m
+
+define Device/creatlentem_clt-r30b1
+  DEVICE_DTS := mt7981b-creatlentem-clt-r30b1
+  SUPPORTED_DEVICES += mediatek,mt7981-spim-snand-rfb
+  IMAGE_SIZE := 65536k
+  IMAGE/sysupgrade.bin := sysupgrade-tar | append-metadata
+  $(call Device/creatlentem_clt-r30b1-common)
+endef
+TARGET_DEVICES += creatlentem_clt-r30b1
+
+define Device/creatlentem_clt-r30b1-ubi
+  DEVICE_VARIANT := (UBI)
+  DEVICE_ALT0_VARIANT := (UBI)
+  DEVICE_ALT1_VARIANT := (UBI)
+  DEVICE_ALT2_VARIANT := (UBI)
+  DEVICE_DTS := mt7981b-creatlentem-clt-r30b1-ubi
+  UBOOTENV_IN_UBI := 1
+  IMAGES := sysupgrade.itb sysupgrade.bin
+  KERNEL_INITRAMFS_SUFFIX := -recovery.itb
+  KERNEL := kernel-bin | gzip
+  KERNEL_INITRAMFS := kernel-bin | lzma | \
+	fit lzma $$(KDIR)/image-$$(firstword $$(DEVICE_DTS)).dtb with-initrd | pad-to 64k
+  IMAGE/sysupgrade.itb := append-kernel | \
+	fit gzip $$(KDIR)/image-$$(firstword $$(DEVICE_DTS)).dtb external-static-with-rootfs | append-metadata
+  IMAGE/sysupgrade.bin := sysupgrade-tar | append-metadata
+  ARTIFACTS := preloader.bin bl31-uboot.fip
+  ARTIFACT/preloader.bin := mt7981-bl2 spim-nand-ubi-ddr3-1866
+  ARTIFACT/bl31-uboot.fip := mt7981-bl31-uboot creatlentem_clt-r30b1-ubi
+  $(call Device/creatlentem_clt-r30b1-common)
+endef
+TARGET_DEVICES += creatlentem_clt-r30b1-ubi
+
 
 define Device/cudy_ap3000outdoor-v1
   DEVICE_VENDOR := Cudy
@@ -793,6 +899,81 @@ define Device/cudy_m3000-v1
   DEVICE_PACKAGES := kmod-mt7915e kmod-mt7981-firmware mt7981-wo-firmware
 endef
 TARGET_DEVICES += cudy_m3000-v1
+
+define Device/cudy_m3000-v1-ubootmod
+  DEVICE_VENDOR := Cudy
+  DEVICE_MODEL := M3000
+  DEVICE_VARIANT := v1/v2 (OpenWrt U-Boot layout)
+  DEVICE_DTS := mt7981b-cudy-m3000-v1-ubootmod
+  DEVICE_DTS_DIR := ../dts
+  DEVICE_PACKAGES := kmod-mt7915e kmod-mt7981-firmware mt7981-wo-firmware
+  UBINIZE_OPTS := -E 5
+  BLOCKSIZE := 128k
+  PAGESIZE := 2048
+  KERNEL_IN_UBI := 1
+  UBOOTENV_IN_UBI := 1
+  IMAGES := sysupgrade.itb sysupgrade.bin
+  KERNEL_INITRAMFS_SUFFIX := -recovery.itb
+  KERNEL := kernel-bin | gzip
+  KERNEL_INITRAMFS := kernel-bin | lzma | \
+	fit lzma $$(KDIR)/image-$$(firstword $$(DEVICE_DTS)).dtb with-initrd | pad-to 64k
+  IMAGE/sysupgrade.itb := append-kernel | \
+	fit gzip $$(KDIR)/image-$$(firstword $$(DEVICE_DTS)).dtb external-static-with-rootfs | append-metadata
+  IMAGE/sysupgrade.bin := sysupgrade-tar | append-metadata
+  ARTIFACTS := preloader.bin bl31-uboot.fip
+  ARTIFACT/preloader.bin := mt7981-bl2 cudy-ddr3
+  ARTIFACT/bl31-uboot.fip := mt7981-bl31-uboot cudy_m3000-v1
+endef
+TARGET_DEVICES += cudy_m3000-v1-ubootmod
+
+define Device/cudy_m3000-v2-yt8821
+  DEVICE_VENDOR := Cudy
+  DEVICE_MODEL := M3000
+  DEVICE_VARIANT := v2 with Motorcomm YT8821
+  DEVICE_DTS := mt7981b-cudy-m3000-v2-yt8821
+  DEVICE_DTS_DIR := ../dts
+  SUPPORTED_DEVICES += R37
+  DEVICE_DTS_LOADADDR := 0x44000000
+  BLOCKSIZE := 128k
+  PAGESIZE := 2048
+  IMAGE_SIZE := 65536k
+  KERNEL_IN_UBI := 1
+  KERNEL := kernel-bin | lzma | \
+	fit lzma $$(KDIR)/image-$$(firstword $$(DEVICE_DTS)).dtb
+  KERNEL_INITRAMFS := kernel-bin | lzma | \
+	fit lzma $$(KDIR)/image-$$(firstword $$(DEVICE_DTS)).dtb with-initrd | pad-to 64k
+  IMAGES := sysupgrade.bin
+  IMAGE/sysupgrade.bin := sysupgrade-tar | append-metadata
+  DEVICE_PACKAGES := kmod-mt7915e kmod-mt7981-firmware mt7981-wo-firmware kmod-phy-motorcomm
+endef
+TARGET_DEVICES += cudy_m3000-v2-yt8821
+
+define Device/cudy_m3000-v2-yt8821-ubootmod
+  DEVICE_VENDOR := Cudy
+  DEVICE_MODEL := M3000
+  DEVICE_VARIANT := v2 with Motorcomm YT8821 (OpenWrt U-Boot layout)
+  DEVICE_DTS := mt7981b-cudy-m3000-v2-yt8821-ubootmod
+  DEVICE_DTS_DIR := ../dts
+  DEVICE_PACKAGES := kmod-mt7915e kmod-mt7981-firmware mt7981-wo-firmware kmod-phy-motorcomm
+  UBINIZE_OPTS := -E 5
+  BLOCKSIZE := 128k
+  PAGESIZE := 2048
+  KERNEL_IN_UBI := 1
+  UBOOTENV_IN_UBI := 1
+  IMAGES := sysupgrade.itb sysupgrade.bin
+  KERNEL_INITRAMFS_SUFFIX := -recovery.itb
+  KERNEL := kernel-bin | gzip
+  KERNEL_INITRAMFS := kernel-bin | lzma | \
+	fit lzma $$(KDIR)/image-$$(firstword $$(DEVICE_DTS)).dtb with-initrd | pad-to 64k
+  IMAGE/sysupgrade.itb := append-kernel | \
+	fit gzip $$(KDIR)/image-$$(firstword $$(DEVICE_DTS)).dtb external-static-with-rootfs | append-metadata
+  IMAGE/sysupgrade.bin := sysupgrade-tar | append-metadata
+  ARTIFACTS := preloader.bin bl31-uboot.fip
+  ARTIFACT/preloader.bin := mt7981-bl2 cudy-ddr3
+  ARTIFACT/bl31-uboot.fip := mt7981-bl31-uboot cudy_m3000-v2-yt8821
+endef
+TARGET_DEVICES += cudy_m3000-v2-yt8821-ubootmod
+
 
 define Device/cudy_re3000-v1
   DEVICE_VENDOR := Cudy
@@ -859,13 +1040,14 @@ define Device/cudy_tr3000-v1-ubootmod
   PAGESIZE := 2048
   KERNEL_IN_UBI := 1
   UBOOTENV_IN_UBI := 1
-  IMAGES := sysupgrade.itb
+  IMAGES := sysupgrade.itb sysupgrade.bin
   KERNEL_INITRAMFS_SUFFIX := -recovery.itb
   KERNEL := kernel-bin | gzip
   KERNEL_INITRAMFS := kernel-bin | lzma | \
 	fit lzma $$(KDIR)/image-$$(firstword $$(DEVICE_DTS)).dtb with-initrd | pad-to 64k
   IMAGE/sysupgrade.itb := append-kernel | \
 	fit gzip $$(KDIR)/image-$$(firstword $$(DEVICE_DTS)).dtb external-static-with-rootfs | append-metadata
+  IMAGE/sysupgrade.bin := sysupgrade-tar | append-metadata
   ARTIFACTS := preloader.bin bl31-uboot.fip
   ARTIFACT/preloader.bin := mt7981-bl2 cudy-tr3000-v1
   ARTIFACT/bl31-uboot.fip := mt7981-bl31-uboot cudy_tr3000-v1
@@ -908,6 +1090,33 @@ define Device/cudy_wr3000e-v1
 endef
 TARGET_DEVICES += cudy_wr3000e-v1
 
+define Device/cudy_wr3000e-v1-ubootmod
+  DEVICE_VENDOR := Cudy
+  DEVICE_MODEL := WR3000E
+  DEVICE_VARIANT := v1 (OpenWrt U-Boot layout)
+  DEVICE_DTS := mt7981b-cudy-wr3000e-v1-ubootmod
+  DEVICE_DTS_DIR := ../dts
+  DEVICE_PACKAGES := kmod-mt7915e kmod-mt7981-firmware mt7981-wo-firmware
+  UBINIZE_OPTS := -E 5
+  BLOCKSIZE := 128k
+  PAGESIZE := 2048
+  KERNEL_IN_UBI := 1
+  UBOOTENV_IN_UBI := 1
+  IMAGES := sysupgrade.itb sysupgrade.bin
+  KERNEL_INITRAMFS_SUFFIX := -recovery.itb
+  KERNEL := kernel-bin | gzip
+  KERNEL_INITRAMFS := kernel-bin | lzma | \
+	fit lzma $$(KDIR)/image-$$(firstword $$(DEVICE_DTS)).dtb with-initrd | pad-to 64k
+  IMAGE/sysupgrade.itb := append-kernel | \
+	fit gzip $$(KDIR)/image-$$(firstword $$(DEVICE_DTS)).dtb external-static-with-rootfs | append-metadata
+  IMAGE/sysupgrade.bin := sysupgrade-tar | append-metadata
+  ARTIFACTS := preloader.bin bl31-uboot.fip
+  ARTIFACT/preloader.bin := mt7981-bl2 cudy-ddr3
+  ARTIFACT/bl31-uboot.fip := mt7981-bl31-uboot cudy_wr3000e-v1
+endef
+TARGET_DEVICES += cudy_wr3000e-v1-ubootmod
+
+
 define Device/cudy_wr3000s-v1
   DEVICE_VENDOR := Cudy
   DEVICE_MODEL := WR3000S
@@ -924,6 +1133,33 @@ define Device/cudy_wr3000s-v1
   DEVICE_PACKAGES := kmod-mt7915e kmod-mt7981-firmware mt7981-wo-firmware
 endef
 TARGET_DEVICES += cudy_wr3000s-v1
+
+define Device/cudy_wr3000s-v1-ubootmod
+  DEVICE_VENDOR := Cudy
+  DEVICE_MODEL := WR3000S
+  DEVICE_VARIANT := v1 (OpenWrt U-Boot layout)
+  DEVICE_DTS := mt7981b-cudy-wr3000s-v1-ubootmod
+  DEVICE_DTS_DIR := ../dts
+  DEVICE_PACKAGES := kmod-mt7915e kmod-mt7981-firmware mt7981-wo-firmware
+  UBINIZE_OPTS := -E 5
+  BLOCKSIZE := 128k
+  PAGESIZE := 2048
+  KERNEL_IN_UBI := 1
+  UBOOTENV_IN_UBI := 1
+  IMAGES := sysupgrade.itb sysupgrade.bin
+  KERNEL_INITRAMFS_SUFFIX := -recovery.itb
+  KERNEL := kernel-bin | gzip
+  KERNEL_INITRAMFS := kernel-bin | lzma | \
+	fit lzma $$(KDIR)/image-$$(firstword $$(DEVICE_DTS)).dtb with-initrd | pad-to 64k
+  IMAGE/sysupgrade.itb := append-kernel | \
+	fit gzip $$(KDIR)/image-$$(firstword $$(DEVICE_DTS)).dtb external-static-with-rootfs | append-metadata
+  IMAGE/sysupgrade.bin := sysupgrade-tar | append-metadata
+  ARTIFACTS := preloader.bin bl31-uboot.fip
+  ARTIFACT/preloader.bin := mt7981-bl2 cudy-ddr3
+  ARTIFACT/bl31-uboot.fip := mt7981-bl31-uboot cudy_wr3000s-v1
+endef
+TARGET_DEVICES += cudy_wr3000s-v1-ubootmod
+
 
 define Device/cudy_wr3000h-v1
   DEVICE_VENDOR := Cudy
@@ -942,6 +1178,33 @@ define Device/cudy_wr3000h-v1
 endef
 TARGET_DEVICES += cudy_wr3000h-v1
 
+define Device/cudy_wr3000h-v1-ubootmod
+  DEVICE_VENDOR := Cudy
+  DEVICE_MODEL := WR3000H
+  DEVICE_VARIANT := v1 (OpenWrt U-Boot layout)
+  DEVICE_DTS := mt7981b-cudy-wr3000h-v1-ubootmod
+  DEVICE_DTS_DIR := ../dts
+  DEVICE_PACKAGES := kmod-mt7915e kmod-mt7981-firmware mt7981-wo-firmware kmod-phy-motorcomm
+  UBINIZE_OPTS := -E 5
+  BLOCKSIZE := 128k
+  PAGESIZE := 2048
+  KERNEL_IN_UBI := 1
+  UBOOTENV_IN_UBI := 1
+  IMAGES := sysupgrade.itb sysupgrade.bin
+  KERNEL_INITRAMFS_SUFFIX := -recovery.itb
+  KERNEL := kernel-bin | gzip
+  KERNEL_INITRAMFS := kernel-bin | lzma | \
+	fit lzma $$(KDIR)/image-$$(firstword $$(DEVICE_DTS)).dtb with-initrd | pad-to 64k
+  IMAGE/sysupgrade.itb := append-kernel | \
+	fit gzip $$(KDIR)/image-$$(firstword $$(DEVICE_DTS)).dtb external-static-with-rootfs | append-metadata
+  IMAGE/sysupgrade.bin := sysupgrade-tar | append-metadata
+  ARTIFACTS := preloader.bin bl31-uboot.fip
+  ARTIFACT/preloader.bin := mt7981-bl2 cudy-ddr3
+  ARTIFACT/bl31-uboot.fip := mt7981-bl31-uboot cudy_wr3000h-v1
+endef
+TARGET_DEVICES += cudy_wr3000h-v1-ubootmod
+
+
 define Device/cudy_wr3000p-v1
   DEVICE_VENDOR := Cudy
   DEVICE_MODEL := WR3000P
@@ -958,6 +1221,113 @@ define Device/cudy_wr3000p-v1
   DEVICE_PACKAGES := kmod-usb3 kmod-mt7915e kmod-mt7981-firmware mt7981-wo-firmware automount
 endef
 TARGET_DEVICES += cudy_wr3000p-v1
+
+define Device/cudy_wr3000p-v1-ubootmod
+  DEVICE_VENDOR := Cudy
+  DEVICE_MODEL := WR3000P
+  DEVICE_VARIANT := v1 (OpenWrt U-Boot layout)
+  DEVICE_DTS := mt7981b-cudy-wr3000p-v1-ubootmod
+  DEVICE_DTS_DIR := ../dts
+  DEVICE_PACKAGES := kmod-usb3 kmod-mt7915e kmod-mt7981-firmware mt7981-wo-firmware automount
+  UBINIZE_OPTS := -E 5
+  BLOCKSIZE := 128k
+  PAGESIZE := 2048
+  KERNEL_IN_UBI := 1
+  UBOOTENV_IN_UBI := 1
+  IMAGES := sysupgrade.itb sysupgrade.bin
+  KERNEL_INITRAMFS_SUFFIX := -recovery.itb
+  KERNEL := kernel-bin | gzip
+  KERNEL_INITRAMFS := kernel-bin | lzma | \
+	fit lzma $$(KDIR)/image-$$(firstword $$(DEVICE_DTS)).dtb with-initrd | pad-to 64k
+  IMAGE/sysupgrade.itb := append-kernel | \
+	fit gzip $$(KDIR)/image-$$(firstword $$(DEVICE_DTS)).dtb external-static-with-rootfs | append-metadata
+  IMAGE/sysupgrade.bin := sysupgrade-tar | append-metadata
+  ARTIFACTS := preloader.bin bl31-uboot.fip
+  ARTIFACT/preloader.bin := mt7981-bl2 cudy-ddr4
+  ARTIFACT/bl31-uboot.fip := mt7981-bl31-uboot cudy_wr3000p-v1
+endef
+TARGET_DEVICES += cudy_wr3000p-v1-ubootmod
+
+define Device/cudy_wr3000u-v1
+  DEVICE_VENDOR := Cudy
+  DEVICE_MODEL := WR3000U
+  DEVICE_VARIANT := v1
+  DEVICE_DTS := mt7981b-cudy-wr3000u-v1
+  DEVICE_DTS_DIR := ../dts
+  SUPPORTED_DEVICES += R138
+  UBINIZE_OPTS := -E 5
+  BLOCKSIZE := 128k
+  PAGESIZE := 2048
+  IMAGE_SIZE := 235520k
+  KERNEL_IN_UBI := 1
+  IMAGE/sysupgrade.bin := sysupgrade-tar | append-metadata
+  DEVICE_PACKAGES := kmod-usb3 kmod-mt7915e kmod-mt7981-firmware mt7981-wo-firmware
+endef
+TARGET_DEVICES += cudy_wr3000u-v1
+
+define Device/cudy_wbr3000uax-v1
+  DEVICE_VENDOR := Cudy
+  DEVICE_MODEL := WBR3000UAX
+  DEVICE_VARIANT := v1
+  DEVICE_DTS := mt7981b-cudy-wbr3000uax-v1
+  DEVICE_DTS_DIR := ../dts
+  SUPPORTED_DEVICES += R120
+  UBINIZE_OPTS := -E 5
+  BLOCKSIZE := 128k
+  PAGESIZE := 2048
+  IMAGE_SIZE := 65536k
+  KERNEL_IN_UBI := 1
+  IMAGE/sysupgrade.bin := sysupgrade-tar | append-metadata
+  DEVICE_PACKAGES := kmod-usb3 kmod-mt7915e kmod-mt7981-firmware mt7981-wo-firmware automount
+endef
+TARGET_DEVICES += cudy_wbr3000uax-v1
+
+define Device/cudy_wbr3000uax-v1-ubootmod
+  DEVICE_VENDOR := Cudy
+  DEVICE_MODEL := WBR3000UAX
+  DEVICE_VARIANT := v1 (OpenWrt U-Boot layout)
+  DEVICE_DTS := mt7981b-cudy-wbr3000uax-v1-ubootmod
+  DEVICE_DTS_DIR := ../dts
+  DEVICE_PACKAGES := kmod-usb3 kmod-mt7915e kmod-mt7981-firmware mt7981-wo-firmware automount
+  UBINIZE_OPTS := -E 5
+  BLOCKSIZE := 128k
+  PAGESIZE := 2048
+  KERNEL_IN_UBI := 1
+  UBOOTENV_IN_UBI := 1
+  IMAGES := sysupgrade.itb sysupgrade.bin
+  KERNEL_INITRAMFS_SUFFIX := -recovery.itb
+  KERNEL := kernel-bin | gzip
+  KERNEL_INITRAMFS := kernel-bin | lzma | \
+	fit lzma $$(KDIR)/image-$$(firstword $$(DEVICE_DTS)).dtb with-initrd | pad-to 64k
+  IMAGE/sysupgrade.itb := append-kernel | \
+	fit gzip $$(KDIR)/image-$$(firstword $$(DEVICE_DTS)).dtb external-static-with-rootfs | append-metadata
+  IMAGE/sysupgrade.bin := sysupgrade-tar | append-metadata
+  ARTIFACTS := preloader.bin bl31-uboot.fip
+  ARTIFACT/preloader.bin := mt7981-bl2 cudy-ddr3
+  ARTIFACT/bl31-uboot.fip := mt7981-bl31-uboot cudy_wbr3000uax-v1
+endef
+TARGET_DEVICES += cudy_wbr3000uax-v1-ubootmod
+
+define Device/dlink_aquila-pro-ai-e30-a1
+  DEVICE_VENDOR := D-Link
+  DEVICE_MODEL := AQUILA PRO AI E30
+  DEVICE_VARIANT := A1
+  DEVICE_DTS := mt7981b-dlink-aquila-pro-ai-e30-a1
+  DEVICE_DTS_DIR := ../dts
+  DEVICE_PACKAGES := kmod-leds-gca230718 kmod-mt7915e kmod-mt7981-firmware mt7981-wo-firmware
+  KERNEL_IN_UBI := 1
+  IMAGE_SIZE := 51200k
+  IMAGE/sysupgrade.bin := sysupgrade-tar | append-metadata
+ifeq ($(IB),)
+ifneq ($(CONFIG_TARGET_ROOTFS_INITRAMFS),)
+  IMAGES += recovery.bin
+  IMAGE/recovery.bin := append-image-stage initramfs-kernel.bin | sysupgrade-tar kernel=$$$$@ |\
+    pad-to $$(IMAGE_SIZE) | dlink-ai-recovery-header DLK6E6110002 \x6A\x28\xEE\x0B \x00\x00\x2C\x00 \x00\x00\x20\x03 \x61\x6E
+endif
+endif
+endef
+TARGET_DEVICES += dlink_aquila-pro-ai-e30-a1
+
 
 define Device/dlink_aquila-pro-ai-m30-a1
   DEVICE_VENDOR := D-Link
@@ -1141,13 +1511,15 @@ define Device/h3c_magic-nx30-pro
   KERNEL_IN_UBI := 1
   UBOOTENV_IN_UBI := 1
   IMAGE_SIZE := 65536k
-  IMAGES := sysupgrade.itb
+  IMAGES := sysupgrade.itb sysupgrade.bin
   KERNEL_INITRAMFS_SUFFIX := -recovery.itb
   KERNEL := kernel-bin | gzip
   KERNEL_INITRAMFS := kernel-bin | lzma | \
         fit lzma $$(KDIR)/image-$$(firstword $$(DEVICE_DTS)).dtb with-initrd | pad-to 64k
   IMAGE/sysupgrade.itb := append-kernel | \
-        fit gzip $$(KDIR)/image-$$(firstword $$(DEVICE_DTS)).dtb external-static-with-rootfs | append-metadata
+	fit gzip $$(KDIR)/image-$$(firstword $$(DEVICE_DTS)).dtb external-static-with-rootfs | append-metadata
+  IMAGE/sysupgrade.bin := sysupgrade-tar | append-metadata
+
   DEVICE_PACKAGES := kmod-mt7915e kmod-mt7981-firmware mt7981-wo-firmware
   ARTIFACTS := preloader.bin bl31-uboot.fip
   ARTIFACT/preloader.bin := mt7981-bl2 spim-nand-ddr3
@@ -1205,13 +1577,15 @@ define Device/imou_lc-hx3001
   PAGESIZE := 2048
   KERNEL_IN_UBI := 1
   UBOOTENV_IN_UBI := 1
-  IMAGES := sysupgrade.itb
+  IMAGES := sysupgrade.itb sysupgrade.bin
   KERNEL_INITRAMFS_SUFFIX := -recovery.itb
   KERNEL := kernel-bin | gzip
   KERNEL_INITRAMFS := kernel-bin | lzma | \
         fit lzma $$(KDIR)/image-$$(firstword $$(DEVICE_DTS)).dtb with-initrd | pad-to 64k
   IMAGE/sysupgrade.itb := append-kernel | \
-        fit gzip $$(KDIR)/image-$$(firstword $$(DEVICE_DTS)).dtb external-static-with-rootfs | append-metadata
+	fit gzip $$(KDIR)/image-$$(firstword $$(DEVICE_DTS)).dtb external-static-with-rootfs | append-metadata
+  IMAGE/sysupgrade.bin := sysupgrade-tar | append-metadata
+
   ARTIFACTS := preloader.bin bl31-uboot.fip
   ARTIFACT/preloader.bin := mt7981-bl2 spim-nand-ddr3
   ARTIFACT/bl31-uboot.fip := mt7981-bl31-uboot imou_lc-hx3001
@@ -1303,13 +1677,15 @@ define Device/jcg_q30-pro
   PAGESIZE := 2048
   KERNEL_IN_UBI := 1
   UBOOTENV_IN_UBI := 1
-  IMAGES := sysupgrade.itb
+  IMAGES := sysupgrade.itb sysupgrade.bin
   KERNEL_INITRAMFS_SUFFIX := -recovery.itb
   KERNEL := kernel-bin | gzip
   KERNEL_INITRAMFS := kernel-bin | lzma | \
         fit lzma $$(KDIR)/image-$$(firstword $$(DEVICE_DTS)).dtb with-initrd | pad-to 64k
   IMAGE/sysupgrade.itb := append-kernel | \
-        fit gzip $$(KDIR)/image-$$(firstword $$(DEVICE_DTS)).dtb external-static-with-rootfs | append-metadata
+	fit gzip $$(KDIR)/image-$$(firstword $$(DEVICE_DTS)).dtb external-static-with-rootfs | append-metadata
+  IMAGE/sysupgrade.bin := sysupgrade-tar | append-metadata
+
   DEVICE_PACKAGES := kmod-mt7915e kmod-mt7981-firmware mt7981-wo-firmware
   ARTIFACTS := preloader.bin bl31-uboot.fip
   ARTIFACT/preloader.bin := mt7981-bl2 spim-nand-ddr3
@@ -1454,13 +1830,15 @@ define Device/livinet_zr-3020-ubootmod
   PAGESIZE := 2048
   KERNEL_IN_UBI := 1
   UBOOTENV_IN_UBI := 1
-  IMAGES := sysupgrade.itb
+  IMAGES := sysupgrade.itb sysupgrade.bin
   KERNEL_INITRAMFS_SUFFIX := -recovery.itb
   KERNEL := kernel-bin | gzip
   KERNEL_INITRAMFS := kernel-bin | lzma | \
         fit lzma $$(KDIR)/image-$$(firstword $$(DEVICE_DTS)).dtb with-initrd | pad-to 64k
   IMAGE/sysupgrade.itb := append-kernel | \
-        fit gzip $$(KDIR)/image-$$(firstword $$(DEVICE_DTS)).dtb external-static-with-rootfs | append-metadata
+	fit gzip $$(KDIR)/image-$$(firstword $$(DEVICE_DTS)).dtb external-static-with-rootfs | append-metadata
+  IMAGE/sysupgrade.bin := sysupgrade-tar | append-metadata
+
   ARTIFACTS := preloader.bin bl31-uboot.fip
   ARTIFACT/preloader.bin := mt7981-bl2 spim-nand-ddr3
   ARTIFACT/bl31-uboot.fip := mt7981-bl31-uboot livinet_zr-3020
@@ -1693,13 +2071,15 @@ define Device/netcore_n60
   PAGESIZE := 2048
   KERNEL_IN_UBI := 1
   UBOOTENV_IN_UBI := 1
-  IMAGES := sysupgrade.itb
+  IMAGES := sysupgrade.itb sysupgrade.bin
   KERNEL_INITRAMFS_SUFFIX := -recovery.itb
   KERNEL := kernel-bin | gzip
   KERNEL_INITRAMFS := kernel-bin | lzma | \
         fit lzma $$(KDIR)/image-$$(firstword $$(DEVICE_DTS)).dtb with-initrd | pad-to 64k
   IMAGE/sysupgrade.itb := append-kernel | \
-        fit gzip $$(KDIR)/image-$$(firstword $$(DEVICE_DTS)).dtb external-static-with-rootfs | append-metadata
+	fit gzip $$(KDIR)/image-$$(firstword $$(DEVICE_DTS)).dtb external-static-with-rootfs | append-metadata
+  IMAGE/sysupgrade.bin := sysupgrade-tar | append-metadata
+
   DEVICE_PACKAGES := kmod-mt7915e kmod-mt7986-firmware mt7986-wo-firmware
   ARTIFACTS := preloader.bin bl31-uboot.fip
   ARTIFACT/preloader.bin := mt7986-bl2 spim-nand-ddr3
@@ -1717,13 +2097,15 @@ define Device/netcore_n60-pro
   PAGESIZE := 2048
   KERNEL_IN_UBI := 1
   UBOOTENV_IN_UBI := 1
-  IMAGES := sysupgrade.itb
+  IMAGES := sysupgrade.itb sysupgrade.bin
   KERNEL_INITRAMFS_SUFFIX := -recovery.itb
   KERNEL := kernel-bin | gzip
   KERNEL_INITRAMFS := kernel-bin | lzma | \
         fit lzma $$(KDIR)/image-$$(firstword $$(DEVICE_DTS)).dtb with-initrd | pad-to 64k
   IMAGE/sysupgrade.itb := append-kernel | \
-        fit gzip $$(KDIR)/image-$$(firstword $$(DEVICE_DTS)).dtb external-static-with-rootfs | append-metadata
+	fit gzip $$(KDIR)/image-$$(firstword $$(DEVICE_DTS)).dtb external-static-with-rootfs | append-metadata
+  IMAGE/sysupgrade.bin := sysupgrade-tar | append-metadata
+
   DEVICE_PACKAGES := kmod-mt7915e kmod-mt7986-firmware mt7986-wo-firmware kmod-usb3 automount
   ARTIFACTS := preloader.bin bl31-uboot.fip
   ARTIFACT/preloader.bin := mt7986-bl2 spim-nand-ddr4
@@ -1785,13 +2167,15 @@ define Device/nokia_ea0326gmp
   PAGESIZE := 2048
   KERNEL_IN_UBI := 1
   UBOOTENV_IN_UBI := 1
-  IMAGES := sysupgrade.itb
+  IMAGES := sysupgrade.itb sysupgrade.bin
   KERNEL_INITRAMFS_SUFFIX := -recovery.itb
   KERNEL := kernel-bin | gzip
   KERNEL_INITRAMFS := kernel-bin | lzma | \
         fit lzma $$(KDIR)/image-$$(firstword $$(DEVICE_DTS)).dtb with-initrd | pad-to 64k
   IMAGE/sysupgrade.itb := append-kernel | \
-        fit gzip $$(KDIR)/image-$$(firstword $$(DEVICE_DTS)).dtb external-static-with-rootfs | append-metadata
+	fit gzip $$(KDIR)/image-$$(firstword $$(DEVICE_DTS)).dtb external-static-with-rootfs | append-metadata
+  IMAGE/sysupgrade.bin := sysupgrade-tar | append-metadata
+
   ARTIFACTS := preloader.bin bl31-uboot.fip
   ARTIFACT/preloader.bin := mt7981-bl2 spim-nand-ddr3
   ARTIFACT/bl31-uboot.fip := mt7981-bl31-uboot nokia_ea0326gmp
@@ -2214,13 +2598,14 @@ define Device/viettel_nr3053
   DEVICE_PACKAGES := kmod-mt7915e kmod-mt7981-firmware mt7981-wo-firmware kmod-usb3
   KERNEL_IN_UBI := 1
   UBOOTENV_IN_UBI := 1
-  IMAGES := sysupgrade.itb
+  IMAGES := sysupgrade.itb sysupgrade.bin
   KERNEL_INITRAMFS_SUFFIX := -recovery.itb
   KERNEL := kernel-bin | gzip
   KERNEL_INITRAMFS := kernel-bin | lzma | \
 	fit lzma $$(KDIR)/image-$$(firstword $$(DEVICE_DTS)).dtb with-initrd | pad-to 64k
   IMAGE/sysupgrade.itb := append-kernel | \
 	fit gzip $$(KDIR)/image-$$(firstword $$(DEVICE_DTS)).dtb external-static-with-rootfs | append-metadata
+  IMAGE/sysupgrade.bin := sysupgrade-tar | append-metadata
   ARTIFACTS := preloader.bin bl31-uboot.fip
   ARTIFACT/preloader.bin := mt7981-bl2 spim-nand-ddr3
   ARTIFACT/bl31-uboot.fip := mt7981-bl31-uboot viettel_nr3053
@@ -2281,13 +2666,15 @@ define Device/xiaomi_mi-router-ax3000t-ubootmod
   DEVICE_PACKAGES := kmod-mt7915e kmod-mt7981-firmware mt7981-wo-firmware
   KERNEL_IN_UBI := 1
   UBOOTENV_IN_UBI := 1
-  IMAGES := sysupgrade.itb
+  IMAGES := sysupgrade.itb sysupgrade.bin
   KERNEL_INITRAMFS_SUFFIX := -recovery.itb
   KERNEL := kernel-bin | gzip
   KERNEL_INITRAMFS := kernel-bin | lzma | \
         fit lzma $$(KDIR)/image-$$(firstword $$(DEVICE_DTS)).dtb with-initrd | pad-to 64k
   IMAGE/sysupgrade.itb := append-kernel | \
-        fit gzip $$(KDIR)/image-$$(firstword $$(DEVICE_DTS)).dtb external-static-with-rootfs | append-metadata
+	fit gzip $$(KDIR)/image-$$(firstword $$(DEVICE_DTS)).dtb external-static-with-rootfs | append-metadata
+  IMAGE/sysupgrade.bin := sysupgrade-tar | append-metadata
+
   ARTIFACTS := preloader.bin bl31-uboot.fip
   ARTIFACT/preloader.bin := mt7981-bl2 spim-nand-ddr3
   ARTIFACT/bl31-uboot.fip := mt7981-bl31-uboot xiaomi_mi-router-ax3000t
@@ -2332,13 +2719,15 @@ define Device/xiaomi_mi-router-wr30u-ubootmod
   DEVICE_PACKAGES := kmod-mt7915e kmod-mt7981-firmware mt7981-wo-firmware
   KERNEL_IN_UBI := 1
   UBOOTENV_IN_UBI := 1
-  IMAGES := sysupgrade.itb
+  IMAGES := sysupgrade.itb sysupgrade.bin
   KERNEL_INITRAMFS_SUFFIX := -recovery.itb
   KERNEL := kernel-bin | gzip
   KERNEL_INITRAMFS := kernel-bin | lzma | \
         fit lzma $$(KDIR)/image-$$(firstword $$(DEVICE_DTS)).dtb with-initrd | pad-to 64k
   IMAGE/sysupgrade.itb := append-kernel | \
-        fit gzip $$(KDIR)/image-$$(firstword $$(DEVICE_DTS)).dtb external-static-with-rootfs | append-metadata
+	fit gzip $$(KDIR)/image-$$(firstword $$(DEVICE_DTS)).dtb external-static-with-rootfs | append-metadata
+  IMAGE/sysupgrade.bin := sysupgrade-tar | append-metadata
+
   ARTIFACTS := preloader.bin bl31-uboot.fip
   ARTIFACT/preloader.bin := mt7981-bl2 spim-nand-ddr3
   ARTIFACT/bl31-uboot.fip := mt7981-bl31-uboot xiaomi_mi-router-wr30u
