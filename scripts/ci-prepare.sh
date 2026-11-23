@@ -7,6 +7,8 @@ echo ">> [1/4] Updating & Installing OpenWrt Feeds..."
 echo "=========================================================="
 ./scripts/feeds update -a
 ./scripts/feeds install -a
+./scripts/feeds update doanduy || true
+./scripts/feeds install -a -p doanduy || true
 
 echo "=========================================================="
 echo ">> [2/4] Applying Kernel 6.12 Out-of-Tree Driver Patches..."

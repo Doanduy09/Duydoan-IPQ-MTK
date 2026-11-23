@@ -3,6 +3,9 @@ name: Duydoan Multi-Target Firmware Builder (Master & 24.10)
 on:
   push:
     branches:
+      - main
+      - openwrt-25
+      - openwrt-24-passwall
       - master
       - master-passwall
       - immortalwrt-24
@@ -331,6 +334,9 @@ jobs:
           CONFIG_PACKAGE_haproxy=y
           EOF
           fi
+          
+          # Đảm bảo toàn bộ router đều có DoanDuy Modem Suite
+          echo "CONFIG_PACKAGE_luci-app-doanduy-modem=y" >> .config
           
           make defconfig
           echo ">> Active target devices count: $(grep -c '^CONFIG_TARGET_DEVICE_.*=y$' .config || echo 0)"

@@ -7,3 +7,4 @@ src-git all https://github.com/kiddin9/op-packages.git
 src-git qmodem https://github.com/FUjr/QModem.git
 src-git modemdata https://github.com/obsy/modemdata.git
 src-git luci_app_modemdata https://github.com/4IceG/luci-app-modemdata.git
+src-git doanduy https://github.com/Doanduy09/luci-app-doanduy-modem.git
