@@ -40,6 +40,11 @@ jobs:
     outputs:
       matrix: ${{ steps.set-matrix.outputs.matrix }}
     steps:
+      - name: Checkout Source Branch
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
       - name: Pre-Build Auto-Clean (Giữ GitHub luôn sạch sẽ & nhẹ nhàng)
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
@@ -67,6 +72,62 @@ jobs:
           except Exception as e:
               print(f"Cleanup non-fatal warning: {e}")
           PYEOF
+
+      - name: Sync Upstream ImmortalWrt Before Build (Bảo đảm luôn có mã nguồn mới nhất)
+        run: |
+          git config user.name "Doanduy09-Bot"
+          git config user.email "doanduy09@gmail.com"
+          git remote add upstream https://github.com/immortalwrt/immortalwrt.git || git remote set-url upstream https://github.com/immortalwrt/immortalwrt.git
+          
+          CURRENT_BRANCH="${{ github.ref_name }}"
+          UPSTREAM_BRANCH="openwrt-25.12"
+          if [ "$CURRENT_BRANCH" = "main" ]; then
+            UPSTREAM_BRANCH="openwrt-24.10"
+          fi
+          
+          echo ">> [PRE-BUILD SYNC] Đang đồng bộ nhánh $CURRENT_BRANCH với upstream immortalwrt:$UPSTREAM_BRANCH..."
+          git fetch upstream "$UPSTREAM_BRANCH" --depth=100 || true
+          
+          if git rev-parse "upstream/$UPSTREAM_BRANCH" >/dev/null 2>&1; then
+            if git merge-base --is-ancestor "upstream/$UPSTREAM_BRANCH" HEAD; then
+              echo ">> [UP-TO-DATE] Mã nguồn $CURRENT_BRANCH đã trùng khớp với upstream mới nhất."
+            else
+              echo ">> [NEW UPSTREAM DETECTED] Tiến hành hợp nhất upstream/$UPSTREAM_BRANCH..."
+              if git merge "upstream/$UPSTREAM_BRANCH" -m "sync: auto-merge upstream immortalwrt:$UPSTREAM_BRANCH before build"; then
+                echo ">> Hợp nhất thành công không xung đột!"
+              else
+                echo ">> Xử lý xung đột — bảo lưu 100% phần cứng & cấu hình Doanduy..."
+                PROTECTED_FILES=(
+                  "mediatek_filogic_all.config"
+                  "qualcomm_ipq60xx_all.config"
+                  "qualcomm_ipq807x_all.config"
+                  "feeds.conf.default"
+                  "scripts/ci-prepare.sh"
+                  "scripts/hermes_lab_auto_runner.js"
+                  "scripts/qmodem_manager.sh"
+                  "package/base-files/files/etc/duydoan_wwan_matrix.json"
+                  "package/base-files/files/etc/init.d/all.enc"
+                  "target/linux/mediatek/image/filogic.mk"
+                  "target/linux/mediatek/dts/mt7981b-wirelesstag-zx7981pd.dts"
+                  "target/linux/mediatek/dts/mt7981b-viettel-nr3053.dts"
+                  "target/linux/mediatek/dts/mt7981b-sdmc-mt3053.dts"
+                  "target/linux/qualcommax/image/ipq60xx.mk"
+                  "target/linux/qualcommax/image/ipq807x.mk"
+                  "package/firmware/ipq-wifi/Makefile"
+                  ".github/workflows/build-25-unified-matrix.yml"
+                  ".github/workflows/Auto-Clean.yml"
+                  ".github/workflows/sync-immortalwrt.yml"
+                )
+                for pf in "${PROTECTED_FILES[@]}"; do
+                  git checkout --ours "$pf" 2>/dev/null || true
+                done
+                git rm -f --cached package/base-files/files/etc/init.d/all 2>/dev/null || true
+                git add -A
+                git commit -m "sync: resolve merge conflicts preserving Doanduy hardware & configs" || true
+              fi
+              git push origin "$CURRENT_BRANCH" || echo "Push warning: proceeding with current build"
+            fi
+          fi
 
       - name: Generate Build Matrix
         id: set-matrix
