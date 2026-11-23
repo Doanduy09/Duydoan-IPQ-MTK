@@ -4,8 +4,6 @@ on:
   push:
     branches:
       - main
-      - openwrt-25
-      - openwrt-24-passwall
       - master
       - master-passwall
       - immortalwrt-24
@@ -32,7 +30,7 @@ on:
         type: boolean
 
 concurrency:
-  group: duydoan-firmware-builder
+  group: duydoan-firmware-builder-${{ github.ref }}
   cancel-in-progress: true
 
 permissions:
@@ -182,10 +180,11 @@ jobs:
               else:
                   prefix = "Duydoan-Master"
 
+          badge = " [Passwall]" if "passwall" in ref_name.lower() else ""
           all_targets = [
               {
                   "id": "qualcomm-ipq60xx",
-                  "title": "Qualcomm IPQ60xx (NSS 12.5)",
+                  "title": f"Qualcomm IPQ60xx (NSS 12.5){badge}",
                   "config": "qualcomm_ipq60xx_all.config",
                   "target_dir": "bin/targets/qualcommax/ipq60xx",
                   "tag_prefix": f"{prefix}-Qualcomm-IPQ60xx-All",
@@ -194,7 +193,7 @@ jobs:
               },
               {
                   "id": "qualcomm-ipq807x",
-                  "title": "Qualcomm IPQ807x (NSS 12.5)",
+                  "title": f"Qualcomm IPQ807x (NSS 12.5){badge}",
                   "config": "qualcomm_ipq807x_all.config",
                   "target_dir": "bin/targets/qualcommax/ipq807x",
                   "tag_prefix": f"{prefix}-Qualcomm-IPQ807x-All",
@@ -203,7 +202,7 @@ jobs:
               },
               {
                   "id": "mediatek-filogic",
-                  "title": "MediaTek Filogic (MT7981/7986/7988 HNAT)",
+                  "title": f"MediaTek Filogic (MT7981/7986/7988 HNAT){badge}",
                   "config": "mediatek_filogic_all.config",
                   "target_dir": "bin/targets/mediatek/filogic",
                   "tag_prefix": f"{prefix}-MediaTek-Filogic-All",
