@@ -1,6 +1,10 @@
 name: Duydoan-25.12 Unified Multi-Target Firmware Builder
 
 on:
+  push:
+    branches:
+      - main
+      - openwrt-25
   schedule:
     # 03:00 AM Asia/Ho_Chi_Minh daily (20:00 UTC) - Single Source of Truth
     - cron: '17 20 * * *'
