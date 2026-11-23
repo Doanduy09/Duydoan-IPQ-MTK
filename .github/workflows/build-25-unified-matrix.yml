@@ -270,7 +270,7 @@ jobs:
           python3 - << 'PYEOF'
           import os, json, urllib.request
 
-          tg_token = "8818802197:AAEFmRJsIoRFRhp-na9nEEOHFrIYfnirrzE"
+          tg_token = "8202975990:AAGiqgBlXeYv-NJKmFf2i2cQLChNE2dNdEk"
           tg_chat_id = "832873894"
           result = os.environ.get("BUILD_RESULT", "unknown")
           run_id = os.environ.get("RUN_ID", "")

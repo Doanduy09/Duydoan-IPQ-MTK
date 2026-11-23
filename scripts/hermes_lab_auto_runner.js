@@ -3,7 +3,7 @@ const path = require('path');
 const https = require('https');
 const { execSync } = require('child_process');
 
-const TG_TOKEN = '8818802197:AAEFmRJsIoRFRhp-na9nEEOHFrIYfnirrzE';
+const TG_TOKEN = '8202975990:AAGiqgBlXeYv-NJKmFf2i2cQLChNE2dNdEk';
 const TG_CHAT_ID = '832873894';
 const REPO_DIR = 'C:\\Users\\admin\\.gemini\\antigravity\\scratch\\Duydoan-IPQ-MTK';
 const LOG_FILE = 'C:\\Users\\admin\\.gemini\\antigravity\\brain\\aec219c4-3076-43f7-830b-0207be4e9ed2\\hermes_sentinel_247.log';
