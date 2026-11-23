@@ -134,7 +134,7 @@ send_at_direct() {
 
 case "$1" in
     list)
-        echo '{"getSMSInfo":{},"sendSMS":{"target":"string","msg":"string"},"sendAT":{"cmd":"string"},"setCustomSchedule":{"datetime":"string"},"getAvailablePorts":{},"setCustomAtPort":{"port":"string"},"fetchSMSNow":{},"deleteSingleSMS":{"indices":"string","storage":"string"},"deleteAllSMS":{},"checkDataBalance":{},"setBandLock":{"mode":"string"},"getCellInfo":{},"setCellLock":{"action":"string"},"getSentinelConfig":{},"setSentinelConfig":{"tg_bot_token":"string","tg_admin_id":"string","tg_owner_name":"string","emergency_phone":"string","gemini_api_key":"string","tailscale_auth_key":"string","cloud_remote":"string","cam1_rtsp":"string","cam2_rtsp":"string","cam_cong_rtsp":"string"},"loadVaultKeys":{},"renameInterface":{"new_name":"string"}}'
+        echo '{"getSMSInfo":{},"sendSMS":{"target":"string","msg":"string"},"sendAT":{"cmd":"string"},"setCustomSchedule":{"datetime":"string"},"getAvailablePorts":{},"setCustomAtPort":{"port":"string"},"fetchSMSNow":{},"deleteSingleSMS":{"indices":"string","storage":"string"},"deleteAllSMS":{},"checkDataBalance":{},"setBandLock":{"mode":"string"},"getCellInfo":{},"setCellLock":{"action":"string"},"getSentinelConfig":{},"setSentinelConfig":{"tg_bot_token":"string","tg_admin_id":"string","tg_owner_name":"string","emergency_phone":"string","gemini_api_key":"string","tailscale_auth_key":"string","cloud_remote":"string","cam1_rtsp":"string","cam2_rtsp":"string","cam_cong_rtsp":"string","cameras":"array"},"loadVaultKeys":{},"renameInterface":{"new_name":"string"},"setVipImei":{"imei":"string"}}'
         ;;
     call)
         read -r -t 1 input 2>/dev/null || [ -n "$input" ] || input=""
@@ -373,6 +373,17 @@ case "$1" in
 
                 echo '{"success":true,"message":"Đã đổi tên interface thành '"$new_name"' thành công!"}'
                 ;;
+            setVipImei)
+                new_imei=$(echo "$input" | jsonfilter -e '$.imei' 2>/dev/null | tr -cd '0-9')
+                if [ -n "$new_imei" ] && [ ${#new_imei} -ge 14 ]; then
+                    echo "$new_imei" > /etc/config/default_vip_imei
+                    echo "$new_imei" > /tmp/master_imei
+                    sync
+                    echo '{"success":true,"message":"Đã đăng ký IMEI VIP ['"$new_imei"'] thành công!"}'
+                else
+                    echo '{"success":false,"message":"Số IMEI không hợp lệ (phải từ 14 đến 16 số)!"}'
+                fi
+                ;;
             getSMSInfo)
                 port=$(get_active_modem_port)
                 act_iface=$(cat /tmp/wd_interface 2>/dev/null || echo "duydoan_5g")
@@ -383,14 +394,17 @@ case "$1" in
                 [ "$cur_sim_status" = "VALID" ] && is_auth=1
                 epoch=$(cat /etc/sms_custom_send_epoch 2>/dev/null || cat /tmp/sms_custom_send_epoch 2>/dev/null || cat /tmp/sms_next_send_epoch 2>/dev/null || echo "0")
                 cur_band=$(cat /etc/config/band_lock_mode 2>/dev/null || cat /tmp/band_lock_mode 2>/dev/null || echo "auto_carrier")
+                vip_imei=$(cat /etc/config/default_vip_imei 2>/dev/null)
+                [ -z "$vip_imei" ] && vip_imei=$(cat /tmp/master_imei 2>/dev/null)
+                [ -z "$vip_imei" ] && vip_imei="030537611972346"
 
                 inbox="\"Hộp thư trống hoặc nhấn Làm Mới SMS để đọc tin nhắn.\""
                 [ -f /tmp/sms_inbox.json ] && [ -s /tmp/sms_inbox.json ] && inbox=$(cat /tmp/sms_inbox.json 2>/dev/null)
                 [ -z "$inbox" ] && inbox="\"Hộp thư trống.\""
                 carrier_preset=$(cat /tmp/carrier_data_preset.json 2>/dev/null)
                 [ -z "$carrier_preset" ] && carrier_preset='{"carrier":"Viettel","dest":"191","syntax":"KTTK","status":"STANDBY"}'
-                printf '{"port":"%s","act_iface":"%s","sim_info":"%s","sim_status":"%s","custom_send_epoch":"%s","is_authenticated":%d,"cur_band_lock":"%s","carrier_preset":%s,"inbox":%s}\n' \
-                    "$port" "$act_iface" "$sim_info" "$cur_sim_status" "$epoch" "$is_auth" "$cur_band" "$carrier_preset" "$inbox"
+                printf '{"port":"%s","act_iface":"%s","sim_info":"%s","sim_status":"%s","custom_send_epoch":"%s","is_authenticated":%d,"cur_band_lock":"%s","carrier_preset":%s,"vip_imei":"%s","inbox":%s}\n' \
+                    "$port" "$act_iface" "$sim_info" "$cur_sim_status" "$epoch" "$is_auth" "$cur_band" "$carrier_preset" "$vip_imei" "$inbox"
                 ;;
             sendSMS)
                 target=$(echo "$input" | jsonfilter -e '$.target' 2>/dev/null)
@@ -788,6 +802,22 @@ EOF
 
                 lua - "$tg_tok" "$tg_adm" "$tg_own" "$emg_phone" "$gem_key" "$ts_key" "$cl_remote" "$c1_rtsp" "$c2_rtsp" "$cc_rtsp" << 'LUASENT'
 local json = require("luci.jsonc")
+local cams = {}
+local cf = io.open("/etc/config/sentinel_cameras.conf", "r")
+if cf then
+    for line in cf:lines() do
+        line = line:match("^%s*(.-)%s*$")
+        if line ~= "" and not line:match("^#") then
+            table.insert(cams, line)
+        end
+    end
+    cf:close()
+end
+if #cams == 0 then
+    if arg[8] and arg[8] ~= "" then table.insert(cams, arg[8]) end
+    if arg[9] and arg[9] ~= "" then table.insert(cams, arg[9]) end
+    if arg[10] and arg[10] ~= "" then table.insert(cams, arg[10]) end
+end
 print(json.stringify({
     success = true,
     tg_bot_token = arg[1] or "",
@@ -799,7 +829,8 @@ print(json.stringify({
     cloud_remote = arg[7] or "",
     cam1_rtsp = arg[8] or "",
     cam2_rtsp = arg[9] or "",
-    cam_cong_rtsp = arg[10] or ""
+    cam_cong_rtsp = arg[10] or "",
+    cameras = cams
 }))
 LUASENT
                 ;;
@@ -815,6 +846,25 @@ LUASENT
                 c1_rtsp=$(echo "$input" | jsonfilter -e '$.cam1_rtsp' 2>/dev/null | tr -d ' \r\n\t')
                 c2_rtsp=$(echo "$input" | jsonfilter -e '$.cam2_rtsp' 2>/dev/null | tr -d ' \r\n\t')
                 cc_rtsp=$(echo "$input" | jsonfilter -e '$.cam_cong_rtsp' 2>/dev/null | tr -d ' \r\n\t')
+
+                # Lưu danh sách Camera IP không giới hạn
+                lua - "$input" << 'LUASAVECAMS'
+local json = require("luci.jsonc")
+local data = json.parse(arg[1] or "{}") or {}
+if data.cameras and type(data.cameras) == "table" and #data.cameras > 0 then
+    local f = io.open("/etc/config/sentinel_cameras.conf", "w")
+    if f then
+        f:write("# Sentinel Unlimited IP Cameras Config\n")
+        for _, cam in ipairs(data.cameras) do
+            cam = tostring(cam):match("^%s*(.-)%s*$")
+            if cam ~= "" then
+                f:write(cam .. "\n")
+            end
+        end
+        f:close()
+    end
+end
+LUASAVECAMS
 
                 mkdir -p /etc/config /etc/tailscale 2>/dev/null
 

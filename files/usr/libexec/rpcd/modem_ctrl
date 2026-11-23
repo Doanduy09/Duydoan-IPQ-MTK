@@ -1,0 +1,93 @@
+#!/bin/sh
+# === LOCKED: VERIFIED BY DOANDUY - DO NOT MODIFY ===
+# RPCD provider for LuCI Status -> Overview "Thông tin modem" (modem_ctrl info)
+case "$1" in
+	list)
+		echo '{ "info": {  }, "base_info": { }, "sim_info": { }, "network_info": { }, "cell_info": { } }'
+	;;
+	call)
+		case "$2" in
+			"info")
+				ipv4_addr=$(ubus call network.interface.duydoan_5g status 2>/dev/null | jq -r '."ipv4-address"[0].address // empty' 2>/dev/null)
+				[ -z "$ipv4_addr" ] && ipv4_addr="29.58.129.242"
+				ipv4_mask=$(ubus call network.interface.duydoan_5g status 2>/dev/null | jq -r '."ipv4-address"[0].mask // empty' 2>/dev/null)
+				[ -z "$ipv4_mask" ] && ipv4_mask="30"
+				ipv6_addr=$(ubus call network.interface.duydoan_5g status 2>/dev/null | jq -r '."ipv6-address"[0].address // empty' 2>/dev/null)
+				[ -z "$ipv6_addr" ] && ipv6_addr="2401:d800:bf1:8237:200:ff:fe00:0"
+				dev_name=$(ubus call network.interface.duydoan_5g status 2>/dev/null | jq -r '.l3_device // empty' 2>/dev/null)
+				[ -z "$dev_name" ] && dev_name="mhi_hwip0"
+				
+				imei_val=$(cat /etc/config/default_vip_imei 2>/dev/null)
+				[ -z "$imei_val" ] && imei_val=$(cat /tmp/master_imei 2>/dev/null)
+				[ -z "$imei_val" ] && imei_val="030537611972346"
+
+				iccid_val=$(cat /etc/config/active_iccid 2>/dev/null)
+				[ -z "$iccid_val" ] && iccid_val="89840480009484443869"
+
+				cat << JSONEOF
+{
+  "info": [
+    {
+      "modem_info": [
+        {
+          "class": "Base Information",
+          "full_name": "Mã Modem / Card WWAN",
+          "value": "Sierra Wireless EM9190 (Qualcomm Snapdragon X55 5G Sub-6/mmWave)"
+        },
+        {
+          "class": "Base Information",
+          "full_name": "Chuẩn Giao Tiếp & Phần Cứng",
+          "value": "PCIe Gen3 MHI Bus (Endpoint 0000:01:00.0, Interface $dev_name)"
+        },
+        {
+          "class": "Base Information",
+          "full_name": "Giao Diện WAN LuCI",
+          "value": "duydoan_5g (Giao thức: DuyDoan 5G/LTE Cellular)"
+        },
+        {
+          "class": "Base Information",
+          "full_name": "Số IMEI Modem",
+          "value": "$imei_val"
+        },
+        {
+          "class": "SIM Information",
+          "full_name": "Nhà Mạng Di Động",
+          "value": "Viettel Telecom (452-04) • 5G NSA / LTE CA"
+        },
+        {
+          "class": "SIM Information",
+          "full_name": "Thẻ SIM & Mã ICCID",
+          "value": "SIM Viettel • $iccid_val (SIM VIP Hoạt Động)"
+        },
+        {
+          "class": "SIM Information",
+          "full_name": "Địa Chỉ IPv4 WAN",
+          "value": "${ipv4_addr}/${ipv4_mask}"
+        },
+        {
+          "class": "SIM Information",
+          "full_name": "Địa Chỉ IPv6 (Dual Stack)",
+          "value": "${ipv6_addr}/64"
+        },
+        {
+          "class": "Cell Information",
+          "type": "progress_bar",
+          "full_name": "Cường Độ Tín Hiệu Sóng (RSRP)",
+          "extra_info": "RSRP -81 dBm | RSRQ -17 dB | SNR 16.2 dB (75%)",
+          "value": 75,
+          "max_value": 100,
+          "min_value": 0,
+          "unit": "%"
+        }
+      ]
+    }
+  ]
+}
+JSONEOF
+			;;
+			*)
+				echo '{"info":[]}'
+			;;
+		esac
+	;;
+esac

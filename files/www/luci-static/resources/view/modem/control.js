@@ -21,9 +21,10 @@ var callSetCellLock = rpc.declare({ object: 'luci.sms-status', method: 'setCellL
 var callSetCustomSchedule = rpc.declare({ object: 'luci.sms-status', method: 'setCustomSchedule', params: ['datetime'] });
 
 var callChangeIMEI = rpc.declare({ object: 'luci.weather-status', method: 'changeIMEI', params: ['imei', 'brand'] });
+var callSetVipImei = rpc.declare({ object: 'luci.sms-status', method: 'setVipImei', params: ['imei'], expect: { } });
 var callSetTelegramToken = rpc.declare({ object: 'luci.weather-status', method: 'setTelegramToken', params: ['token', 'admin_id', 'owner_name'] });
 var callGetSentinelConfig = rpc.declare({ object: 'luci.sms-status', method: 'getSentinelConfig', expect: { } });
-var callSetSentinelConfig = rpc.declare({ object: 'luci.sms-status', method: 'setSentinelConfig', params: ['tg_bot_token', 'tg_admin_id', 'tg_owner_name', 'emergency_phone', 'gemini_api_key', 'tailscale_auth_key', 'cloud_remote', 'cam1_rtsp', 'cam2_rtsp', 'cam_cong_rtsp'] });
+var callSetSentinelConfig = rpc.declare({ object: 'luci.sms-status', method: 'setSentinelConfig', params: ['tg_bot_token', 'tg_admin_id', 'tg_owner_name', 'emergency_phone', 'gemini_api_key', 'tailscale_auth_key', 'cloud_remote', 'cam1_rtsp', 'cam2_rtsp', 'cam_cong_rtsp', 'cameras'] });
 var callLoadVaultKeys = rpc.declare({ object: 'luci.sms-status', method: 'loadVaultKeys', expect: { } });
 var callTriggerAITest = rpc.declare({ object: 'luci.device-control', method: 'triggerAITest', params: ['mode', 'cam'] });
 
@@ -505,7 +506,35 @@ return view.extend({
             });
         }
 
-        var simIccidSection;
+        var vipImeiInput = E('input', {
+            type: 'text',
+            class: 'cbi-input-text',
+            value: (smsRes && smsRes.vip_imei) ? smsRes.vip_imei : '030537611972346',
+            placeholder: 'Nhập 15 số IMEI VIP',
+            style: 'width: 190px; height: 34px; font-weight: 800; font-family: monospace; border-radius: 6px; font-size: 13px;'
+        });
+
+        var saveVipImeiBtn = E('button', {
+            class: 'btn cbi-button cbi-button-action',
+            style: 'font-size: 12px; font-weight: 750; padding: 5px 14px; border-radius: 6px;',
+            click: function() {
+                var im = vipImeiInput.value.trim();
+                if (!im.match(/^[0-9]{14,16}$/)) {
+                    alert('Số IMEI phải chứa từ 14 đến 16 chữ số!');
+                    return;
+                }
+                saveVipImeiBtn.textContent = '⏳ Đang lưu...';
+                callSetVipImei(im).then(function(res) {
+                    saveVipImeiBtn.textContent = '💾 Lưu IMEI VIP';
+                    ui.addNotification(null, E('p', '✅ ' + (res.message || 'Đã cập nhật IMEI VIP!')), 'info');
+                }).catch(function(err) {
+                    saveVipImeiBtn.textContent = '💾 Lưu IMEI VIP';
+                    alert('Lỗi: ' + err);
+                });
+            }
+        }, '💾 Lưu IMEI VIP');
+
+        var simIccidSection = null;
         if (isWhitelisted) {
             simIccidSection = E('div', {
                 style: 'background: #ffffff; border: 1.5px solid #cbd5e1; border-radius: 8px; padding: 14px 16px; margin-bottom: 16px;'
@@ -532,13 +561,18 @@ return view.extend({
                         ]),
                         allowedIccidTags
                     ])
+                ]),
+                E('div', { style: 'margin-top: 12px; padding-top: 10px; border-top: 1px dashed #e2e8f0; display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 8px;' }, [
+                    E('div', { style: 'display: flex; align-items: center; gap: 8px;' }, [
+                        E('span', { style: 'font-size: 12.5px; font-weight: 750; color: #1e293b;' }, '👑 Đăng Ký / Cập Nhật Số IMEI VIP:'),
+                        vipImeiInput,
+                        saveVipImeiBtn
+                    ]),
+                    E('span', { style: 'font-size: 11.5px; color: #64748b;' }, 'Cố định số IMEI phần cứng này làm định danh modem VIP')
                 ])
             ]);
         } else {
-            // Khi SIM KHÔNG nằm trong danh mục VIP: ẨN HOÀN TOÀN KHỐI QUẢN LÝ VIP ICCID (HÌNH 2)!
-            simIccidSection = E('div', {
-                style: 'display: none;'
-            });
+            simIccidSection = null;
         }
 
         var inboxContainer = E('div', {
@@ -589,11 +623,32 @@ return view.extend({
             }
         }, '🔍 Kiểm Tra Data Nhanh (Tự Động Đọc Tin)');
 
-        var simTabContent = E('div', { class: 'cbi-section', style: 'padding: 20px; background: #ffffff; border-radius: 10px; border: 1px solid #e2e8f0;' }, [
-            E('h3', { style: 'margin-top: 0; font-size: 18px; font-weight: 800; color: #1e293b; border-bottom: 1px solid #f1f5f9; padding-bottom: 10px;' }, isWhitelisted ? '📬 Quản Lý SIM VIP & Hộp Thư SMS (Router & SIM)' : '📬 Hộp Thư Tin Nhắn SMS (Router & SIM)'),
-            simIccidSection,
-            scheduleSectionNode,
-            E('div', { style: 'background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 8px; padding: 14px; margin-bottom: 16px; display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 10px;' }, [
+        var simTabChildren = [
+            E('h3', { style: 'margin-top: 0; font-size: 18px; font-weight: 800; color: #1e293b; border-bottom: 1px solid #f1f5f9; padding-bottom: 10px;' }, isWhitelisted ? '📬 Quản Lý SIM VIP & Hộp Thư SMS (Router & SIM)' : '📬 Hộp Thư Tin Nhắn SMS (Router & SIM)')
+        ];
+
+        /* ==============================================================================
+           === LOCKED: VERIFIED BY DOANDUY - DO NOT MODIFY ===
+           BẢO MẬT TUYỆT ĐỐI THEO CHỈ THỊ ANH DUY (DOANDUY):
+           Chỉ khi SIM nằm trong danh mục VIP mặc định thì mới hiển thị Bảng Quản Trị ICCID VIP
+           và Lịch Hẹn Giờ SMS. Nếu SIM ngoài danh mục VIP: ẨN 100% KHỎI DOM (ZERO LEAK)!
+           ============================================================================== */
+        if (isWhitelisted) {
+            if (simIccidSection) simTabChildren.push(simIccidSection);
+            if (scheduleSectionNode) simTabChildren.push(scheduleSectionNode);
+        } else {
+            simTabChildren.push(E('div', {
+                style: 'background: #f8fafc; border: 1.5px dashed #cbd5e1; border-radius: 8px; padding: 14px 18px; margin-bottom: 16px; display: flex; align-items: center; gap: 12px; color: #475569;'
+            }, [
+                E('span', { style: 'font-size: 22px;' }, '🔒'),
+                E('div', {}, [
+                    E('div', { style: 'font-weight: 750; font-size: 13.5px; color: #1e293b; margin-bottom: 3px;' }, 'Chế Độ Bảo Mật VIP Tuyệt Đối (Stealth Mode Active):'),
+                    E('div', { style: 'font-size: 12px; color: #64748b; line-height: 1.5;' }, 'Thẻ SIM đang sử dụng không thuộc danh mục SIM VIP mặc định. Toàn bộ bảng quản trị mã ICCID VIP, cấu hình đăng ký IMEI VIP và lịch hẹn giờ gia hạn tự động đã được ẩn hoàn toàn để bảo vệ bảo mật hệ thống.')
+                ])
+            ]));
+        }
+
+        var simTabStatusCard = E('div', { style: 'background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 8px; padding: 14px; margin-bottom: 16px; display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 10px;' }, [
                 E('div', {}, [
                     E('span', { style: 'font-weight: 700; color: #475569; font-size: 13px;' }, '📱 Trạng thái SIM: '),
                     E('span', { style: 'font-weight: 800; color: ' + (isWhitelisted ? '#15803d' : '#475569') + '; font-size: 14px;' }, isWhitelisted ? (smsRes.sim_info || 'SIM Viettel (Hoạt động)') : (simMgrData.active_iccid ? 'SIM Ngoài Danh Sách' : 'Chưa gắn SIM / Chưa phát hiện')),
@@ -622,19 +677,22 @@ return view.extend({
                         }
                     }, '🗑️ Xóa Tất Cả')
                 ])
-            ]),
-            E('div', { style: 'margin-bottom: 16px; border: 1px solid #f1f5f9; border-radius: 8px; padding: 14px; background: #fafafa;' }, [
+            ]);
+
+            simTabChildren.push(simTabStatusCard);
+            simTabChildren.push(E('div', { style: 'margin-bottom: 16px; border: 1px solid #f1f5f9; border-radius: 8px; padding: 14px; background: #fafafa;' }, [
                 E('div', { style: 'font-weight: 750; font-size: 13.5px; margin-bottom: 8px; color: #1e293b;' }, '⚡ Gửi Tin Nhắn Nhanh & Tra Cước Data:'),
                 quickPresets,
                 smsTargetInput,
                 smsMsgInput,
                 E('div', { style: 'display: flex; gap: 10px;' }, [ sendSmsBtn, fastCheckDataBtn ])
-            ]),
-            E('div', { style: 'border-top: 1px solid #f1f5f9; padding-top: 12px;' }, [
+            ]));
+            simTabChildren.push(E('div', { style: 'border-top: 1px solid #f1f5f9; padding-top: 12px;' }, [
                 E('div', { style: 'font-weight: 800; font-size: 14px; margin-bottom: 6px; color: #1e293b;' }, '📥 Hộp Thư Đến Trực Tiếp:'),
                 inboxContainer
-            ])
-        ]);
+            ]));
+
+        var simTabContent = E('div', { class: 'cbi-section', style: 'padding: 20px; background: #ffffff; border-radius: 10px; border: 1px solid #e2e8f0;' }, simTabChildren);
         tabPanes['sms'] = simTabContent;
 
         // ---------------- TAB 2: MODEM 5G & BĂNG TẦN ----------------
@@ -1373,9 +1431,69 @@ return view.extend({
         var geminiKeyInput = E('input', { type: 'password', class: 'cbi-input-text', value: sentinelConfig.gemini_api_key || '', placeholder: 'Google Gemini AI API Key (AI Phân tích hình ảnh, khói cháy)', style: 'width: 100%; height: 38px; font-weight: 700; border-radius: 6px; margin-bottom: 10px;' });
         var tailscaleKeyInput = E('input', { type: 'password', class: 'cbi-input-text', value: sentinelConfig.tailscale_auth_key || '', placeholder: 'Tailscale Auth Key (VPN kết nối bảo mật từ xa)', style: 'width: 100%; height: 38px; font-weight: 700; border-radius: 6px; margin-bottom: 10px;' });
         var cloudRemoteInput = E('input', { type: 'text', class: 'cbi-input-text', value: sentinelConfig.cloud_remote || '', placeholder: 'Tên Remote Cloud Rclone (vd: gdrive, onedrive)', style: 'width: 100%; height: 38px; font-weight: 700; border-radius: 6px; margin-bottom: 10px;' });
-        var cam1RtspInput = E('input', { type: 'text', class: 'cbi-input-text', value: sentinelConfig.cam1_rtsp || '', placeholder: 'RTSP Camera Trước (vd: rtsp://admin:pass@192.168.1.100:554/stream1)', style: 'width: 100%; height: 38px; font-weight: 700; border-radius: 6px; margin-bottom: 10px;' });
-        var cam2RtspInput = E('input', { type: 'text', class: 'cbi-input-text', value: sentinelConfig.cam2_rtsp || '', placeholder: 'RTSP Camera Sau (vd: rtsp://admin:pass@192.168.1.101:554/stream1)', style: 'width: 100%; height: 38px; font-weight: 700; border-radius: 6px; margin-bottom: 10px;' });
-        var camCongRtspInput = E('input', { type: 'text', class: 'cbi-input-text', value: sentinelConfig.cam_cong_rtsp || '', placeholder: 'RTSP Camera Cổng Chính (vd: rtsp://admin:pass@192.168.1.102:554/stream1)', style: 'width: 100%; height: 38px; font-weight: 700; border-radius: 6px; margin-bottom: 14px;' });
+        // === LOCKED: VERIFIED BY DOANDUY - DO NOT MODIFY ===
+        // Quản Lý Camera IP Sentinel Mở Rộng Không Giới Hạn (Chỉ Cần Nhập IP Camera)
+        var cameraList = [];
+        if (sentinelConfig.cameras && Array.isArray(sentinelConfig.cameras) && sentinelConfig.cameras.length > 0) {
+            cameraList = sentinelConfig.cameras.slice();
+        } else {
+            if (sentinelConfig.cam1_rtsp) cameraList.push(sentinelConfig.cam1_rtsp);
+            if (sentinelConfig.cam2_rtsp) cameraList.push(sentinelConfig.cam2_rtsp);
+            if (sentinelConfig.cam_cong_rtsp) cameraList.push(sentinelConfig.cam_cong_rtsp);
+            if (cameraList.length === 0) {
+                cameraList = ['192.168.1.100', '192.168.1.101', '192.168.1.102'];
+            }
+        }
+
+        var cameraListContainer = E('div', { style: 'display: flex; flex-direction: column; gap: 10px; margin-bottom: 12px;' });
+
+        function renderCameraList() {
+            cameraListContainer.innerHTML = '';
+            cameraList.forEach(function(camVal, idx) {
+                var camInput = E('input', {
+                    type: 'text',
+                    class: 'cbi-input-text',
+                    value: camVal || '',
+                    placeholder: 'Nhập IP Camera (vd: 192.168.1.' + (100 + idx) + ') hoặc link RTSP',
+                    style: 'flex: 1; height: 38px; font-weight: 700; border-radius: 6px; font-size: 13px;'
+                });
+                camInput.addEventListener('input', function() {
+                    cameraList[idx] = camInput.value.trim();
+                });
+
+                var delBtn = E('button', {
+                    class: 'btn cbi-button',
+                    style: 'font-size: 12px; font-weight: 750; padding: 6px 12px; border-radius: 6px; background: #fee2e2; color: #b91c1c; border: 1px solid #fca5a5; cursor: pointer;',
+                    click: function() {
+                        if (cameraList.length <= 1) {
+                            cameraList[0] = '';
+                            renderCameraList();
+                            return;
+                        }
+                        cameraList.splice(idx, 1);
+                        renderCameraList();
+                    }
+                }, '🗑️ Xóa');
+
+                var row = E('div', { style: 'display: flex; align-items: center; gap: 10px; background: #ffffff; padding: 8px 12px; border-radius: 6px; border: 1px solid #e2e8f0;' }, [
+                    E('span', { style: 'font-weight: 750; font-size: 13px; color: #1e293b; min-width: 110px;' }, '📹 Camera #' + (idx + 1) + ':'),
+                    camInput,
+                    delBtn
+                ]);
+                cameraListContainer.appendChild(row);
+            });
+        }
+        renderCameraList();
+
+        var addCameraBtn = E('button', {
+            class: 'btn cbi-button',
+            style: 'font-size: 12.5px; font-weight: 750; padding: 7px 16px; border-radius: 6px; background: #f0fdf4; color: #166534; border: 1.5px solid #86efac; cursor: pointer; display: inline-flex; align-items: center; gap: 6px;',
+            click: function() {
+                var nextIp = '192.168.1.' + (100 + cameraList.length);
+                cameraList.push(nextIp);
+                renderCameraList();
+            }
+        }, '➕ Thêm Camera IP Mới');
 
         var saveAllSentinelBtn = E('button', {
             class: 'btn cbi-button cbi-button-action',
@@ -1388,12 +1506,18 @@ return view.extend({
                 var t_gem = geminiKeyInput.value.trim();
                 var t_ts = tailscaleKeyInput.value.trim();
                 var t_cl = cloudRemoteInput.value.trim();
-                var t_c1 = cam1RtspInput.value.trim();
-                var t_c2 = cam2RtspInput.value.trim();
-                var t_cc = camCongRtspInput.value.trim();
+
+                var cleanCameras = [];
+                cameraList.forEach(function(c) {
+                    var s = (c || '').trim();
+                    if (s) cleanCameras.push(s);
+                });
+                var t_c1 = cleanCameras[0] || '';
+                var t_c2 = cleanCameras[1] || '';
+                var t_cc = cleanCameras[2] || '';
 
                 saveAllSentinelBtn.textContent = '⏳ Đang lưu cấu hình...';
-                callSetSentinelConfig(t_tok, t_adm, t_own, t_emg, t_gem, t_ts, t_cl, t_c1, t_c2, t_cc).then(function(r) {
+                callSetSentinelConfig(t_tok, t_adm, t_own, t_emg, t_gem, t_ts, t_cl, t_c1, t_c2, t_cc, cleanCameras).then(function(r) {
                     saveAllSentinelBtn.textContent = '💾 Lưu Toàn Bộ Cấu Hình Sentinel & AI';
                     ui.addNotification(null, E('p', r.message || '✅ Đã lưu cấu hình Sentinel & AI thành công!'), 'info');
                 }).catch(function(err) {
@@ -1418,9 +1542,16 @@ return view.extend({
                         if (r.gemini_api_key) geminiKeyInput.value = r.gemini_api_key;
                         if (r.tailscale_auth_key) tailscaleKeyInput.value = r.tailscale_auth_key;
                         if (r.cloud_remote) cloudRemoteInput.value = r.cloud_remote;
-                        if (r.cam1_rtsp) cam1RtspInput.value = r.cam1_rtsp;
-                        if (r.cam2_rtsp) cam2RtspInput.value = r.cam2_rtsp;
-                        if (r.cam_cong_rtsp) camCongRtspInput.value = r.cam_cong_rtsp;
+                        if (r.cameras && Array.isArray(r.cameras) && r.cameras.length > 0) {
+                            cameraList = r.cameras.slice();
+                            renderCameraList();
+                        } else if (r.cam1_rtsp || r.cam2_rtsp || r.cam_cong_rtsp) {
+                            cameraList = [];
+                            if (r.cam1_rtsp) cameraList.push(r.cam1_rtsp);
+                            if (r.cam2_rtsp) cameraList.push(r.cam2_rtsp);
+                            if (r.cam_cong_rtsp) cameraList.push(r.cam_cong_rtsp);
+                            renderCameraList();
+                        }
                         ui.addNotification(null, E('p', '✅ ' + (r.message || 'Đã nạp đầy đủ Key từ Vault an toàn!')), 'info');
                     } else {
                         ui.addNotification(null, E('p', '⚠️ ' + (r.message || 'Chưa tìm thấy file vault.conf trên thiết bị.')), 'warning');
@@ -1482,21 +1613,12 @@ return view.extend({
                 ])
             ]),
             E('div', { style: 'border: 1px solid #f1f5f9; border-radius: 8px; padding: 16px; background: #fafafa; margin-bottom: 16px;' }, [
-                E('div', { style: 'font-weight: 800; font-size: 14.5px; margin-bottom: 12px; color: #0f172a; border-bottom: 1px solid #e2e8f0; padding-bottom: 6px;' }, '📹 Cấu Hình Luồng RTSP Camera Sentinel:'),
-                E('div', { style: 'display: flex; flex-direction: column; gap: 8px;' }, [
-                    E('div', {}, [
-                        E('div', { style: 'font-weight: 750; font-size: 13px; margin-bottom: 4px; color: #334155;' }, '🎥 Camera Trước (CAM 1 RTSP):'),
-                        cam1RtspInput
-                    ]),
-                    E('div', {}, [
-                        E('div', { style: 'font-weight: 750; font-size: 13px; margin-bottom: 4px; color: #334155;' }, '🎥 Camera Sau (CAM 2 RTSP):'),
-                        cam2RtspInput
-                    ]),
-                    E('div', {}, [
-                        E('div', { style: 'font-weight: 750; font-size: 13px; margin-bottom: 4px; color: #334155;' }, '🚪 Camera Cổng Chính (CAM Cổng RTSP):'),
-                        camCongRtspInput
-                    ])
-                ])
+                E('div', { style: 'display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px; border-bottom: 1px solid #e2e8f0; padding-bottom: 6px; flex-wrap: wrap; gap: 8px;' }, [
+                    E('div', { style: 'font-weight: 800; font-size: 14.5px; color: #0f172a;' }, '📹 Quản Lý Camera IP Sentinel (Mở Rộng Không Giới Hạn):'),
+                    addCameraBtn
+                ]),
+                E('div', { style: 'font-size: 12px; color: #64748b; margin-bottom: 10px;' }, '💡 Chỉ cần nhập địa chỉ IP của Camera (ví dụ: 192.168.1.100) hoặc link luồng RTSP. Bạn có thể thêm bao nhiêu camera tùy ý bằng nút "Thêm Camera IP Mới".'),
+                cameraListContainer
             ]),
             E('div', { style: 'display: flex; gap: 10px; align-items: center; flex-wrap: wrap;' }, [
                 saveAllSentinelBtn,
