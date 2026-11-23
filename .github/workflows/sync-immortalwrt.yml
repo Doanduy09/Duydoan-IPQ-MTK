@@ -20,21 +20,21 @@ permissions:
   actions: write
 
 jobs:
-  sync_branch_25:
-    name: Sync openwrt-25 with upstream immortalwrt:openwrt-25.12
+  sync_master:
+    name: Sync master with upstream immortalwrt:openwrt-25.12
     runs-on: ubuntu-latest
     steps:
-      - name: Checkout Source Branch openwrt-25
+      - name: Checkout Source Branch master
         uses: actions/checkout@v4
         with:
-          ref: openwrt-25
+          ref: master
           fetch-depth: 0
 
       - name: Configure Git Identity
         run: |
           git config user.name "Doanduy09-Bot"
           git config user.email "doanduy09@gmail.com"
-          git checkout -B openwrt-25 origin/openwrt-25
+          git checkout -B master origin/master
 
       - name: Check and Sync Upstream ImmortalWrt 25.12
         id: sync_check
@@ -45,10 +45,10 @@ jobs:
           UPSTREAM_SHA=$(git rev-parse upstream/openwrt-25.12)
           LOCAL_SHA=$(git rev-parse HEAD)
           echo "Upstream 25.12 latest commit: $UPSTREAM_SHA"
-          echo "Local openwrt-25 commit: $LOCAL_SHA"
+          echo "Local master commit: $LOCAL_SHA"
 
           if git merge-base --is-ancestor upstream/openwrt-25.12 HEAD; then
-            echo ">> [ALREADY UP-TO-DATE] Nhánh openwrt-25 đã đồng bộ hoàn toàn."
+            echo ">> [ALREADY UP-TO-DATE] Nhánh master đã đồng bộ hoàn toàn."
             echo "has_updates=false" >> "$GITHUB_OUTPUT"
           else
             echo ">> [NEW UPDATES DETECTED] Đang hợp nhất upstream/openwrt-25.12..."
@@ -87,33 +87,33 @@ jobs:
               git commit -m "sync: resolve merge conflicts preserving Doanduy hardware & configs" || true
             fi
 
-            git push origin openwrt-25
-            echo ">> Đã đẩy cập nhật thành công lên openwrt-25!"
+            git push origin master
+            echo ">> Đã đẩy cập nhật thành công lên master!"
           fi
 
-      - name: Trigger Unified Matrix Build (When New Updates Exist on openwrt-25)
+      - name: Trigger Unified Matrix Build (When New Updates Exist on master)
         if: (steps.sync_check.outputs.has_updates == 'true' || inputs.force_build == true) && !cancelled()
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
-          echo ">> Kích hoạt build Unified Matrix cho cả 3 nền tảng (openwrt-25)..."
-          gh workflow run "build-25-unified-matrix.yml" --repo "${{ github.repository }}" -r openwrt-25 -f target=all || true
+          echo ">> Kích hoạt build Unified Matrix cho cả 3 nền tảng (master)..."
+          gh workflow run "build-25-unified-matrix.yml" --repo "${{ github.repository }}" -r master -f target=all || true
 
-  sync_branch_24:
-    name: Sync main (24.10) with upstream immortalwrt:openwrt-24.10
+  sync_openwrt_24_10:
+    name: Sync openwrt-24.10 with upstream immortalwrt:openwrt-24.10
     runs-on: ubuntu-latest
     steps:
-      - name: Checkout Source Branch main
+      - name: Checkout Source Branch openwrt-24.10
         uses: actions/checkout@v4
         with:
-          ref: main
+          ref: openwrt-24.10
           fetch-depth: 0
 
       - name: Configure Git Identity
         run: |
           git config user.name "Doanduy09-Bot"
           git config user.email "doanduy09@gmail.com"
-          git checkout -B main origin/main
+          git checkout -B openwrt-24.10 origin/openwrt-24.10
 
       - name: Check and Sync Upstream ImmortalWrt 24.10
         id: sync_check
@@ -124,10 +124,10 @@ jobs:
           UPSTREAM_SHA=$(git rev-parse upstream/openwrt-24.10)
           LOCAL_SHA=$(git rev-parse HEAD)
           echo "Upstream 24.10 latest commit: $UPSTREAM_SHA"
-          echo "Local main commit: $LOCAL_SHA"
+          echo "Local openwrt-24.10 commit: $LOCAL_SHA"
 
           if git merge-base --is-ancestor upstream/openwrt-24.10 HEAD; then
-            echo ">> [ALREADY UP-TO-DATE] Nhánh main (24.10) đã đồng bộ hoàn toàn."
+            echo ">> [ALREADY UP-TO-DATE] Nhánh openwrt-24.10 đã đồng bộ hoàn toàn."
             echo "has_updates=false" >> "$GITHUB_OUTPUT"
           else
             echo ">> [NEW UPDATES DETECTED] Đang hợp nhất upstream/openwrt-24.10..."
@@ -166,25 +166,25 @@ jobs:
               git commit -m "sync: resolve merge conflicts preserving Doanduy hardware & configs" || true
             fi
 
-            git push origin main
-            echo ">> Đã đẩy cập nhật thành công lên main (24.10)!"
+            git push origin openwrt-24.10
+            echo ">> Đã đẩy cập nhật thành công lên openwrt-24.10!"
           fi
 
-  sync_branch_24_passwall:
-    name: Sync openwrt-24-passwall with upstream immortalwrt:openwrt-24.10
+  sync_openwrt_24_10_passwall:
+    name: Sync openwrt-24.10-passwall with upstream immortalwrt:openwrt-24.10
     runs-on: ubuntu-latest
     steps:
-      - name: Checkout Source Branch openwrt-24-passwall
+      - name: Checkout Source Branch openwrt-24.10-passwall
         uses: actions/checkout@v4
         with:
-          ref: openwrt-24-passwall
+          ref: openwrt-24.10-passwall
           fetch-depth: 0
 
       - name: Configure Git Identity
         run: |
           git config user.name "Doanduy09-Bot"
           git config user.email "doanduy09@gmail.com"
-          git checkout -B openwrt-24-passwall origin/openwrt-24-passwall
+          git checkout -B openwrt-24.10-passwall origin/openwrt-24.10-passwall
 
       - name: Check and Sync Upstream ImmortalWrt 24.10
         id: sync_check
@@ -194,7 +194,7 @@ jobs:
 
           UPSTREAM_SHA=$(git rev-parse upstream/openwrt-24.10)
           if git merge-base --is-ancestor upstream/openwrt-24.10 HEAD; then
-            echo ">> [ALREADY UP-TO-DATE] Nhánh openwrt-24-passwall đã đồng bộ hoàn toàn."
+            echo ">> [ALREADY UP-TO-DATE] Nhánh openwrt-24.10-passwall đã đồng bộ hoàn toàn."
           else
             echo ">> [NEW UPDATES DETECTED] Đang hợp nhất upstream/openwrt-24.10..."
             if git merge upstream/openwrt-24.10 -m "sync: auto-merge upstream immortalwrt:openwrt-24.10 ($UPSTREAM_SHA)"; then
@@ -205,11 +205,11 @@ jobs:
               git add -A
               git commit -m "sync: resolve merge conflicts preserving Doanduy configs" || true
             fi
-            git push origin openwrt-24-passwall
-            echo ">> Đã đẩy cập nhật lên openwrt-24-passwall!"
+            git push origin openwrt-24.10-passwall
+            echo ">> Đã đẩy cập nhật lên openwrt-24.10-passwall!"
           fi
 
-  sync_branch_master_passwall:
+  sync_master_passwall:
     name: Sync master-passwall with upstream immortalwrt:master
     runs-on: ubuntu-latest
     steps:

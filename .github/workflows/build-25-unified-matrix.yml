@@ -1,12 +1,15 @@
-name: Duydoan-25.12 Unified Multi-Target Firmware Builder
+name: Duydoan Multi-Target Firmware Builder (Master & 24.10)
 
 on:
   push:
     branches:
+      - master
+      - openwrt-24.10
+      - master-passwall
+      - openwrt-24.10-passwall
       - main
       - openwrt-25
       - openwrt-24-passwall
-      - master-passwall
   schedule:
     # 03:15 AM Asia/Ho_Chi_Minh daily (20:15 UTC) -> Kết thúc chính xác trước 08:00 AM
     - cron: '15 20 * * *'
@@ -83,7 +86,7 @@ jobs:
           
           CURRENT_BRANCH="${{ github.ref_name }}"
           UPSTREAM_BRANCH="openwrt-25.12"
-          if [ "$CURRENT_BRANCH" = "main" ] || [ "$CURRENT_BRANCH" = "openwrt-24-passwall" ]; then
+          if [ "$CURRENT_BRANCH" = "openwrt-24.10" ] || [ "$CURRENT_BRANCH" = "openwrt-24.10-passwall" ] || [ "$CURRENT_BRANCH" = "main" ] || [ "$CURRENT_BRANCH" = "openwrt-24-passwall" ]; then
             UPSTREAM_BRANCH="openwrt-24.10"
           elif [ "$CURRENT_BRANCH" = "master-passwall" ]; then
             UPSTREAM_BRANCH="master"
@@ -141,15 +144,17 @@ jobs:
           python3 - << 'PYEOF' > matrix.json
           import json, os
           target = os.environ.get("TARGET", "all")
-          ref_name = os.environ.get("REF_NAME", "openwrt-25")
-          if ref_name == "main":
-              prefix = "Duydoan-24.10"
-          elif ref_name == "openwrt-24-passwall":
-              prefix = "Duydoan-24-Passwall"
-          elif ref_name == "master-passwall":
-              prefix = "Duydoan-Master-Passwall"
+          ref_name = os.environ.get("REF_NAME", "master")
+          if "24" in ref_name:
+              if "passwall" in ref_name:
+                  prefix = "Duydoan-24.10-Passwall"
+              else:
+                  prefix = "Duydoan-24.10"
           else:
-              prefix = "Duydoan-25.12"
+              if "passwall" in ref_name:
+                  prefix = "Duydoan-Master-Passwall"
+              else:
+                  prefix = "Duydoan-Master"
 
           all_targets = [
               {
