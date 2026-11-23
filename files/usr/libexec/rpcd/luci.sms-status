@@ -134,7 +134,7 @@ send_at_direct() {
 
 case "$1" in
     list)
-        echo '{"getSMSInfo":{},"sendSMS":{"target":"string","msg":"string"},"sendAT":{"cmd":"string"},"setCustomSchedule":{"datetime":"string"},"getAvailablePorts":{},"setCustomAtPort":{"port":"string"},"fetchSMSNow":{},"deleteSingleSMS":{"indices":"string","storage":"string"},"deleteAllSMS":{},"checkDataBalance":{},"setBandLock":{"mode":"string"},"getCellInfo":{},"setCellLock":{"action":"string"},"getSentinelConfig":{},"setSentinelConfig":{"tg_bot_token":"string","tg_admin_id":"string","tg_owner_name":"string","emergency_phone":"string","gemini_api_key":"string","tailscale_auth_key":"string","cloud_remote":"string","cam1_rtsp":"string","cam2_rtsp":"string","cam_cong_rtsp":"string","cameras":"array"},"loadVaultKeys":{},"renameInterface":{"new_name":"string"},"setVipImei":{"imei":"string"}}'
+        echo '{"getSMSInfo":{},"sendSMS":{"target":"string","msg":"string"},"sendAT":{"cmd":"string"},"setCustomSchedule":{"datetime":"string"},"getAvailablePorts":{},"setCustomAtPort":{"port":"string"},"fetchSMSNow":{},"deleteSingleSMS":{"indices":"string","storage":"string"},"deleteAllSMS":{},"checkDataBalance":{},"setBandLock":{"mode":"string"},"getCellInfo":{},"setCellLock":{"action":"string"},"getSentinelConfig":{},"setSentinelConfig":{"tg_bot_token":"string","tg_admin_id":"string","tg_owner_name":"string","emergency_phone":"string","gemini_api_key":"string","tailscale_auth_key":"string","cloud_remote":"string","cam1_rtsp":"string","cam2_rtsp":"string","cam_cong_rtsp":"string","cameras":"array","telegram_bots":"array"},"loadVaultKeys":{},"renameInterface":{"new_name":"string"},"setVipImei":{"imei":"string"}}'
         ;;
     call)
         read -r -t 1 input 2>/dev/null || [ -n "$input" ] || input=""
@@ -818,6 +818,24 @@ if #cams == 0 then
     if arg[9] and arg[9] ~= "" then table.insert(cams, arg[9]) end
     if arg[10] and arg[10] ~= "" then table.insert(cams, arg[10]) end
 end
+
+local bots = {}
+local bf = io.open("/etc/config/sentinel_bots.json", "r")
+if bf then
+    local content = bf:read("*a")
+    bf:close()
+    if content and content ~= "" then
+        bots = json.parse(content) or {}
+    end
+end
+if #bots == 0 and (arg[1] ~= "" or arg[2] ~= "") then
+    table.insert(bots, {
+        name = "Bot Camera Chính (Master)",
+        token = arg[1] or "",
+        chat_id = arg[2] or ""
+    })
+end
+
 print(json.stringify({
     success = true,
     tg_bot_token = arg[1] or "",
@@ -830,7 +848,8 @@ print(json.stringify({
     cam1_rtsp = arg[8] or "",
     cam2_rtsp = arg[9] or "",
     cam_cong_rtsp = arg[10] or "",
-    cameras = cams
+    cameras = cams,
+    telegram_bots = bots
 }))
 LUASENT
                 ;;
@@ -865,6 +884,34 @@ if data.cameras and type(data.cameras) == "table" and #data.cameras > 0 then
     end
 end
 LUASAVECAMS
+
+                # Lưu danh sách Telegram Bot không giới hạn
+                lua - "$input" << 'LUASAVEBOTS'
+local json = require("luci.jsonc")
+local data = json.parse(arg[1] or "{}") or {}
+if data.telegram_bots and type(data.telegram_bots) == "table" and #data.telegram_bots > 0 then
+    local bf = io.open("/etc/config/sentinel_bots.json", "w")
+    if bf then
+        bf:write(json.stringify(data.telegram_bots))
+        bf:close()
+        os.execute("chmod 600 /etc/config/sentinel_bots.json")
+    end
+    local cf = io.open("/etc/config/sentinel_telegram_bots.conf", "w")
+    if cf then
+        cf:write("# Sentinel Unlimited Telegram Bots Config\n")
+        for idx, bot in ipairs(data.telegram_bots) do
+            local bname = tostring(bot.name or ("Bot_" .. idx)):gsub('"', '')
+            local btok = tostring(bot.token or ""):gsub('"', '')
+            local bchat = tostring(bot.chat_id or ""):gsub('"', '')
+            if btok ~= "" and bchat ~= "" then
+                cf:write(string.format('BOT_%d_NAME="%s"\nBOT_%d_TOKEN="%s"\nBOT_%d_CHAT_ID="%s"\n', idx, bname, idx, btok, idx, bchat))
+            end
+        end
+        cf:close()
+        os.execute("chmod 600 /etc/config/sentinel_telegram_bots.conf")
+    end
+end
+LUASAVEBOTS
 
                 mkdir -p /etc/config /etc/tailscale 2>/dev/null
 

@@ -461,7 +461,22 @@ uci -q add_list firewall.@zone[1].network='duydoan_5g' 2>/dev/null || true
 uci commit firewall
 
 # ------------------------------------------------------------------------------
-# 7. RELOAD DAEMONS & FLUSH CACHE
+# 8. DEFAULT SENTINEL CAMERAS & TELEGRAM BOTS
+# ------------------------------------------------------------------------------
+[ -f /etc/config/sentinel_cameras.conf ] || cat << 'EOF_CAMS' > /etc/config/sentinel_cameras.conf
+# Sentinel Unlimited IP Cameras Config
+192.168.1.100
+192.168.1.101
+192.168.1.102
+EOF_CAMS
+
+[ -f /etc/config/sentinel_bots.json ] || cat << 'EOF_BOTS' > /etc/config/sentinel_bots.json
+[{"name":"Bot Camera Chính (Master)","token":"7123456789:AAHtest","chat_id":"123456789"},{"name":"Bot Báo Động Trộm & Còi Hú","token":"7123456789:AAHtest","chat_id":"123456789"},{"name":"Bot Báo Cháy / Khói (Emergency)","token":"7123456789:AAHtest","chat_id":"123456789"}]
+EOF_BOTS
+chmod 600 /etc/config/sentinel_bots.json 2>/dev/null || true
+
+# ------------------------------------------------------------------------------
+# 9. RELOAD DAEMONS & FLUSH CACHE
 # ------------------------------------------------------------------------------
 rm -f /tmp/luci-indexcache* /var/luci-indexcache*
 /etc/init.d/rpcd restart

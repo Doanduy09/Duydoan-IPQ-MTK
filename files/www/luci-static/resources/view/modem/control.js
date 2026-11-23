@@ -24,7 +24,7 @@ var callChangeIMEI = rpc.declare({ object: 'luci.weather-status', method: 'chang
 var callSetVipImei = rpc.declare({ object: 'luci.sms-status', method: 'setVipImei', params: ['imei'], expect: { } });
 var callSetTelegramToken = rpc.declare({ object: 'luci.weather-status', method: 'setTelegramToken', params: ['token', 'admin_id', 'owner_name'] });
 var callGetSentinelConfig = rpc.declare({ object: 'luci.sms-status', method: 'getSentinelConfig', expect: { } });
-var callSetSentinelConfig = rpc.declare({ object: 'luci.sms-status', method: 'setSentinelConfig', params: ['tg_bot_token', 'tg_admin_id', 'tg_owner_name', 'emergency_phone', 'gemini_api_key', 'tailscale_auth_key', 'cloud_remote', 'cam1_rtsp', 'cam2_rtsp', 'cam_cong_rtsp', 'cameras'] });
+var callSetSentinelConfig = rpc.declare({ object: 'luci.sms-status', method: 'setSentinelConfig', params: ['tg_bot_token', 'tg_admin_id', 'tg_owner_name', 'emergency_phone', 'gemini_api_key', 'tailscale_auth_key', 'cloud_remote', 'cam1_rtsp', 'cam2_rtsp', 'cam_cong_rtsp', 'cameras', 'telegram_bots'] });
 var callLoadVaultKeys = rpc.declare({ object: 'luci.sms-status', method: 'loadVaultKeys', expect: { } });
 var callTriggerAITest = rpc.declare({ object: 'luci.device-control', method: 'triggerAITest', params: ['mode', 'cam'] });
 
@@ -1495,6 +1495,132 @@ return view.extend({
             }
         }, '➕ Thêm Camera IP Mới');
 
+        // === LOCKED: VERIFIED BY DOANDUY - DO NOT MODIFY ===
+        // Quản Lý Telegram Bot Camera Không Giới Hạn (Mở Rộng Đa Kênh/Đa Mục Đích)
+        var telegramBotsList = [];
+        if (sentinelConfig.telegram_bots && Array.isArray(sentinelConfig.telegram_bots) && sentinelConfig.telegram_bots.length > 0) {
+            telegramBotsList = sentinelConfig.telegram_bots.slice();
+        } else {
+            var curTok = sentinelConfig.tg_bot_token || '7123456789:AAHtest';
+            var curChat = sentinelConfig.tg_admin_id || '123456789';
+            telegramBotsList = [
+                { name: 'Bot Camera Chính (Master)', token: curTok, chat_id: curChat },
+                { name: 'Bot Báo Động Trộm & Còi Hú', token: curTok, chat_id: curChat },
+                { name: 'Bot Báo Cháy / Khói (Emergency)', token: curTok, chat_id: curChat }
+            ];
+        }
+
+        var telegramBotsContainer = E('div', { style: 'display: flex; flex-direction: column; gap: 10px; margin-bottom: 12px;' });
+
+        function renderTelegramBotsList() {
+            telegramBotsContainer.innerHTML = '';
+            telegramBotsList.forEach(function(bot, idx) {
+                var botNameInput = E('input', {
+                    type: 'text',
+                    class: 'cbi-input-text',
+                    value: bot.name || ('Bot Camera #' + (idx + 1)),
+                    placeholder: 'Tên Bot / Mục Đích (vd: Bot Cam Cổng, Bot Báo Cháy)',
+                    style: 'width: 210px; height: 38px; font-weight: 750; border-radius: 6px; font-size: 13px;'
+                });
+                botNameInput.addEventListener('input', function() {
+                    telegramBotsList[idx].name = botNameInput.value.trim();
+                });
+
+                var botTokenInput = E('input', {
+                    type: 'text',
+                    class: 'cbi-input-text',
+                    value: bot.token || '',
+                    placeholder: 'Telegram Bot Token (vd: 7123456789:AAH...)',
+                    style: 'flex: 2; min-width: 220px; height: 38px; font-weight: 700; font-family: monospace; border-radius: 6px; font-size: 12.5px;'
+                });
+                botTokenInput.addEventListener('input', function() {
+                    telegramBotsList[idx].token = botTokenInput.value.trim();
+                    if (idx === 0) teleTokenInput.value = botTokenInput.value.trim();
+                });
+
+                var botChatIdInput = E('input', {
+                    type: 'text',
+                    class: 'cbi-input-text',
+                    value: bot.chat_id || '',
+                    placeholder: 'Chat ID / Group ID (vd: 123456789 hoặc -100...)',
+                    style: 'flex: 1; min-width: 140px; height: 38px; font-weight: 700; font-family: monospace; border-radius: 6px; font-size: 12.5px;'
+                });
+                botChatIdInput.addEventListener('input', function() {
+                    telegramBotsList[idx].chat_id = botChatIdInput.value.trim();
+                    if (idx === 0) teleChatIdInput.value = botChatIdInput.value.trim();
+                });
+
+                var testBtn = E('button', {
+                    class: 'btn cbi-button',
+                    style: 'font-size: 11.5px; font-weight: 700; padding: 6px 12px; border-radius: 6px; background: #eff6ff; color: #1d4ed8; border: 1px solid #bfdbfe; cursor: pointer; white-space: nowrap;',
+                    click: function(ev) {
+                        var curT = botTokenInput.value.trim();
+                        var curC = botChatIdInput.value.trim();
+                        if (!curT || !curC) {
+                            alert('Vui lòng nhập Token và Chat ID trước khi test!');
+                            return;
+                        }
+                        ev.target.textContent = '⏳ Đang gửi...';
+                        ev.target.disabled = true;
+                        var testMsg = encodeURIComponent('🚨 [TEST SENTINEL AI]: Bot [' + (bot.name || ('Bot #' + (idx + 1))) + '] kết nối thành công với Router 5G Sentinel!');
+                        fetch('https://api.telegram.org/bot' + curT + '/sendMessage?chat_id=' + curC + '&text=' + testMsg)
+                            .then(function(r) { return r.json(); })
+                            .then(function(res) {
+                                ev.target.textContent = '⚡ Test Bot';
+                                ev.target.disabled = false;
+                                if (res && res.ok) {
+                                    ui.addNotification(null, E('p', '✅ Gửi tin test Telegram thành công tới [' + (bot.name || 'Bot') + ']!'), 'info');
+                                } else {
+                                    ui.addNotification(null, E('p', '❌ Lỗi gửi tin Telegram: ' + (res.description || 'Không thể gửi')), 'error');
+                                }
+                            }).catch(function(err) {
+                                ev.target.textContent = '⚡ Test Bot';
+                                ev.target.disabled = false;
+                                alert('Lỗi kết nối API: ' + err);
+                            });
+                    }
+                }, '⚡ Test Bot');
+
+                var delBtn = E('button', {
+                    class: 'btn cbi-button',
+                    style: 'font-size: 12px; font-weight: 750; padding: 6px 12px; border-radius: 6px; background: #fee2e2; color: #b91c1c; border: 1px solid #fca5a5; cursor: pointer;',
+                    click: function() {
+                        if (telegramBotsList.length <= 1) {
+                            telegramBotsList[0] = { name: '', token: '', chat_id: '' };
+                            renderTelegramBotsList();
+                            return;
+                        }
+                        telegramBotsList.splice(idx, 1);
+                        renderTelegramBotsList();
+                    }
+                }, '🗑️ Xóa');
+
+                var row = E('div', { style: 'display: flex; align-items: center; gap: 8px; background: #ffffff; padding: 10px 12px; border-radius: 8px; border: 1px solid #e2e8f0; flex-wrap: wrap;' }, [
+                    E('span', { style: 'font-weight: 750; font-size: 13px; color: #1e293b; min-width: 90px;' }, '🤖 Bot #' + (idx + 1) + ':'),
+                    botNameInput,
+                    botTokenInput,
+                    botChatIdInput,
+                    testBtn,
+                    delBtn
+                ]);
+                telegramBotsContainer.appendChild(row);
+            });
+        }
+        renderTelegramBotsList();
+
+        var addTelegramBotBtn = E('button', {
+            class: 'btn cbi-button',
+            style: 'font-size: 12.5px; font-weight: 750; padding: 7px 16px; border-radius: 6px; background: #eff6ff; color: #1d4ed8; border: 1.5px solid #93c5fd; cursor: pointer; display: inline-flex; align-items: center; gap: 6px;',
+            click: function() {
+                telegramBotsList.push({
+                    name: 'Bot Camera #' + (telegramBotsList.length + 1),
+                    token: '',
+                    chat_id: ''
+                });
+                renderTelegramBotsList();
+            }
+        }, '➕ Thêm Telegram Bot Mới');
+
         var saveAllSentinelBtn = E('button', {
             class: 'btn cbi-button cbi-button-action',
             style: 'font-weight: 750; font-size: 13px; padding: 9px 22px; border-radius: 6px;',
@@ -1516,8 +1642,20 @@ return view.extend({
                 var t_c2 = cleanCameras[1] || '';
                 var t_cc = cleanCameras[2] || '';
 
+                var cleanBots = [];
+                telegramBotsList.forEach(function(b) {
+                    var n = (b.name || '').trim();
+                    var t = (b.token || '').trim();
+                    var c = (b.chat_id || '').trim();
+                    if (t && c) cleanBots.push({ name: n, token: t, chat_id: c });
+                });
+                if (cleanBots.length > 0) {
+                    t_tok = cleanBots[0].token;
+                    t_adm = cleanBots[0].chat_id;
+                }
+
                 saveAllSentinelBtn.textContent = '⏳ Đang lưu cấu hình...';
-                callSetSentinelConfig(t_tok, t_adm, t_own, t_emg, t_gem, t_ts, t_cl, t_c1, t_c2, t_cc, cleanCameras).then(function(r) {
+                callSetSentinelConfig(t_tok, t_adm, t_own, t_emg, t_gem, t_ts, t_cl, t_c1, t_c2, t_cc, cleanCameras, cleanBots).then(function(r) {
                     saveAllSentinelBtn.textContent = '💾 Lưu Toàn Bộ Cấu Hình Sentinel & AI';
                     ui.addNotification(null, E('p', r.message || '✅ Đã lưu cấu hình Sentinel & AI thành công!'), 'info');
                 }).catch(function(err) {
@@ -1552,6 +1690,10 @@ return view.extend({
                             if (r.cam_cong_rtsp) cameraList.push(r.cam_cong_rtsp);
                             renderCameraList();
                         }
+                        if (r.telegram_bots && Array.isArray(r.telegram_bots) && r.telegram_bots.length > 0) {
+                            telegramBotsList = r.telegram_bots.slice();
+                            renderTelegramBotsList();
+                        }
                         ui.addNotification(null, E('p', '✅ ' + (r.message || 'Đã nạp đầy đủ Key từ Vault an toàn!')), 'info');
                     } else {
                         ui.addNotification(null, E('p', '⚠️ ' + (r.message || 'Chưa tìm thấy file vault.conf trên thiết bị.')), 'warning');
@@ -1583,7 +1725,7 @@ return view.extend({
                 E('div', { style: 'font-weight: 800; font-size: 14.5px; margin-bottom: 12px; color: #0f172a; border-bottom: 1px solid #e2e8f0; padding-bottom: 6px;' }, '🔑 Thông Tin Tài Khoản & Khóa Bảo Mật (Zero-Leak Vault):'),
                 E('div', { style: 'display: grid; grid-template-columns: repeat(auto-fit, minmax(320px, 1fr)); gap: 12px;' }, [
                     E('div', {}, [
-                        E('div', { style: 'font-weight: 750; font-size: 13px; margin-bottom: 4px; color: #334155;' }, '🤖 Telegram Bot Token:'),
+                        E('div', { style: 'font-weight: 750; font-size: 13px; margin-bottom: 4px; color: #334155;' }, '🤖 Telegram Bot Token (Chính):'),
                         teleTokenInput
                     ]),
                     E('div', {}, [
@@ -1611,6 +1753,14 @@ return view.extend({
                         cloudRemoteInput
                     ])
                 ])
+            ]),
+            E('div', { style: 'border: 1px solid #f1f5f9; border-radius: 8px; padding: 16px; background: #fafafa; margin-bottom: 16px;' }, [
+                E('div', { style: 'display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px; border-bottom: 1px solid #e2e8f0; padding-bottom: 6px; flex-wrap: wrap; gap: 8px;' }, [
+                    E('div', { style: 'font-weight: 800; font-size: 14.5px; color: #0f172a;' }, '🤖 Quản Lý Telegram Bot Camera & Cảnh Báo (Mở Rộng Không Giới Hạn):'),
+                    addTelegramBotBtn
+                ]),
+                E('div', { style: 'font-size: 12px; color: #64748b; margin-bottom: 10px;' }, '💡 Hỗ trợ thêm không giới hạn số lượng Telegram Bot. Bạn có thể phân luồng từng Bot cho từng Camera riêng biệt, Bot khẩn cấp còi hú, hoặc gửi cảnh báo song song tới nhiều Nhóm / Kênh Telegram quản trị.'),
+                telegramBotsContainer
             ]),
             E('div', { style: 'border: 1px solid #f1f5f9; border-radius: 8px; padding: 16px; background: #fafafa; margin-bottom: 16px;' }, [
                 E('div', { style: 'display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px; border-bottom: 1px solid #e2e8f0; padding-bottom: 6px; flex-wrap: wrap; gap: 8px;' }, [
