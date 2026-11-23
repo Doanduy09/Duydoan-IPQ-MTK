@@ -34,6 +34,16 @@ for f in \
   fi
 done
 
+# Fix qca-nss-ecm modpost undefined nss_rmnet_rx_get_ifnum on IPQ60xx
+for f in \
+  feeds/nss_packages/qca-nss-ecm/Makefile \
+  package/feeds/nss_packages/qca-nss-ecm/Makefile; do
+  if [ -f "$f" ]; then
+    sed -i 's/ECM_INTERFACE_RAWIP_ENABLE=y/ECM_INTERFACE_RAWIP_ENABLE=n/g' "$f"
+    echo "   Patched ECM RawIP rmnet: $f"
+  fi
+done
+
 echo "=========================================================="
 echo ">> [3/4] Decrypting Protected Assets (Zero-Leak Mode)..."
 echo "=========================================================="
