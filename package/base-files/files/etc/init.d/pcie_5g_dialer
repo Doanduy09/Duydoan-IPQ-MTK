@@ -1,0 +1,13 @@
+#!/bin/sh /etc/rc.common
+START=90
+STOP=15
+USE_PROCD=1
+
+start_service() {
+    # Check if PCIe MHI or SDX55 modem is present
+    if [ -d "/sys/bus/pci/drivers/pcie_mhi" ] || [ -d "/sys/class/net/rmnet_mhi0" ] || [ -e "/dev/mhi_DUN" ] || [ -e "/dev/mhi_0306_00.01.00_d.mhi_at0" ]; then
+        if [ -x /usr/bin/modem_autodial.sh ]; then
+            /usr/bin/modem_autodial.sh &
+        fi
+    fi
+}
