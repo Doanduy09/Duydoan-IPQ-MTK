@@ -4,11 +4,13 @@ set -euo pipefail
 
 echo "=========================================================="
 echo ">> [1/4] Updating & Installing OpenWrt Feeds..."
+# Clone trực tiếp DoanDuy Modem Suite vào package/
+if [ ! -d "package/luci-app-doanduy-modem" ]; then
+  git clone --depth 1 https://github.com/Doanduy09/luci-app-doanduy-modem.git package/luci-app-doanduy-modem
+fi
 echo "=========================================================="
 ./scripts/feeds update -a
 ./scripts/feeds install -a
-./scripts/feeds update doanduy || true
-./scripts/feeds install -a -p doanduy || true
 
 echo "=========================================================="
 echo ">> [2/4] Applying Kernel 6.12 Out-of-Tree Driver Patches..."
