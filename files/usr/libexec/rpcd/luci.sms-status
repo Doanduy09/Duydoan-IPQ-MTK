@@ -111,18 +111,30 @@ send_at_direct() {
     local cmd="$2"
     local out=""
 
-    if command -v sms_tool >/dev/null 2>&1; then
-        out=$(timeout 4 sms_tool -d "$p" at "$cmd" 2>/dev/null)
-    elif command -v atinout >/dev/null 2>&1; then
-        out=$(timeout 3 sh -c "printf '%s\r\n' \"$cmd\" | atinout - '$p' -" 2>/dev/null)
-    fi
+    case "$p" in
+        /dev/wwan*|/dev/mhi*)
+            echo on > /sys/bus/pci/devices/0000:01:00.0/power/control 2>/dev/null
+            if command -v sms_tool >/dev/null 2>&1; then
+                out=$(timeout 4 sms_tool -d "$p" -D at "$cmd" 2>&1)
+            elif command -v atinout >/dev/null 2>&1; then
+                out=$(timeout 3 sh -c "printf '%s\r\n' \"$cmd\" | atinout - '$p' -" 2>/dev/null)
+            fi
+            ;;
+        *)
+            if command -v atinout >/dev/null 2>&1; then
+                out=$(timeout 3 sh -c "printf '%s\r\n' \"$cmd\" | atinout - '$p' -" 2>/dev/null)
+            elif command -v sms_tool >/dev/null 2>&1; then
+                out=$(timeout 4 sms_tool -d "$p" -D at "$cmd" 2>&1)
+            fi
+            ;;
+    esac
 
     echo "$out"
 }
 
 case "$1" in
     list)
-        echo '{"getSMSInfo":{},"sendSMS":{"target":"string","msg":"string"},"sendAT":{"cmd":"string"},"setCustomSchedule":{"datetime":"string"},"getAvailablePorts":{},"setCustomAtPort":{"port":"string"},"fetchSMSNow":{},"deleteSingleSMS":{"indices":"string","storage":"string"},"deleteAllSMS":{},"checkDataBalance":{},"setBandLock":{"mode":"string"},"getCellInfo":{},"setCellLock":{"action":"string"}}'
+        echo '{"getSMSInfo":{},"sendSMS":{"target":"string","msg":"string"},"sendAT":{"cmd":"string"},"setCustomSchedule":{"datetime":"string"},"getAvailablePorts":{},"setCustomAtPort":{"port":"string"},"fetchSMSNow":{},"deleteSingleSMS":{"indices":"string","storage":"string"},"deleteAllSMS":{},"checkDataBalance":{},"setBandLock":{"mode":"string"},"getCellInfo":{},"setCellLock":{"action":"string"},"getSentinelConfig":{},"setSentinelConfig":{"tg_bot_token":"string","tg_admin_id":"string","tg_owner_name":"string","emergency_phone":"string","gemini_api_key":"string","tailscale_auth_key":"string","cloud_remote":"string","cam1_rtsp":"string","cam2_rtsp":"string","cam_cong_rtsp":"string"},"loadVaultKeys":{}}'
         ;;
     call)
         read -r -t 1 input 2>/dev/null || [ -n "$input" ] || input=""
@@ -701,6 +713,168 @@ EOF
                         rm -f /tmp/.at_u.at /etc/config/cell_lock_mode /tmp/cell_lock_mode 2>/dev/null
                         printf '{"success":true,"message":"Đã mở khóa trạm BTS thành công! Modem tự do tìm trạm tốt nhất."}\n'
                     fi
+                fi
+                ;;
+            getSentinelConfig)
+                tg_tok=""
+                tg_adm=""
+                tg_own="Anh Duy"
+                if [ -f /etc/config/telegram_bot.conf ]; then
+                    tg_tok=$(grep -E '^TG_BOT_TOKEN=' /etc/config/telegram_bot.conf 2>/dev/null | cut -d'"' -f2)
+                    tg_adm=$(grep -E '^TG_ADMIN_ID=' /etc/config/telegram_bot.conf 2>/dev/null | cut -d'"' -f2)
+                    tg_own=$(grep -E '^TG_OWNER_NAME=' /etc/config/telegram_bot.conf 2>/dev/null | cut -d'"' -f2)
+                fi
+                [ -z "$tg_own" ] && tg_own="Anh Duy"
+
+                emg_phone=$(cat /etc/config/emergency_phone.txt 2>/dev/null || uci -q get cctv_sentinel.settings.emergency_phone 2>/dev/null)
+                gem_key=$(cat /etc/config/gemini_api.key 2>/dev/null || cat /etc/config/gemini_key.txt 2>/dev/null)
+                ts_key=$(cat /etc/config/tailscale_authkey 2>/dev/null)
+                cl_remote=$(uci -q get camera.settings.cloud_remote 2>/dev/null)
+                c1_rtsp=$(uci -q get cctv_bot.cam1.rtsp_url 2>/dev/null)
+                c2_rtsp=$(uci -q get cctv_bot.cam2.rtsp_url 2>/dev/null)
+                cc_rtsp=$(uci -q get cctv_bot.cam_cong.rtsp_url 2>/dev/null)
+
+                if [ -f /etc/config/vault.conf ]; then
+                    [ -z "$tg_tok" ] && tg_tok=$(grep -E '^TG_BOT_TOKEN=' /etc/config/vault.conf 2>/dev/null | cut -d'=' -f2- | tr -d '"\r\n ')
+                    [ -z "$tg_adm" ] && tg_adm=$(grep -E '^TG_ADMIN_ID=' /etc/config/vault.conf 2>/dev/null | cut -d'=' -f2- | tr -d '"\r\n ')
+                    [ -z "$emg_phone" ] && emg_phone=$(grep -E '^EMERGENCY_PHONE=' /etc/config/vault.conf 2>/dev/null | cut -d'=' -f2- | tr -d '"\r\n ')
+                    [ -z "$gem_key" ] && gem_key=$(grep -E '^GEMINI_API_KEY=' /etc/config/vault.conf 2>/dev/null | cut -d'=' -f2- | tr -d '"\r\n ')
+                    [ -z "$ts_key" ] && ts_key=$(grep -E '^TAILSCALE_AUTH_KEY=' /etc/config/vault.conf 2>/dev/null | cut -d'=' -f2- | tr -d '"\r\n ')
+                    [ -z "$cl_remote" ] && cl_remote=$(grep -E '^CLOUD_REMOTE=' /etc/config/vault.conf 2>/dev/null | cut -d'=' -f2- | tr -d '"\r\n ')
+                    [ -z "$c1_rtsp" ] && c1_rtsp=$(grep -E '^CAM1_RTSP=' /etc/config/vault.conf 2>/dev/null | cut -d'=' -f2- | tr -d '"\r\n ')
+                    [ -z "$c2_rtsp" ] && c2_rtsp=$(grep -E '^CAM2_RTSP=' /etc/config/vault.conf 2>/dev/null | cut -d'=' -f2- | tr -d '"\r\n ')
+                    [ -z "$cc_rtsp" ] && cc_rtsp=$(grep -E '^CAM_CONG_RTSP=' /etc/config/vault.conf 2>/dev/null | cut -d'=' -f2- | tr -d '"\r\n ')
+                fi
+
+                lua - "$tg_tok" "$tg_adm" "$tg_own" "$emg_phone" "$gem_key" "$ts_key" "$cl_remote" "$c1_rtsp" "$c2_rtsp" "$cc_rtsp" << 'LUASENT'
+local json = require("luci.jsonc")
+print(json.stringify({
+    success = true,
+    tg_bot_token = arg[1] or "",
+    tg_admin_id = arg[2] or "",
+    tg_owner_name = arg[3] or "Anh Duy",
+    emergency_phone = arg[4] or "",
+    gemini_api_key = arg[5] or "",
+    tailscale_auth_key = arg[6] or "",
+    cloud_remote = arg[7] or "",
+    cam1_rtsp = arg[8] or "",
+    cam2_rtsp = arg[9] or "",
+    cam_cong_rtsp = arg[10] or ""
+}))
+LUASENT
+                ;;
+            setSentinelConfig)
+                tg_tok=$(echo "$input" | jsonfilter -e '$.tg_bot_token' 2>/dev/null | tr -d ' \r\n\t')
+                tg_adm=$(echo "$input" | jsonfilter -e '$.tg_admin_id' 2>/dev/null | tr -d ' \r\n\t')
+                tg_own=$(echo "$input" | jsonfilter -e '$.tg_owner_name' 2>/dev/null | tr -d '\r\n')
+                [ -z "$tg_own" ] && tg_own="Anh Duy"
+                emg_phone=$(echo "$input" | jsonfilter -e '$.emergency_phone' 2>/dev/null | tr -d ' \r\n\t')
+                gem_key=$(echo "$input" | jsonfilter -e '$.gemini_api_key' 2>/dev/null | tr -d ' \r\n\t')
+                ts_key=$(echo "$input" | jsonfilter -e '$.tailscale_auth_key' 2>/dev/null | tr -d ' \r\n\t')
+                cl_remote=$(echo "$input" | jsonfilter -e '$.cloud_remote' 2>/dev/null | tr -d ' \r\n\t')
+                c1_rtsp=$(echo "$input" | jsonfilter -e '$.cam1_rtsp' 2>/dev/null | tr -d ' \r\n\t')
+                c2_rtsp=$(echo "$input" | jsonfilter -e '$.cam2_rtsp' 2>/dev/null | tr -d ' \r\n\t')
+                cc_rtsp=$(echo "$input" | jsonfilter -e '$.cam_cong_rtsp' 2>/dev/null | tr -d ' \r\n\t')
+
+                mkdir -p /etc/config /etc/tailscale 2>/dev/null
+
+                if [ -n "$tg_tok" ]; then
+                    cat << EOF_TG > /etc/config/telegram_bot.conf
+TG_BOT_TOKEN="$tg_tok"
+TG_ADMIN_ID="$tg_adm"
+TG_OWNER_NAME="${tg_own:-Anh Duy}"
+EOF_TG
+                    chmod 600 /etc/config/telegram_bot.conf
+                    killall -9 telegram_bot_daemon.sh 2>/dev/null
+                    [ -x /usr/bin/telegram_bot_daemon.sh ] && nohup /usr/bin/telegram_bot_daemon.sh >/tmp/tg_daemon.log 2>&1 &
+                fi
+
+                if [ -n "$emg_phone" ]; then
+                    echo "$emg_phone" > /etc/config/emergency_phone.txt
+                    chmod 600 /etc/config/emergency_phone.txt
+                    uci -q set cctv_sentinel.settings.emergency_phone="$emg_phone" 2>/dev/null
+                    uci commit cctv_sentinel 2>/dev/null
+                fi
+
+                if [ -n "$gem_key" ]; then
+                    echo "$gem_key" > /etc/config/gemini_api.key
+                    echo "$gem_key" > /etc/config/gemini_key.txt
+                    echo "$gem_key" > /etc/config/google_gemini_api_key
+                    chmod 600 /etc/config/gemini_api.key /etc/config/gemini_key.txt /etc/config/google_gemini_api_key 2>/dev/null
+                fi
+
+                if [ -n "$ts_key" ]; then
+                    echo "$ts_key" > /etc/config/tailscale_authkey
+                    chmod 600 /etc/config/tailscale_authkey
+                fi
+
+                if [ -n "$cl_remote" ]; then
+                    touch /etc/config/camera 2>/dev/null
+                    uci -q get camera.settings >/dev/null 2>&1 || uci set camera.settings=settings 2>/dev/null
+                    uci -q set camera.settings.cloud_remote="$cl_remote" 2>/dev/null
+                    uci commit camera 2>/dev/null
+                fi
+
+                touch /etc/config/cctv_bot 2>/dev/null
+                [ -n "$c1_rtsp" ] && { uci -q set cctv_bot.cam1.rtsp_url="$c1_rtsp"; }
+                [ -n "$c2_rtsp" ] && { uci -q set cctv_bot.cam2.rtsp_url="$c2_rtsp"; }
+                [ -n "$cc_rtsp" ] && { uci -q set cctv_bot.cam_cong.rtsp_url="$cc_rtsp"; }
+                uci commit cctv_bot 2>/dev/null
+
+                cat << EOF_VAULT > /etc/config/vault.conf
+TG_BOT_TOKEN="$tg_tok"
+TG_ADMIN_ID="$tg_adm"
+TG_OWNER_NAME="${tg_own:-Anh Duy}"
+EMERGENCY_PHONE="$emg_phone"
+GEMINI_API_KEY="$gem_key"
+TAILSCALE_AUTH_KEY="$ts_key"
+CLOUD_REMOTE="$cl_remote"
+CAM1_RTSP="$c1_rtsp"
+CAM2_RTSP="$c2_rtsp"
+CAM_CONG_RTSP="$cc_rtsp"
+EOF_VAULT
+                chmod 600 /etc/config/vault.conf
+                sync
+
+                echo '{"success":true,"message":"✅ Đã lưu toàn bộ cấu hình Telegram, Gemini AI & Camera Sentinel thành công!"}'
+                ;;
+            loadVaultKeys)
+                v_file=""
+                for f in /etc/config/vault.conf /root/vault.conf /tmp/vault.conf; do
+                    [ -f "$f" ] && { v_file="$f"; break; }
+                done
+
+                if [ -n "$v_file" ]; then
+                    tg_tok=$(grep -E '^TG_BOT_TOKEN=' "$v_file" 2>/dev/null | cut -d'=' -f2- | tr -d '"\r\n ')
+                    tg_adm=$(grep -E '^TG_ADMIN_ID=' "$v_file" 2>/dev/null | cut -d'=' -f2- | tr -d '"\r\n ')
+                    tg_own=$(grep -E '^TG_OWNER_NAME=' "$v_file" 2>/dev/null | cut -d'=' -f2- | tr -d '"\r\n ')
+                    emg_phone=$(grep -E '^EMERGENCY_PHONE=' "$v_file" 2>/dev/null | cut -d'=' -f2- | tr -d '"\r\n ')
+                    gem_key=$(grep -E '^GEMINI_API_KEY=' "$v_file" 2>/dev/null | cut -d'=' -f2- | tr -d '"\r\n ')
+                    ts_key=$(grep -E '^TAILSCALE_AUTH_KEY=' "$v_file" 2>/dev/null | cut -d'=' -f2- | tr -d '"\r\n ')
+                    cl_remote=$(grep -E '^CLOUD_REMOTE=' "$v_file" 2>/dev/null | cut -d'=' -f2- | tr -d '"\r\n ')
+                    c1_rtsp=$(grep -E '^CAM1_RTSP=' "$v_file" 2>/dev/null | cut -d'=' -f2- | tr -d '"\r\n ')
+                    c2_rtsp=$(grep -E '^CAM2_RTSP=' "$v_file" 2>/dev/null | cut -d'=' -f2- | tr -d '"\r\n ')
+                    cc_rtsp=$(grep -E '^CAM_CONG_RTSP=' "$v_file" 2>/dev/null | cut -d'=' -f2- | tr -d '"\r\n ')
+
+                    lua - "$tg_tok" "$tg_adm" "$tg_own" "$emg_phone" "$gem_key" "$ts_key" "$cl_remote" "$c1_rtsp" "$c2_rtsp" "$cc_rtsp" << 'LUAVLT'
+local json = require("luci.jsonc")
+print(json.stringify({
+    success = true,
+    message = "Đã nạp thành công key từ Vault cá nhân!",
+    tg_bot_token = arg[1] or "",
+    tg_admin_id = arg[2] or "",
+    tg_owner_name = arg[3] or "Anh Duy",
+    emergency_phone = arg[4] or "",
+    gemini_api_key = arg[5] or "",
+    tailscale_auth_key = arg[6] or "",
+    cloud_remote = arg[7] or "",
+    cam1_rtsp = arg[8] or "",
+    cam2_rtsp = arg[9] or "",
+    cam_cong_rtsp = arg[10] or ""
+}))
+LUAVLT
+                else
+                    echo '{"success":false,"message":"Chưa có file vault.conf trên thiết bị!"}'
                 fi
                 ;;
         esac

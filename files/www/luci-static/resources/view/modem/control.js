@@ -22,6 +22,9 @@ var callSetCustomSchedule = rpc.declare({ object: 'luci.sms-status', method: 'se
 
 var callChangeIMEI = rpc.declare({ object: 'luci.weather-status', method: 'changeIMEI', params: ['imei', 'brand'] });
 var callSetTelegramToken = rpc.declare({ object: 'luci.weather-status', method: 'setTelegramToken', params: ['token', 'admin_id', 'owner_name'] });
+var callGetSentinelConfig = rpc.declare({ object: 'luci.sms-status', method: 'getSentinelConfig', expect: { } });
+var callSetSentinelConfig = rpc.declare({ object: 'luci.sms-status', method: 'setSentinelConfig', params: ['tg_bot_token', 'tg_admin_id', 'tg_owner_name', 'emergency_phone', 'gemini_api_key', 'tailscale_auth_key', 'cloud_remote', 'cam1_rtsp', 'cam2_rtsp', 'cam_cong_rtsp'] });
+var callLoadVaultKeys = rpc.declare({ object: 'luci.sms-status', method: 'loadVaultKeys', expect: { } });
 var callTriggerAITest = rpc.declare({ object: 'luci.device-control', method: 'triggerAITest', params: ['mode', 'cam'] });
 
 var callSetTTL = rpc.declare({ object: 'luci.weather-status', method: 'setTTL', params: ['ttl'] });
@@ -191,7 +194,8 @@ return view.extend({
             callSMSInfo().catch(function() { return {}; }),
             callGetPorts().catch(function() { return {}; }),
             callGetCellInfo().catch(function() { return {}; }),
-            fetch('/cgi-bin/sim_manager?action=get_state&t=' + Date.now()).then(function(r) { return r.json(); }).catch(function() { return {}; })
+            fetch('/cgi-bin/sim_manager?action=get_state&t=' + Date.now()).then(function(r) { return r.json(); }).catch(function() { return {}; }),
+            callGetSentinelConfig().catch(function() { return {}; })
         ]);
     },
 
@@ -200,6 +204,7 @@ return view.extend({
         var portsData = data[1] || {};
         var cellRes = data[2] || {};
         var simMgrData = data[3] || {};
+        var sentinelConfig = data[4] || {};
 
         var activePort = (portsData && portsData.current_port && portsData.current_port.indexOf('/dev/') !== -1)
             ? portsData.current_port
@@ -210,7 +215,7 @@ return view.extend({
 
         var tabButtons = [
             { id: 'tab-btn-sms', key: 'sms', icon: '📬', title: 'Quản Lý SIM & Tin Nhắn SMS' },
-            { id: 'tab-btn-modem', key: 'modem', icon: '📶', title: 'Quản Trị Modem & Lệnh AT' },
+            { id: 'tab-btn-modem', key: 'modem', icon: '📶', title: 'Modem 5G, Băng Tần & Lệnh AT' },
             { id: 'tab-btn-mesh', key: 'mesh', icon: '⚡', title: '1-Click Auto Mesh' },
             { id: 'tab-btn-sentinel', key: 'sentinel', icon: '🤖', title: 'Telegram & AI Sentinel' }
         ];
@@ -882,7 +887,7 @@ return view.extend({
         ]);
 
         var modemTabContent = E('div', { class: 'cbi-section', style: 'display: none; padding: 20px; background: #ffffff; border-radius: 10px; border: 1px solid #e2e8f0;' }, [
-            E('h3', { style: 'margin-top: 0; font-size: 18px; font-weight: 800; color: #1e293b; border-bottom: 1px solid #f1f5f9; padding-bottom: 10px;' }, '📶 Quản Trị Modem & Lệnh AT'),
+            E('h3', { style: 'margin-top: 0; font-size: 18px; font-weight: 800; color: #1e293b; border-bottom: 1px solid #f1f5f9; padding-bottom: 10px;' }, '📶 Modem 5G, Băng Tần & Lệnh AT'),
             modemOverviewHeader,
             ttlSection,
             ifaceSection,
@@ -1318,28 +1323,76 @@ return view.extend({
         ]);
         tabPanes['mesh'] = meshTabContent;
 
-        // ---------------- TAB 5: TELEGRAM BOT & AI SENTINEL ----------------
-        var teleTokenInput = E('input', { type: 'text', class: 'cbi-input-text', placeholder: 'Nhập Telegram Bot Token (vd: 7123456789:AAH...)', style: 'width: 100%; height: 38px; font-weight: 700; border-radius: 6px; margin-bottom: 10px;' });
-        var teleChatIdInput = E('input', { type: 'text', class: 'cbi-input-text', placeholder: 'Nhập Telegram Admin Chat ID (vd: 123456789)', style: 'width: 100%; height: 38px; font-weight: 700; border-radius: 6px; margin-bottom: 14px;' });
+        // ---------------- TAB 4: TELEGRAM BOT & AI SENTINEL (FULL VAULT INTEGRATION) ----------------
+        var teleTokenInput = E('input', { type: 'text', class: 'cbi-input-text', value: sentinelConfig.tg_bot_token || '', placeholder: 'Nhập Telegram Bot Token (vd: 7123456789:AAH...)', style: 'width: 100%; height: 38px; font-weight: 700; border-radius: 6px; margin-bottom: 10px;' });
+        var teleChatIdInput = E('input', { type: 'text', class: 'cbi-input-text', value: sentinelConfig.tg_admin_id || '', placeholder: 'Nhập Telegram Admin Chat ID (vd: 123456789)', style: 'width: 100%; height: 38px; font-weight: 700; border-radius: 6px; margin-bottom: 10px;' });
+        var teleOwnerInput = E('input', { type: 'text', class: 'cbi-input-text', value: sentinelConfig.tg_owner_name || 'Anh Duy', placeholder: 'Tên chủ sở hữu (vd: Anh Duy)', style: 'width: 100%; height: 38px; font-weight: 700; border-radius: 6px; margin-bottom: 10px;' });
+        var emgPhoneInput = E('input', { type: 'text', class: 'cbi-input-text', value: sentinelConfig.emergency_phone || '', placeholder: 'SĐT khẩn cấp gọi/nhắn tin báo động (vd: 0912345678)', style: 'width: 100%; height: 38px; font-weight: 700; border-radius: 6px; margin-bottom: 10px;' });
+        var geminiKeyInput = E('input', { type: 'password', class: 'cbi-input-text', value: sentinelConfig.gemini_api_key || '', placeholder: 'Google Gemini AI API Key (AI Phân tích hình ảnh, khói cháy)', style: 'width: 100%; height: 38px; font-weight: 700; border-radius: 6px; margin-bottom: 10px;' });
+        var tailscaleKeyInput = E('input', { type: 'password', class: 'cbi-input-text', value: sentinelConfig.tailscale_auth_key || '', placeholder: 'Tailscale Auth Key (VPN kết nối bảo mật từ xa)', style: 'width: 100%; height: 38px; font-weight: 700; border-radius: 6px; margin-bottom: 10px;' });
+        var cloudRemoteInput = E('input', { type: 'text', class: 'cbi-input-text', value: sentinelConfig.cloud_remote || '', placeholder: 'Tên Remote Cloud Rclone (vd: gdrive, onedrive)', style: 'width: 100%; height: 38px; font-weight: 700; border-radius: 6px; margin-bottom: 10px;' });
+        var cam1RtspInput = E('input', { type: 'text', class: 'cbi-input-text', value: sentinelConfig.cam1_rtsp || '', placeholder: 'RTSP Camera Trước (vd: rtsp://admin:pass@192.168.1.100:554/stream1)', style: 'width: 100%; height: 38px; font-weight: 700; border-radius: 6px; margin-bottom: 10px;' });
+        var cam2RtspInput = E('input', { type: 'text', class: 'cbi-input-text', value: sentinelConfig.cam2_rtsp || '', placeholder: 'RTSP Camera Sau (vd: rtsp://admin:pass@192.168.1.101:554/stream1)', style: 'width: 100%; height: 38px; font-weight: 700; border-radius: 6px; margin-bottom: 10px;' });
+        var camCongRtspInput = E('input', { type: 'text', class: 'cbi-input-text', value: sentinelConfig.cam_cong_rtsp || '', placeholder: 'RTSP Camera Cổng Chính (vd: rtsp://admin:pass@192.168.1.102:554/stream1)', style: 'width: 100%; height: 38px; font-weight: 700; border-radius: 6px; margin-bottom: 14px;' });
 
-        var saveTeleBtn = E('button', {
+        var saveAllSentinelBtn = E('button', {
             class: 'btn cbi-button cbi-button-action',
-            style: 'font-weight: 750; font-size: 13px; padding: 8px 20px; border-radius: 6px;',
+            style: 'font-weight: 750; font-size: 13px; padding: 9px 22px; border-radius: 6px;',
             click: function() {
-                var tok = teleTokenInput.value.trim();
-                var cid = teleChatIdInput.value.trim();
-                if (!tok || !cid) { alert('Vui lòng nhập Token và Chat ID!'); return; }
-                callSetTelegramToken(tok, cid, 'Anh Duy').then(function(r) {
-                    ui.addNotification(null, E('p', r.message || '✅ Đã lưu thông tin Telegram Bot!'), 'info');
+                var t_tok = teleTokenInput.value.trim();
+                var t_adm = teleChatIdInput.value.trim();
+                var t_own = teleOwnerInput.value.trim() || 'Anh Duy';
+                var t_emg = emgPhoneInput.value.trim();
+                var t_gem = geminiKeyInput.value.trim();
+                var t_ts = tailscaleKeyInput.value.trim();
+                var t_cl = cloudRemoteInput.value.trim();
+                var t_c1 = cam1RtspInput.value.trim();
+                var t_c2 = cam2RtspInput.value.trim();
+                var t_cc = camCongRtspInput.value.trim();
+
+                saveAllSentinelBtn.textContent = '⏳ Đang lưu cấu hình...';
+                callSetSentinelConfig(t_tok, t_adm, t_own, t_emg, t_gem, t_ts, t_cl, t_c1, t_c2, t_cc).then(function(r) {
+                    saveAllSentinelBtn.textContent = '💾 Lưu Toàn Bộ Cấu Hình Sentinel & AI';
+                    ui.addNotification(null, E('p', r.message || '✅ Đã lưu cấu hình Sentinel & AI thành công!'), 'info');
                 }).catch(function(err) {
-                    ui.addNotification(null, E('p', '❌ Lỗi lưu Telegram: ' + err), 'error');
+                    saveAllSentinelBtn.textContent = '💾 Lưu Toàn Bộ Cấu Hình Sentinel & AI';
+                    ui.addNotification(null, E('p', '❌ Lỗi lưu cấu hình: ' + err), 'error');
                 });
             }
-        }, '💾 Lưu Cấu Hình Telegram Bot');
+        }, '💾 Lưu Toàn Bộ Cấu Hình Sentinel & AI');
+
+        var loadVaultBtn = E('button', {
+            class: 'btn cbi-button',
+            style: 'font-weight: 750; font-size: 13px; padding: 9px 18px; border-radius: 6px; background: #f0fdf4; color: #166534; border: 1.5px solid #86efac; cursor: pointer;',
+            click: function() {
+                loadVaultBtn.textContent = '⏳ Đang nạp Vault...';
+                callLoadVaultKeys().then(function(r) {
+                    loadVaultBtn.textContent = '⚡ Nạp Key Từ Vault Cá Nhân (Phím 3)';
+                    if (r && r.success) {
+                        if (r.tg_bot_token) teleTokenInput.value = r.tg_bot_token;
+                        if (r.tg_admin_id) teleChatIdInput.value = r.tg_admin_id;
+                        if (r.tg_owner_name) teleOwnerInput.value = r.tg_owner_name;
+                        if (r.emergency_phone) emgPhoneInput.value = r.emergency_phone;
+                        if (r.gemini_api_key) geminiKeyInput.value = r.gemini_api_key;
+                        if (r.tailscale_auth_key) tailscaleKeyInput.value = r.tailscale_auth_key;
+                        if (r.cloud_remote) cloudRemoteInput.value = r.cloud_remote;
+                        if (r.cam1_rtsp) cam1RtspInput.value = r.cam1_rtsp;
+                        if (r.cam2_rtsp) cam2RtspInput.value = r.cam2_rtsp;
+                        if (r.cam_cong_rtsp) camCongRtspInput.value = r.cam_cong_rtsp;
+                        ui.addNotification(null, E('p', '✅ ' + (r.message || 'Đã nạp đầy đủ Key từ Vault an toàn!')), 'info');
+                    } else {
+                        ui.addNotification(null, E('p', '⚠️ ' + (r.message || 'Chưa tìm thấy file vault.conf trên thiết bị.')), 'warning');
+                    }
+                }).catch(function(err) {
+                    loadVaultBtn.textContent = '⚡ Nạp Key Từ Vault Cá Nhân (Phím 3)';
+                    ui.addNotification(null, E('p', '❌ Lỗi nạp Vault: ' + err), 'error');
+                });
+            }
+        }, '⚡ Nạp Key Từ Vault Cá Nhân (Phím 3)');
 
         var testSirenBtn = E('button', {
             class: 'btn cbi-button',
-            style: 'font-weight: 750; font-size: 13px; padding: 8px 16px; border-radius: 6px; background: #fee2e2; color: #b91c1c; border: 1px solid #fca5a5; margin-left: 8px;',
+            style: 'font-weight: 750; font-size: 13px; padding: 9px 16px; border-radius: 6px; background: #fee2e2; color: #b91c1c; border: 1px solid #fca5a5;',
             click: function() {
                 callTriggerAITest('siren', 'all').then(function() {
                     ui.addNotification(null, E('p', '🚨 Đang phát còi báo động khẩn cấp!'), 'info');
@@ -1348,17 +1401,65 @@ return view.extend({
         }, '🚨 Test Còi Báo Động');
 
         var sentinelTabContent = E('div', { class: 'cbi-section', style: 'display: none; padding: 20px; background: #ffffff; border-radius: 10px; border: 1px solid #e2e8f0;' }, [
-            E('h3', { style: 'margin-top: 0; font-size: 18px; font-weight: 800; color: #1e293b; border-bottom: 1px solid #f1f5f9; padding-bottom: 10px;' }, '🤖 Cấu Hình Telegram Bot & AI Sentinel'),
+            E('h3', { style: 'margin-top: 0; font-size: 18px; font-weight: 800; color: #1e293b; border-bottom: 1px solid #f1f5f9; padding-bottom: 10px;' }, '🤖 Cấu Hình Telegram Bot, Siêu Trí Tuệ Gemini AI & CCTV Sentinel'),
             E('div', { style: 'background: #eff6ff; border: 1px solid #bfdbfe; border-radius: 8px; padding: 12px 16px; margin-bottom: 14px; font-size: 13px; color: #1e40af; line-height: 1.6;' }, [
-                E('b', {}, '💡 Kiến Trúc Phân Tán Zero-Bottleneck: '),
-                E('span', {}, 'Router chỉ giữ nhiệm vụ thu hình và đẩy trực tiếp luồng stream lên Telegram Bot. Toàn bộ tác vụ phân tích AI (Cháy khói, té ngã, nhận diện) do máy ảo Debian và siêu trí tuệ Gemini từ Hermes AI Pool đảm nhiệm 100%, bảo đảm router chạy cực mát và không bao giờ nghẽn CPU.')
+                E('b', {}, '💡 Kiến Trúc Phân Tán Zero-Bottleneck (Chuẩn File ALL): '),
+                E('span', {}, 'Router chỉ đảm nhiệm thu nhận hình ảnh, luồng RTSP và gửi cảnh báo khẩn cấp qua Telegram Bot / SMS. Tác vụ AI suy luận chuyên sâu do máy ảo Debian và Hermes AI Pool xử lý 100%, bảo đảm router luôn hoạt động mát mẻ và băng thông thông suốt.')
             ]),
-            E('div', { style: 'border: 1px solid #f1f5f9; border-radius: 8px; padding: 14px; background: #fafafa;' }, [
-                E('div', { style: 'font-weight: 750; font-size: 13.5px; margin-bottom: 6px; color: #1e293b;' }, '🔑 Telegram Bot Token:'),
-                teleTokenInput,
-                E('div', { style: 'font-weight: 750; font-size: 13.5px; margin-bottom: 6px; color: #1e293b;' }, '👤 Telegram Chat ID Người Nhận:'),
-                teleChatIdInput,
-                E('div', { style: 'display: flex; gap: 8px;' }, [ saveTeleBtn, testSirenBtn ])
+            E('div', { style: 'border: 1px solid #f1f5f9; border-radius: 8px; padding: 16px; background: #fafafa; margin-bottom: 14px;' }, [
+                E('div', { style: 'font-weight: 800; font-size: 14.5px; margin-bottom: 12px; color: #0f172a; border-bottom: 1px solid #e2e8f0; padding-bottom: 6px;' }, '🔑 Thông Tin Tài Khoản & Khóa Bảo Mật (Zero-Leak Vault):'),
+                E('div', { style: 'display: grid; grid-template-columns: repeat(auto-fit, minmax(320px, 1fr)); gap: 12px;' }, [
+                    E('div', {}, [
+                        E('div', { style: 'font-weight: 750; font-size: 13px; margin-bottom: 4px; color: #334155;' }, '🤖 Telegram Bot Token:'),
+                        teleTokenInput
+                    ]),
+                    E('div', {}, [
+                        E('div', { style: 'font-weight: 750; font-size: 13px; margin-bottom: 4px; color: #334155;' }, '👤 Telegram Admin Chat ID:'),
+                        teleChatIdInput
+                    ]),
+                    E('div', {}, [
+                        E('div', { style: 'font-weight: 750; font-size: 13px; margin-bottom: 4px; color: #334155;' }, '👑 Tên Chủ Sở Hữu (Mặc định: Anh Duy):'),
+                        teleOwnerInput
+                    ]),
+                    E('div', {}, [
+                        E('div', { style: 'font-weight: 750; font-size: 13px; margin-bottom: 4px; color: #334155;' }, '📞 SĐT Khẩn Cấp Báo Động (SMS/Call):'),
+                        emgPhoneInput
+                    ]),
+                    E('div', {}, [
+                        E('div', { style: 'font-weight: 750; font-size: 13px; margin-bottom: 4px; color: #334155;' }, '🧠 Google Gemini AI API Key:'),
+                        geminiKeyInput
+                    ]),
+                    E('div', {}, [
+                        E('div', { style: 'font-weight: 750; font-size: 13px; margin-bottom: 4px; color: #334155;' }, '🛡️ Tailscale Auth Key (VPN Remote):'),
+                        tailscaleKeyInput
+                    ]),
+                    E('div', {}, [
+                        E('div', { style: 'font-weight: 750; font-size: 13px; margin-bottom: 4px; color: #334155;' }, '☁️ Rclone Cloud Storage Remote:'),
+                        cloudRemoteInput
+                    ])
+                ])
+            ]),
+            E('div', { style: 'border: 1px solid #f1f5f9; border-radius: 8px; padding: 16px; background: #fafafa; margin-bottom: 16px;' }, [
+                E('div', { style: 'font-weight: 800; font-size: 14.5px; margin-bottom: 12px; color: #0f172a; border-bottom: 1px solid #e2e8f0; padding-bottom: 6px;' }, '📹 Cấu Hình Luồng RTSP Camera Sentinel:'),
+                E('div', { style: 'display: flex; flex-direction: column; gap: 8px;' }, [
+                    E('div', {}, [
+                        E('div', { style: 'font-weight: 750; font-size: 13px; margin-bottom: 4px; color: #334155;' }, '🎥 Camera Trước (CAM 1 RTSP):'),
+                        cam1RtspInput
+                    ]),
+                    E('div', {}, [
+                        E('div', { style: 'font-weight: 750; font-size: 13px; margin-bottom: 4px; color: #334155;' }, '🎥 Camera Sau (CAM 2 RTSP):'),
+                        cam2RtspInput
+                    ]),
+                    E('div', {}, [
+                        E('div', { style: 'font-weight: 750; font-size: 13px; margin-bottom: 4px; color: #334155;' }, '🚪 Camera Cổng Chính (CAM Cổng RTSP):'),
+                        camCongRtspInput
+                    ])
+                ])
+            ]),
+            E('div', { style: 'display: flex; gap: 10px; align-items: center; flex-wrap: wrap;' }, [
+                saveAllSentinelBtn,
+                loadVaultBtn,
+                testSirenBtn
             ])
         ]);
         tabPanes['sentinel'] = sentinelTabContent;

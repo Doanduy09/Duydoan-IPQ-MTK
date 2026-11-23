@@ -84,11 +84,41 @@ LUAPOST
     fi
 }
 
+get_smart_iface() {
+    local iface=$(cat /tmp/wd_interface 2>/dev/null)
+    if [ -n "$iface" ]; then
+        echo "$iface"
+        return
+    fi
+    if command -v ubus >/dev/null 2>&1; then
+        for cand in duydoan_5g modem wwan0 wwan; do
+            if ubus list | grep -q "^network\.interface\.${cand}$"; then
+                echo "$cand"
+                return
+            fi
+        done
+    fi
+    echo "duydoan_5g"
+}
+
+get_smart_device() {
+    local dev=$(cat /tmp/wd_device 2>/dev/null)
+    if [ -n "$dev" ] && [ -d "/sys/class/net/$dev" ]; then
+        echo "$dev"
+        return
+    fi
+    for cand in mhi_hwip0 rmnet_mhi0.1 wwan0 usb0; do
+        if [ -d "/sys/class/net/$cand" ]; then
+            echo "$cand"
+            return
+        fi
+    done
+    get_smart_iface
+}
+
 check_internet_status() {
-    local act_iface=$(cat /tmp/wd_interface 2>/dev/null || echo "wwan0")
-    [ -z "$act_iface" ] && act_iface="wwan0"
-    local l3_dev=$(cat /tmp/wd_device 2>/dev/null || echo "$act_iface")
-    [ -z "$l3_dev" ] && l3_dev="$act_iface"
+    local act_iface=$(get_smart_iface)
+    local l3_dev=$(get_smart_device)
 
     # Kiểm tra trạng thái Netifd interface - Nếu bị DỪNG/TẮT trên LuCI thì báo rớt mạng ngay lập tức
     if command -v ubus >/dev/null 2>&1; then
@@ -604,7 +634,7 @@ case "$1" in
     tier2|test-tier2)
         echo "=== BẮT ĐẦU TEST KỊCH BẢN TẦNG 2: FAST WWAN SESSION RESET ==="
         t_start=$(date +%s)
-        w_if=$(cat /tmp/wd_interface 2>/dev/null || echo "wwan0")
+        w_if=$(get_smart_iface)
         if heal_tier2_wwan_session "$w_if"; then
             t_dur=$(( $(date +%s) - t_start ))
             echo ">> KẾT QUẢ: TẦNG 2 THÀNH CÔNG! Thời gian: ${t_dur}s. Wi-Fi giữ nguyên 100%!"
@@ -617,7 +647,7 @@ case "$1" in
     tier3|test-tier3)
         echo "=== BẮT ĐẦU TEST KỊCH BẢN TẦNG 3: BASEBAND CFUN RESET & CELL FAILOVER ==="
         t_start=$(date +%s)
-        w_if=$(cat /tmp/wd_interface 2>/dev/null || echo "wwan0")
+        w_if=$(get_smart_iface)
         if heal_tier3_cfun_cell_failover "$w_if"; then
             t_dur=$(( $(date +%s) - t_start ))
             echo ">> KẾT QUẢ: TẦNG 3 THÀNH CÔNG! Thời gian: ${t_dur}s. Sóng modem đã phục hồi!"
@@ -734,8 +764,7 @@ HEALTHY_STREAK=0
 SLEEP_INTERVAL=20
 
 while true; do
-    ACT_IFACE=$(cat /tmp/wd_interface 2>/dev/null || echo "wwan0")
-    [ -z "$ACT_IFACE" ] && ACT_IFACE="wwan0"
+    ACT_IFACE=$(get_smart_iface)
 
     # [ZERO-DELAY INTERFACE GUARD] Tự động bật lại NGAY LẬP TỨC nếu LuCI bấm Dừng hoặc interface bị ngắt
     if command -v ubus >/dev/null 2>&1; then
@@ -764,9 +793,8 @@ while true; do
         cur_hm=$(date +%H%M 2>/dev/null || echo "1200")
         today_str=$(date +%Y%m%d 2>/dev/null || echo "00000000")
         if [ "$cur_hm" -ge "0415" ] && [ "$cur_hm" -le "0430" ] && [ "$LAST_PROACTIVE_RENEW_DATE" != "$today_str" ]; then
-            ACT_IFACE=$(cat /tmp/wd_interface 2>/dev/null || echo "wwan0")
-            [ -z "$ACT_IFACE" ] && ACT_IFACE="wwan0"
-            L3_DEV=$(cat /tmp/wd_device 2>/dev/null || echo "$ACT_IFACE")
+            ACT_IFACE=$(get_smart_iface)
+            L3_DEV=$(get_smart_device)
             [ ! -d "/sys/class/net/$L3_DEV" ] && L3_DEV="$ACT_IFACE"
             rx1=$(cat "/sys/class/net/$L3_DEV/statistics/rx_packets" 2>/dev/null || echo 0)
             sleep 2
@@ -784,12 +812,11 @@ while true; do
     SLEEP_INTERVAL=5
 
     # Kiểm tra Silent PDP Freeze (TX > 0 nhưng RX = 0)
-    # Kiểm tra Silent PDP Freeze (TX > 0 nhưng RX = 0)
-    if ! check_silent_pdp_freeze "wwan0"; then
+    if ! check_silent_pdp_freeze "$ACT_IFACE"; then
         SILENT_FREEZE_CNT=$(( ${SILENT_FREEZE_CNT:-0} + 1 ))
         if [ "$SILENT_FREEZE_CNT" -ge 5 ]; then
             echo "$(date): [SILENT FREEZE] Xác nhận nghẽn gateway 5 lần liên tiếp (TX tăng nhưng RX=0)! Tự hồi sinh PDP Context..." >> "$LOG_FILE"
-            heal_tier2_wwan_session "wwan0"
+            heal_tier2_wwan_session "$ACT_IFACE"
             SILENT_FREEZE_CNT=0
             FAIL_STREAK=0
             continue
@@ -825,8 +852,7 @@ while true; do
 
     echo "$(date): === 🩺 KHỞI ĐỘNG BÁC SĨ 5G TỰ ĐỘNG CHỮA LÀNH MẠNG (FAIL_STREAK=${FAIL_STREAK}) ===" >> "$LOG_FILE"
     START_HEAL_S=$(date +%s)
-    ACT_IFACE=$(cat /tmp/wd_interface 2>/dev/null || echo "wwan0")
-    [ -z "$ACT_IFACE" ] && ACT_IFACE="wwan0"
+    ACT_IFACE=$(get_smart_iface)
 
     # TẦNG 1: SỬA DNS & TCP MSS CLAMPING (~1.5s - ZERO DOWNTIME)
     # Kích hoạt khi mất mạng 3-5 lần liên tiếp (~45-75s)

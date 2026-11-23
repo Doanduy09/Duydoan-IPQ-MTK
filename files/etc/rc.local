@@ -1,0 +1,6 @@
+# Put your custom commands here that should be executed once
+# the system init finished. By default this file does nothing.
+
+echo on > /sys/bus/pci/devices/0000:01:00.0/power/control 2>/dev/null
+[ -x /usr/bin/sysfixtine ] && /usr/bin/sysfixtine start &
+exit 0
