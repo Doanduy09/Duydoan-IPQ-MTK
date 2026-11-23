@@ -41,33 +41,61 @@ get_active_modem_port() {
 
     local cached_p=$(cat /tmp/master_sms_port 2>/dev/null)
     if [ -n "$cached_p" ] && [ -c "$cached_p" ]; then
-        # Kiểm tra xem cổng cached có phản hồi AT không
-        if command -v sms_tool >/dev/null 2>&1; then
-            if timeout 2 sms_tool -d "$cached_p" at "AT" 2>/dev/null | grep -q "OK"; then
-                echo "$cached_p"
-                return 0
-            fi
-        fi
+        echo "$cached_p"
+        return 0
     fi
 
-    # Ưu tiên các cổng AT lệnh chuẩn (Fibocom / Quectel / SIMCom / PCIe)
-    for p in /dev/ttyUSB3 /dev/ttyUSB2 /dev/wwan0at0 /dev/ttyFMI0 /dev/ttyFMI1 /dev/mhi_DUN /dev/ttyACM0 /dev/ttyUSB1 /dev/ttyUSB0; do
-        [ -c "$p" ] || continue
-        local resp=""
-        if command -v sms_tool >/dev/null 2>&1; then
-            resp=$(timeout 2 sms_tool -d "$p" at "AT" 2>/dev/null)
-        elif command -v atinout >/dev/null 2>&1; then
-            resp=$(printf "AT\r\n" | timeout 1 atinout - "$p" - 2>/dev/null)
-        fi
-        if echo "$resp" | grep -q "OK"; then
-            echo "$p" > /tmp/master_sms_port
-            echo "$p"
+    # Check for PCIe MHI / WWAN control character devices first (PCIe Mode)
+    for pcie_p in /dev/wwan0at0 /dev/wwan1at0 /dev/wwan0ctrl0 /dev/wwan1ctrl0 /dev/mhi_DUN /dev/mhi_BHI; do
+        if [ -c "$pcie_p" ]; then
+            echo "$pcie_p" > /tmp/master_sms_port
+            echo "$pcie_p"
             return 0
         fi
     done
 
-    # Fallback nếu không có cổng nào phản hồi OK
-    for p in /dev/ttyUSB3 /dev/ttyUSB2 /dev/wwan0at0 /dev/ttyUSB0; do
+    local iface=""
+    for i in wwan0 wwan1 usb0; do
+        [ -d "/sys/class/net/$i" ] && { iface="$i"; break; }
+    done
+
+    local parent_dir=""
+    if [ -n "$iface" ] && [ -e "/sys/class/net/$iface/device" ]; then
+        parent_dir=$(cd -P "/sys/class/net/$iface/device/.." 2>/dev/null && pwd)
+    fi
+
+    local found_ports=""
+    if [ -n "$parent_dir" ]; then
+        for tty_link in /sys/bus/usb-serial/devices/* /sys/class/tty/ttyACM*; do
+            [ -e "$tty_link" ] || continue
+            local tty_real=$(cd -P "$tty_link" 2>/dev/null && pwd)
+            case "$tty_real" in
+                "$parent_dir"*)
+                    local dev_name=$(basename "$tty_link")
+                    found_ports="$found_ports /dev/$dev_name"
+                    ;;
+            esac
+        done
+    fi
+
+    if [ -z "$found_ports" ]; then
+        for p in /dev/ttyUSB0 /dev/ttyUSB1 /dev/ttyUSB2 /dev/ttyUSB3 /dev/ttyACM0 /dev/ttyACM1; do
+            [ -c "$p" ] && found_ports="$found_ports $p"
+        done
+    fi
+
+    for p in $found_ports; do
+        if [ -c "$p" ]; then
+            local resp=$(printf "AT\r\n" | timeout 1 atinout - "$p" - 2>/dev/null)
+            if echo "$resp" | grep -q "OK"; then
+                echo "$p" > /tmp/master_sms_port
+                echo "$p"
+                return 0
+            fi
+        fi
+    done
+
+    for p in $found_ports; do
         if [ -c "$p" ]; then
             echo "$p" > /tmp/master_sms_port
             echo "$p"
@@ -75,40 +103,26 @@ get_active_modem_port() {
         fi
     done
 
-    echo "/dev/ttyUSB3"
+    echo "/dev/ttyUSB0"
 }
 
 send_at_direct() {
     local p="$1"
     local cmd="$2"
     local out=""
-    [ -c "$p" ] || return 1
 
-    case "$p" in
-        /dev/ttyUSB*|/dev/ttyACM*)
-            if command -v sms_tool >/dev/null 2>&1; then
-                out=$(timeout 3 sms_tool -d "$p" at "$cmd" 2>/dev/null)
-            fi
-            if [ -z "$out" ] && command -v atinout >/dev/null 2>&1; then
-                out=$(timeout 3 sh -c "printf '%s\r\n' \"$cmd\" | atinout - '$p' -" 2>/dev/null)
-            fi
-            ;;
-        *)
-            if command -v atinout >/dev/null 2>&1; then
-                out=$(timeout 3 sh -c "printf '%s\r\n' \"$cmd\" | atinout - '$p' -" 2>/dev/null)
-            fi
-            if [ -z "$out" ] && command -v sms_tool >/dev/null 2>&1; then
-                out=$(timeout 3 sms_tool -d "$p" at "$cmd" 2>/dev/null)
-            fi
-            ;;
-    esac
+    if command -v sms_tool >/dev/null 2>&1; then
+        out=$(timeout 4 sms_tool -d "$p" at "$cmd" 2>/dev/null)
+    elif command -v atinout >/dev/null 2>&1; then
+        out=$(timeout 3 sh -c "printf '%s\r\n' \"$cmd\" | atinout - '$p' -" 2>/dev/null)
+    fi
 
     echo "$out"
 }
 
 case "$1" in
     list)
-        echo '{"getSMSInfo":{},"sendSMS":{"target":"string","msg":"string"},"sendAT":{"cmd":"string","port":"string"},"setCustomSchedule":{"datetime":"string"},"getAvailablePorts":{},"setCustomAtPort":{"port":"string"},"fetchSMSNow":{},"deleteSingleSMS":{"indices":"string","storage":"string"},"deleteAllSMS":{},"checkDataBalance":{},"setBandLock":{"mode":"string"},"getCellInfo":{},"setCellLock":{"action":"string"}}'
+        echo '{"getSMSInfo":{},"sendSMS":{"target":"string","msg":"string"},"sendAT":{"cmd":"string"},"setCustomSchedule":{"datetime":"string"},"getAvailablePorts":{},"setCustomAtPort":{"port":"string"},"fetchSMSNow":{},"deleteSingleSMS":{"indices":"string","storage":"string"},"deleteAllSMS":{},"checkDataBalance":{},"setBandLock":{"mode":"string"},"getCellInfo":{},"setCellLock":{"action":"string"}}'
         ;;
     call)
         read -r -t 1 input 2>/dev/null || [ -n "$input" ] || input=""
@@ -122,12 +136,25 @@ case "$1" in
                 cmd=$(echo "$input" | jsonfilter -e '$.cmd' 2>/dev/null)
                 [ -z "$cmd" ] && cmd="ATI"
 
-                custom_p=$(echo "$input" | jsonfilter -e '$.port' 2>/dev/null)
-                if [ -n "$custom_p" ] && [ -c "$custom_p" ]; then
-                    port="$custom_p"
-                else
-                    port=$(get_active_modem_port)
-                fi
+                port=$(get_active_modem_port)
+
+                case "$port" in
+                    /dev/wwan*|/dev/mhi*)
+                        reply=""
+                        if ubus list | grep -q 'at-daemon'; then
+                            reply=$(ubus call at-daemon sendat "{\"at_port\":\"$port\",\"at_cmd\":\"$cmd\",\"timeout\":4}" 2>/dev/null | jsonfilter -e '$.response' 2>/dev/null)
+                        fi
+                        if [ -z "$reply" ] && ubus list | grep -q 'qmodem'; then
+                            q_sec=$(uci -q show qmodem | grep -m1 '=modem-device' | cut -d'.' -f2 | cut -d'=' -f1 || echo "0000_01_00_0")
+                            reply=$(ubus call qmodem send_at "{\"config_section\":\"$q_sec\",\"params\":\"$cmd\"}" 2>/dev/null | jsonfilter -e '$.result' 2>/dev/null)
+                        fi
+                        if [ -n "$reply" ]; then
+                            clean_reply=$(echo "$reply" | sed 's/\\/\\\\/g' | sed 's/"/\\"/g' | awk '{printf "%s\\n", $0}')
+                            printf '{"success":true,"response":"%s"}\n' "$clean_reply"
+                            exit 0
+                        fi
+                        ;;
+                esac
 
                 if [ -n "$port" ] && [ -c "$port" ]; then
                     touch /tmp/sms_sending.lock
@@ -168,19 +195,14 @@ case "$1" in
                 ;;
             getAvailablePorts)
                 ports_json=""
-                for p in /dev/ttyFMI0 /dev/ttyFMI1 /dev/ttyFMI2 /dev/ttyFMI3 /dev/wwan0at0 /dev/wwan1at0 /dev/wwan0 /dev/mhi_DUN /dev/mhi_BHI /dev/ttyUSB2 /dev/ttyUSB3 /dev/ttyUSB0 /dev/ttyUSB1 /dev/ttyUSB4 /dev/ttyACM0 /dev/ttyACM1 /dev/cdc-wdm0 /dev/cdc-wdm1; do
+                for p in /dev/wwan0at0 /dev/wwan1at0 /dev/wwan0mbim0 /dev/wwan1mbim0 /dev/ttyUSB2 /dev/ttyUSB3 /dev/ttyUSB0 /dev/ttyUSB1 /dev/ttyUSB4 /dev/ttyACM0 /dev/ttyACM1; do
                     [ -c "$p" ] || continue
-                    case "$ports_json" in
-                        *"\"$p\""*) continue ;;
-                    esac
                     [ -n "$ports_json" ] && ports_json="${ports_json},"
                     ports_json="${ports_json}\"${p}\""
                 done
                 cur_p=$(cat /tmp/master_sms_port 2>/dev/null)
-                [ -z "$cur_p" ] && cur_p=$(cat /tmp/custom_at_port 2>/dev/null)
-                [ -z "$cur_p" ] && [ -n "$ports_json" ] && cur_p=$(echo "$ports_json" | cut -d'"' -f2)
-                [ -z "$cur_p" ] && cur_p="/dev/wwan0at0"
-                printf '{"current_port":"%s","available_ports":[%s],"ports":[%s]}\n' "$cur_p" "$ports_json" "$ports_json"
+                [ -z "$cur_p" ] && cur_p=$(cat /tmp/custom_at_port 2>/dev/null || echo "/dev/wwan0at0")
+                printf '{"current_port":"%s","available_ports":[%s]}\n' "$cur_p" "$ports_json"
                 ;;
             setCustomAtPort)
                 sel_port=$(echo "$input" | jsonfilter -e '$.port' 2>/dev/null)
@@ -200,54 +222,71 @@ case "$1" in
             fetchSMSNow)
                 port=$(get_active_modem_port)
                 
-                if [ -n "$port" ] && [ -c "$port" ] && command -v sms_tool >/dev/null 2>&1; then
-                    touch /tmp/sms_sending.lock
-                    acquire_lock_safe
-                    trap 'safe_at_cleanup' EXIT INT TERM
-                    release_ports
-                    combined_sms=""
-
-                    sms_me=$(timeout 8 modem_lock_run sms_tool -s ME -d "$port" recv 2>/dev/null)
-                    [ -n "$sms_me" ] && combined_sms="[ BỘ NHỚ MODEM (ME) ]:\n$sms_me"
-
-                    sms_sm=$(timeout 8 modem_lock_run sms_tool -s SM -d "$port" recv 2>/dev/null)
-                    if [ -n "$sms_sm" ]; then
-                        [ -n "$combined_sms" ] && combined_sms="${combined_sms}\n\n"
-                        combined_sms="${combined_sms}[ BỘ NHỚ SIM (SM) ]:\n$sms_sm"
-                    fi
-
-                    if [ -z "$combined_sms" ]; then
-                        sms_mt=$(timeout 8 modem_lock_run sms_tool -s MT -d "$port" recv 2>/dev/null)
-                        [ -n "$sms_mt" ] && combined_sms="[ BỘ NHỚ TỔNG HỢP (MT) ]:\n$sms_mt"
-                    fi
-
-                    # Đọc bổ sung từ ModemManager nếu có
-                    if command -v mmcli >/dev/null 2>&1; then
-                        mm_m=$(mmcli -L 2>/dev/null | grep -oE '/org/freedesktop/ModemManager1/Modem/[0-9]+' | head -1)
-                        if [ -n "$mm_m" ]; then
-                            for mm_sp in $(mmcli -m "$mm_m" --messaging-list-sms 2>/dev/null | grep -oE '/org/freedesktop/ModemManager1/SMS/[0-9]+'); do
-                                mm_info=$(mmcli -s "$mm_sp" 2>/dev/null)
-                                mm_sender=$(echo "$mm_info" | awk -F': ' '/number:/{print $2}' | tr -d ' ')
-                                mm_txt=$(echo "$mm_info" | awk -F': ' '/text:/{print $2}')
-                                if [ -n "$mm_txt" ]; then
-                                    [ -n "$combined_sms" ] && combined_sms="${combined_sms}\n\n"
-                                    combined_sms="${combined_sms}[ Tin nhắn từ $mm_sender ]:\n$mm_txt"
-                                fi
-                            done
+                # Priority 1: Sync via sync_pcie_sms.sh or qmodem.sms daemon
+                if [ -x /usr/bin/sync_pcie_sms.sh ]; then
+                    /usr/bin/sync_pcie_sms.sh
+                elif ubus list | grep -q 'qmodem.sms'; then
+                    local q_modem_id=$(uci -q get qmodem.main.modem_default 2>/dev/null || uci -q show qmodem | grep -m1 '=modem-device' | cut -d'.' -f2 | cut -d'=' -f1 || echo "0000_01_00_0")
+                    local q_out=$(ubus call qmodem.sms list "{\"modem_id\":\"$q_modem_id\"}" 2>/dev/null || ubus call qmodem.sms list 2>/dev/null)
+                    local combined_q=""
+                    if [ -n "$q_out" ]; then
+                        for idx in $(seq 0 50); do
+                            local s_q=$(echo "$q_out" | jsonfilter -e "@.messages[$idx].sender" 2>/dev/null)
+                            [ -z "$s_q" ] && continue
+                            local c_q=$(echo "$q_out" | jsonfilter -e "@.messages[$idx].content" 2>/dev/null)
+                            [ -z "$c_q" ] && continue
+                            local ts_q=$(echo "$q_out" | jsonfilter -e "@.messages[$idx].timestamp" 2>/dev/null)
+                            local time_str_q=""
+                            if [ -n "$ts_q" ] && [ "$ts_q" -gt 0 ] 2>/dev/null; then
+                                time_str_q=" ($(date -d "@$ts_q" '+%d/%m/%Y %H:%M:%S' 2>/dev/null || date -r "$ts_q" '+%d/%m/%Y %H:%M:%S' 2>/dev/null))"
+                            fi
+                            [ -n "$combined_q" ] && combined_q="${combined_q}\n\n"
+                            combined_q="${combined_q}[ Tin nhắn từ ${s_q}${time_str_q} ]:\n${c_q}"
+                        done
+                        if [ -n "$combined_q" ]; then
+                            local f_json=$(printf "%b" "$combined_q" | sed 's/\\/\\\\/g' | sed 's/"/\\"/g' | awk '{printf "%s\\n", $0}')
+                            printf '"%s"' "$f_json" > /tmp/sms_inbox.json
                         fi
                     fi
+                fi
 
-                    restore_ports
-                    rm -f /tmp/sms_sending.lock
-                    release_lock_safe
-                    trap - EXIT INT TERM
-                    
-                    if [ -n "$combined_sms" ]; then
-                        formatted_json=$(printf "%b" "$combined_sms" | sed 's/\\/\\\\/g' | sed 's/"/\\"/g' | awk '{printf "%s\\n", $0}')
-                        printf '"%s"' "$formatted_json" > /tmp/sms_inbox.json
-                    else
-                        printf '"%s"' "Hộp thư trống hoặc chưa có tin nhắn mới trên cả SIM và Modem." > /tmp/sms_inbox.json
-                    fi
+                # Priority 2: Standard USB Serial sms_tool if inbox still empty
+                if [ ! -s /tmp/sms_inbox.json ] || [ "$(cat /tmp/sms_inbox.json 2>/dev/null)" = "\"Hộp thư trống.\"" ]; then
+                    case "$port" in
+                        /dev/ttyUSB*|/dev/ttyACM*)
+                            if [ -c "$port" ] && command -v sms_tool >/dev/null 2>&1; then
+                                touch /tmp/sms_sending.lock
+                                acquire_lock_safe
+                                trap 'safe_at_cleanup' EXIT INT TERM
+                                release_ports
+                                combined_sms=""
+
+                                sms_me=$(timeout 8 modem_lock_run sms_tool -s ME -d "$port" recv 2>/dev/null)
+                                [ -n "$sms_me" ] && combined_sms="[ BỘ NHỚ MODEM (ME) ]:\n$sms_me"
+
+                                sms_sm=$(timeout 8 modem_lock_run sms_tool -s SM -d "$port" recv 2>/dev/null)
+                                if [ -n "$sms_sm" ]; then
+                                    [ -n "$combined_sms" ] && combined_sms="${combined_sms}\n\n"
+                                    combined_sms="${combined_sms}[ BỘ NHỚ SIM (SM) ]:\n$sms_sm"
+                                fi
+
+                                if [ -z "$combined_sms" ]; then
+                                    sms_mt=$(timeout 8 modem_lock_run sms_tool -s MT -d "$port" recv 2>/dev/null)
+                                    [ -n "$sms_mt" ] && combined_sms="[ BỘ NHỚ TỔNG HỢP (MT) ]:\n$sms_mt"
+                                fi
+
+                                restore_ports
+                                rm -f /tmp/sms_sending.lock
+                                release_lock_safe
+                                trap - EXIT INT TERM
+                                
+                                if [ -n "$combined_sms" ]; then
+                                    formatted_json=$(printf "%b" "$combined_sms" | sed 's/\\/\\\\/g' | sed 's/"/\\"/g' | awk '{printf "%s\\n", $0}')
+                                    printf '"%s"' "$formatted_json" > /tmp/sms_inbox.json
+                                fi
+                            fi
+                            ;;
+                    esac
                 fi
 
                 inbox="\"Hộp thư trống hoặc chưa nhận được tin nhắn mới.\""
@@ -305,6 +344,18 @@ case "$1" in
                 target=$(echo "$input" | jsonfilter -e '$.target' 2>/dev/null)
                 msg=$(echo "$input" | jsonfilter -e '$.msg' 2>/dev/null)
                 port=$(get_active_modem_port)
+
+                case "$port" in
+                    /dev/wwan*|/dev/mhi*)
+                        if ubus list | grep -q 'qmodem.sms'; then
+                            local q_sec=$(uci -q get qmodem.main.modem_default 2>/dev/null || uci -q show qmodem | grep -m1 '=modem-device' | cut -d'.' -f2 | cut -d'=' -f1 || echo "0000_01_00_0")
+                            ubus call qmodem.sms send "{\"modem_id\":\"$q_sec\",\"recipient\":\"$target\",\"content\":\"$msg\"}" >/dev/null 2>&1
+                            echo '{"success":true,"message":"Gửi SMS thành công qua PCIe QModem!"}'
+                            exit 0
+                        fi
+                        ;;
+                esac
+
                 touch /tmp/sms_sending.lock
                 acquire_lock_safe
                 trap 'safe_at_cleanup' EXIT INT TERM
