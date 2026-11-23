@@ -1,7 +1,7 @@
 # SPDX-License-Identifier: MIT
-# Automated Upstream Sync Workflow: Safely merges ImmortalWrt 24.10 and 25.12 while protecting all Doanduy custom hardware & configs
+# Automated Upstream Sync Workflow: Safely merges ImmortalWrt 24.10, 25.12, and master while protecting all Doanduy custom hardware & configs
 
-name: Sync Upstream ImmortalWrt (24 & 25)
+name: Sync Upstream ImmortalWrt (All Branches)
 
 on:
   schedule:
@@ -168,4 +168,82 @@ jobs:
 
             git push origin main
             echo ">> Đã đẩy cập nhật thành công lên main (24.10)!"
+          fi
+
+  sync_branch_24_passwall:
+    name: Sync openwrt-24-passwall with upstream immortalwrt:openwrt-24.10
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout Source Branch openwrt-24-passwall
+        uses: actions/checkout@v4
+        with:
+          ref: openwrt-24-passwall
+          fetch-depth: 0
+
+      - name: Configure Git Identity
+        run: |
+          git config user.name "Doanduy09-Bot"
+          git config user.email "doanduy09@gmail.com"
+          git checkout -B openwrt-24-passwall origin/openwrt-24-passwall
+
+      - name: Check and Sync Upstream ImmortalWrt 24.10
+        id: sync_check
+        run: |
+          git remote add upstream https://github.com/immortalwrt/immortalwrt.git || git remote set-url upstream https://github.com/immortalwrt/immortalwrt.git
+          git fetch upstream openwrt-24.10 --depth=100
+
+          UPSTREAM_SHA=$(git rev-parse upstream/openwrt-24.10)
+          if git merge-base --is-ancestor upstream/openwrt-24.10 HEAD; then
+            echo ">> [ALREADY UP-TO-DATE] Nhánh openwrt-24-passwall đã đồng bộ hoàn toàn."
+          else
+            echo ">> [NEW UPDATES DETECTED] Đang hợp nhất upstream/openwrt-24.10..."
+            if git merge upstream/openwrt-24.10 -m "sync: auto-merge upstream immortalwrt:openwrt-24.10 ($UPSTREAM_SHA)"; then
+              echo ">> Hợp nhất không xung đột!"
+            else
+              echo ">> Bảo lưu 100% cấu hình & thiết bị Doanduy..."
+              git checkout --ours feeds.conf.default *.config 2>/dev/null || true
+              git add -A
+              git commit -m "sync: resolve merge conflicts preserving Doanduy configs" || true
+            fi
+            git push origin openwrt-24-passwall
+            echo ">> Đã đẩy cập nhật lên openwrt-24-passwall!"
+          fi
+
+  sync_branch_master_passwall:
+    name: Sync master-passwall with upstream immortalwrt:master
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout Source Branch master-passwall
+        uses: actions/checkout@v4
+        with:
+          ref: master-passwall
+          fetch-depth: 0
+
+      - name: Configure Git Identity
+        run: |
+          git config user.name "Doanduy09-Bot"
+          git config user.email "doanduy09@gmail.com"
+          git checkout -B master-passwall origin/master-passwall
+
+      - name: Check and Sync Upstream ImmortalWrt Master
+        id: sync_check
+        run: |
+          git remote add upstream https://github.com/immortalwrt/immortalwrt.git || git remote set-url upstream https://github.com/immortalwrt/immortalwrt.git
+          git fetch upstream master --depth=100
+
+          UPSTREAM_SHA=$(git rev-parse upstream/master)
+          if git merge-base --is-ancestor upstream/master HEAD; then
+            echo ">> [ALREADY UP-TO-DATE] Nhánh master-passwall đã đồng bộ hoàn toàn."
+          else
+            echo ">> [NEW UPDATES DETECTED] Đang hợp nhất upstream/master..."
+            if git merge upstream/master -m "sync: auto-merge upstream immortalwrt:master ($UPSTREAM_SHA)"; then
+              echo ">> Hợp nhất không xung đột!"
+            else
+              echo ">> Bảo lưu 100% cấu hình & thiết bị Doanduy..."
+              git checkout --ours feeds.conf.default *.config 2>/dev/null || true
+              git add -A
+              git commit -m "sync: resolve merge conflicts preserving Doanduy configs" || true
+            fi
+            git push origin master-passwall
+            echo ">> Đã đẩy cập nhật lên master-passwall!"
           fi
