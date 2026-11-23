@@ -6,7 +6,7 @@
 
 [ -n "$INCLUDE_ONLY" ] || {
 	. /lib/functions.sh
-	. ../netifd-proto.sh
+	[ -f /lib/netifd/netifd-proto.sh ] && . /lib/netifd/netifd-proto.sh || . ../netifd-proto.sh
 	init_proto "$@"
 }
 
@@ -17,37 +17,57 @@ proto_duydoan5g_init_config() {
 	proto_config_add_string "pincode"
 	proto_config_add_string "pdp"
 	proto_config_add_string "metric"
+	proto_config_add_int "delay"
 	proto_config_add_defaults
 }
 
 proto_duydoan5g_setup() {
 	local interface="$1"
-	local apn pincode pdp metric
+	local apn pincode pdp metric delay
 
-	json_get_vars apn pincode pdp metric
+	json_get_vars apn pincode pdp metric delay
 	[ -z "$apn" ] && apn="v-internet"
 	[ -z "$metric" ] && metric="10"
+	[ -n "$delay" ] && sleep "$delay"
 
-	logger -t "duydoan5g" "Starting DuyDoan 5G Cellular setup for interface $interface (APN=$apn)..."
+	logger -t "duydoan5g" "Starting DuyDoan 5G setup for $interface (APN=$apn)..."
 
-	# 1. Phát hiện phần cứng PCIe hoặc USB
-	local is_pcie_mhi=0
-	local net_dev="rmnet_mhi0.1"
-	local at_port="/dev/mhi_DUN"
-
-	if [ -d "/sys/bus/pci/drivers/pcie_mhi" ] || [ -d "/sys/bus/pci/drivers/mhi_q" ] || [ -d "/sys/class/net/rmnet_mhi0" ] || [ -c "/dev/mhi_DUN" ]; then
-		is_pcie_mhi=1
-		net_dev="rmnet_mhi0.1"
-		at_port="/dev/mhi_DUN"
-	elif [ -d "/sys/bus/pci/drivers/mtk_t7xx" ] || [ -c "/dev/wwan0mbim0" ]; then
-		net_dev="wwan0"
-		at_port="/dev/wwan0at0"
-	elif [ -c "/dev/cdc-wdm0" ]; then
-		net_dev="wwan0"
-		at_port="/dev/ttyUSB2"
+	# 1. Kiem tra PCIe SBL mode (0x010c)
+	if [ -d "/sys/bus/pci/devices/0000:01:00.0" ]; then
+		local pci_subsys=$(cat /sys/bus/pci/devices/0000:01:00.0/subsystem_device 2>/dev/null)
+		if [ "$pci_subsys" = "0x010c" ]; then
+			logger -t "duydoan5g" "Rescanning PCIe bus for Sierra modem..."
+			echo 1 > /sys/bus/pci/devices/0000:01:00.0/remove 2>/dev/null
+			sleep 1
+			echo 1 > /sys/bus/pci/rescan 2>/dev/null
+			sleep 2
+		fi
 	fi
 
-	# 2. Tự động kiểm tra SIM & ICCID nếu chưa cấu hình APN cụ thể
+	# 2. Nhan dien phan cung
+	local ifname="mhi_hwip0"
+	local at_port="/dev/wwan0at0"
+	local cm_extra="-n 1 -m 1 -4"
+
+	if [ -d "/sys/class/net/rmnet_mhi0" ] || [ -c "/dev/mhi_DUN" ]; then
+		ifname="rmnet_mhi0.1"
+		at_port="/dev/mhi_DUN"
+		cm_extra="-4 -6"
+	elif [ -d "/sys/class/net/mhi_hwip0" ] || [ -c "/dev/wwan0qmi0" ]; then
+		ifname="mhi_hwip0"
+		at_port="/dev/wwan0at0"
+		cm_extra="-n 1 -m 1 -4"
+	elif [ -d "/sys/class/net/wwan0" ]; then
+		ifname="wwan0"
+		at_port="/dev/wwan0at0"
+		cm_extra="-4 -6"
+	elif [ -c "/dev/cdc-wdm0" ]; then
+		ifname="wwan0"
+		at_port="/dev/ttyUSB2"
+		cm_extra="-4 -6"
+	fi
+
+	# 3. Tu dong kiem tra SIM ICCID
 	if [ -c "$at_port" ] && command -v sms_tool >/dev/null 2>&1; then
 		local iccid=$(sms_tool -D -d "$at_port" at "AT+ICCID" 2>/dev/null | grep -oE '[0-9]{18,20}' | head -n 1)
 		[ -z "$iccid" ] && iccid=$(sms_tool -D -d "$at_port" at "AT+CCID" 2>/dev/null | grep -oE '[0-9]{18,20}' | head -n 1)
@@ -62,55 +82,55 @@ proto_duydoan5g_setup() {
 		fi
 	fi
 
-	# 3. Khởi chạy tiến trình quay số phần cứng
-	if [ "$is_pcie_mhi" -eq 1 ]; then
-		local dialer="quectel-CM-M"
-		command -v "$dialer" >/dev/null 2>&1 || dialer="quectel-CM"
+	# 4. Khoi chay quay so thong qua proto_run_command
+	local dialer="/usr/bin/quectel-CM-M"
+	[ -x "$dialer" ] || dialer="/usr/bin/quectel-CM"
 
-		if ! pgrep -f "$dialer.*$apn" >/dev/null 2>&1 && ! pgrep -f "quectel-CM" >/dev/null 2>&1; then
-			killall -9 "$dialer" 2>/dev/null
-			sleep 1
-			$dialer -4 -6 -s "$apn" -f /tmp/quectel-cm.log &
-			sleep 3
-		fi
-	fi
+	killall -9 quectel-CM-M quectel-CM 2>/dev/null
+	sleep 1
 
-	# 4. Chờ thiết bị mạng sẵn sàng và có IP (Tối đa 15s)
+	proto_run_command "$interface" "$dialer" -i "$ifname" -s "$apn" $cm_extra -f /tmp/quectel-cm.log
+	sleep 4
+
+	# 5. Cho co IP tu nha mang (Toi da 20s)
 	local waited=0
 	local ip4=""
-	while [ "$waited" -lt 15 ]; do
-		ip4=$(ip -4 addr show dev "$net_dev" 2>/dev/null | grep -oE 'inet [0-9.]+' | cut -d' ' -f2)
+	while [ "$waited" -lt 20 ]; do
+		ip4=$(ip -4 addr show dev "$ifname" 2>/dev/null | grep -oE 'inet [0-9.]+' | cut -d' ' -f2 | head -n 1)
 		[ -n "$ip4" ] && break
 		sleep 1
 		waited=$((waited + 1))
 	done
 
 	if [ -z "$ip4" ]; then
-		logger -t "duydoan5g" "Chưa nhận được IP trên $net_dev, chạy udhcpc..."
-		udhcpc -f -q -n -t 3 -i "$net_dev"
-		ip4=$(ip -4 addr show dev "$net_dev" 2>/dev/null | grep -oE 'inet [0-9.]+' | cut -d' ' -f2)
+		logger -t "duydoan5g" "udhcpc on $ifname..."
+		udhcpc -f -q -n -t 3 -i "$ifname"
+		ip4=$(ip -4 addr show dev "$ifname" 2>/dev/null | grep -oE 'inet [0-9.]+' | cut -d' ' -f2 | head -n 1)
 	fi
 
 	if [ -z "$ip4" ]; then
-		logger -t "duydoan5g" "Lỗi: Không nhận được IP từ trạm BTS!"
+		logger -t "duydoan5g" "Loi: Khong nhan duoc IP!"
 		proto_notify_error "$interface" NO_ADDRESS
 		proto_block_restart "$interface"
 		return 1
 	fi
 
-	local gw=$(ip -4 route show dev "$net_dev" 2>/dev/null | grep default | awk '{print $3}' | head -n 1)
+	local gw=$(ip -4 route show dev "$ifname" 2>/dev/null | grep default | awk '{print $3}' | head -n 1)
 	[ -z "$gw" ] && gw=$(echo "$ip4" | awk -F. '{print $1"."$2"."$3"."($4==1?2:($4==201?202:1))}')
 
-	logger -t "duydoan5g" "Kết nối 5G thành công: IP=$ip4, GW=$gw, NetDev=$net_dev"
+	logger -t "duydoan5g" "Ket noi 5G thanh cong: IP=$ip4, GW=$gw, NetDev=$ifname"
 
-	# 5. Đăng ký thông tin vào netifd
-	proto_init_update "$net_dev" 1
+	# 6. Dang ky voi netifd
+	proto_init_update "$ifname" 1
+	proto_set_keep 1
 	proto_add_ipv4_address "$ip4" "30"
 	proto_add_ipv4_route "0.0.0.0" "0" "$gw" "$ip4" "$metric"
 	proto_add_dns_server "8.8.8.8"
 	proto_add_dns_server "8.8.4.4"
+	proto_add_dns_server "116.98.212.54"
+	proto_add_dns_server "203.113.131.5"
 
-	local ip6=$(ip -6 addr show dev "$net_dev" 2>/dev/null | grep -oE 'inet6 [0-9a-f:]+/64' | cut -d' ' -f2 | grep -v '^fe80' | head -n 1)
+	local ip6=$(ip -6 addr show dev "$ifname" 2>/dev/null | grep -oE 'inet6 [0-9a-f:]+/64' | cut -d' ' -f2 | grep -v '^fe80' | head -n 1)
 	if [ -n "$ip6" ]; then
 		proto_add_ipv6_address "${ip6%/*}" "64"
 		proto_add_dns_server "2001:4860:4860::8888"
@@ -122,7 +142,8 @@ proto_duydoan5g_setup() {
 
 proto_duydoan5g_teardown() {
 	local interface="$1"
-	logger -t "duydoan5g" "Tearing down DuyDoan 5G Cellular interface $interface..."
+	logger -t "duydoan5g" "Tearing down DuyDoan 5G interface $interface..."
+	proto_kill_command "$interface"
 	killall -9 quectel-CM-M quectel-CM 2>/dev/null
 	proto_init_update "*" 0
 	proto_send_update "$interface"
