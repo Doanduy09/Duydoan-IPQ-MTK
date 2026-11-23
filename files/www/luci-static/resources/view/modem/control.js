@@ -119,7 +119,8 @@ function parseAndRenderSMS(rawText) {
                 mergedMap[key].datetime = m.datetime;
             }
         } else if (m.body && !/^SMS segment\s*[0-9]*$/i.test(m.body)) {
-            standaloneList.push({ from: m.from, storage: m.storage, datetime: m.datetime, ts: m.ts, rawIds: [m.id], fullBody: m.body });
+            var cleanText = m.body.replace(/\\n/g, '\n').replace(/\\r/g, '').replace(/\\"/g, '"').trim();
+            standaloneList.push({ from: m.from, storage: m.storage, datetime: m.datetime, ts: m.ts, rawIds: [m.id], fullBody: cleanText });
         }
     });
 
@@ -129,9 +130,9 @@ function parseAndRenderSMS(rawText) {
         var sortedIndices = Object.keys(item.parts).sort(function(a, b) { return parseInt(a) - parseInt(b); });
         var full = '';
         sortedIndices.forEach(function(idx) {
-            full = (full ? full + ' ' : '') + item.parts[idx];
+            full = (full ? full + '\n' : '') + item.parts[idx];
         });
-        item.fullBody = full.trim();
+        item.fullBody = full.replace(/\\n/g, '\n').replace(/\\r/g, '').replace(/\\"/g, '"').trim();
         finalSMSList.push(item);
     });
 
@@ -164,9 +165,29 @@ function parseAndRenderSMS(rawText) {
                 E('span', { style: 'font-size: 12px; color: #64748b; font-weight: 600;' }, item.datetime || 'Vừa xong')
             ]),
             E('div', {
-                style: 'font-size: 13.5px; color: #1e293b; line-height: 1.5; white-space: pre-wrap; word-break: break-word; background: #f8fafc; padding: 10px 12px; border-radius: 6px; border: 1px solid #f1f5f9; font-weight: 550;'
+                style: 'font-size: 13.5px; color: #1e293b; line-height: 1.6; white-space: pre-wrap; word-break: break-word; background: #f8fafc; padding: 12px 14px; border-radius: 6px; border: 1px solid #f1f5f9; font-weight: 550;'
             }, item.fullBody || '(Không có nội dung)'),
             E('div', { style: 'display: flex; justify-content: flex-end; gap: 8px;' }, [
+                E('button', {
+                    class: 'btn cbi-button',
+                    style: 'font-size: 11.5px; padding: 3px 10px; font-weight: 700; border-radius: 6px; background: #f1f5f9; color: #334155; border: 1px solid #cbd5e1; cursor: pointer;',
+                    click: function() {
+                        var textToCopy = item.fullBody || '';
+                        if (navigator && navigator.clipboard && navigator.clipboard.writeText) {
+                            navigator.clipboard.writeText(textToCopy).then(function() {
+                                ui.addNotification(null, E('p', '📋 Đã sao chép nội dung tin nhắn!'), 'info');
+                            });
+                        } else {
+                            var ta = document.createElement('textarea');
+                            ta.value = textToCopy;
+                            document.body.appendChild(ta);
+                            ta.select();
+                            document.execCommand('copy');
+                            document.body.removeChild(ta);
+                            ui.addNotification(null, E('p', '📋 Đã sao chép nội dung tin nhắn!'), 'info');
+                        }
+                    }
+                }, '📋 Sao Chép'),
                 E('button', {
                     class: 'btn cbi-button cbi-button-remove',
                     style: 'font-size: 11.5px; padding: 3px 10px; font-weight: 700; border-radius: 6px;',
