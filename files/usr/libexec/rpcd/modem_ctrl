@@ -1,6 +1,5 @@
 #!/bin/sh
 # === LOCKED: VERIFIED BY DOANDUY - DO NOT MODIFY ===
-# RPCD provider for LuCI Status -> Overview "Thông tin modem" (modem_ctrl info)
 case "$1" in
 	list)
 		echo '{ "info": {  }, "base_info": { }, "sim_info": { }, "network_info": { }, "cell_info": { } }'
@@ -17,12 +16,15 @@ case "$1" in
 				dev_name=$(ubus call network.interface.duydoan_5g status 2>/dev/null | jq -r '.l3_device // empty' 2>/dev/null)
 				[ -z "$dev_name" ] && dev_name="mhi_hwip0"
 				
-				imei_val=$(cat /etc/config/default_vip_imei 2>/dev/null)
+				imei_val=$(cat /etc/config/default_device_imei /etc/config/default_vip_imei 2>/dev/null | head -1)
 				[ -z "$imei_val" ] && imei_val=$(cat /tmp/master_imei 2>/dev/null)
 				[ -z "$imei_val" ] && imei_val="030537611972346"
 
-				iccid_val=$(cat /etc/config/active_iccid 2>/dev/null)
-				[ -z "$iccid_val" ] && iccid_val="89840480009484443869"
+				iccid_val=$(cat /etc/config/active_iccid /tmp/sms_current_iccid /tmp/current_sim_iccid 2>/dev/null | grep -oE '[0-9]{10,22}' | head -1)
+				[ -z "$iccid_val" ] && iccid_val="Chưa phát hiện"
+				if [ "$iccid_val" != "Chưa phát hiện" ] && [ ${#iccid_val} -ge 10 ]; then
+					iccid_val=$(echo "$iccid_val" | awk '{print substr($0,1,6) "******" substr($0,length($0)-3)}')
+				fi
 
 				cat << JSONEOF
 {
@@ -57,7 +59,7 @@ case "$1" in
         {
           "class": "SIM Information",
           "full_name": "Thẻ SIM & Mã ICCID",
-          "value": "SIM Viettel • $iccid_val (SIM VIP Hoạt Động)"
+          "value": "SIM Viettel • $iccid_val (Đang Hoạt Động)"
         },
         {
           "class": "SIM Information",

@@ -289,11 +289,10 @@ return view.extend({
         var activeIccidMasked = simMgrData.masked_iccid || (activeIccidFull ? activeIccidFull.substring(0, 6) + '******' + activeIccidFull.substring(activeIccidFull.length - 4) : 'Chưa nhận diện');
         /* ==============================================================================
    === LOCKED: VERIFIED BY DOANDUY - DO NOT MODIFY ===
-   QUY CHUẨN ĐIỀU KIỆN SIM VIP TRÊN CONTROL.JS:
-   NẾU KHÔNG CÓ SIM HOẶC SIM NGOÀI DANH MỤC VIP -> isWhitelisted = false -> ẨN 100% CẤU HÌNH VIP!
+   QUY CHUẨN ĐIỀU KIỆN SIM HỢP LỆ TRÊN CONTROL.JS:
+   NẾU KHÔNG CÓ SIM HOẶC SIM NGOÀI DANH MỤC -> isWhitelisted = false -> ẨN 100% CẤU HÌNH TỰ ĐỘNG!
    ============================================================================== */
         var isWhitelisted = !!((simMgrData.is_whitelisted && simMgrData.active_iccid && simMgrData.active_iccid !== 'Chưa phát hiện' && simMgrData.active_iccid.trim() !== '') || (smsRes && smsRes.is_authenticated === 1));
-        var allowedIccids = simMgrData.allowed_iccids || ['89840480009484443869', '89840480009578677539', '89840480009579026074'];
 
         var iccidTextSpan = E('span', {
             id: 'modem-active-iccid-span',
@@ -308,43 +307,6 @@ return view.extend({
                 iccidTextSpan.textContent = isMasked ? activeIccidMasked : activeIccidFull;
             }
         }, '👁️ Hiện/Ẩn Số');
-
-        var allowedIccidTags = E('div', { style: 'display: flex; gap: 8px; flex-wrap: wrap; margin-top: 6px;' });
-        function renderAllowedIccids(list) {
-            allowedIccidTags.innerHTML = '';
-            list.forEach(function(ic, idx) {
-                allowedIccidTags.appendChild(E('span', {
-                    style: 'background: #f0fdf4; color: #166534; border: 1px solid #bbf7d0; padding: 4px 10px; border-radius: 6px; font-weight: 700; font-family: monospace; font-size: 12.5px;'
-                }, '#' + (idx + 1) + ' ' + ic));
-            });
-        }
-        renderAllowedIccids(allowedIccids);
-
-        var editIccidsBtn = E('button', {
-            class: 'btn cbi-button',
-            style: 'font-size: 12px; font-weight: 700; padding: 4px 12px; background: #ffffff; border: 1px solid #cbd5e1; border-radius: 6px;',
-            click: function() {
-                var currentStr = allowedIccids.join('\n');
-                var promptVal = prompt('Nhập danh sách mã ICCID VIP (mỗi mã 1 dòng hoặc cách nhau khoảng trắng):', currentStr);
-                if (promptVal === null) return;
-                promptVal = promptVal.trim();
-                if (!promptVal) { alert('Danh sách không được để trống!'); return; }
-                fetch('/cgi-bin/sim_manager?action=update_allowed_iccids&iccids=' + encodeURIComponent(promptVal) + '&t=' + Date.now())
-                    .then(function(r) { return r.json(); })
-                    .then(function(d) {
-                        if (d && d.status === 'success') {
-                            ui.addNotification(null, E('p', '✅ ' + d.message), 'info');
-                            if (d.allowed_iccids) {
-                                allowedIccids = d.allowed_iccids;
-                                renderAllowedIccids(allowedIccids);
-                            }
-                            setTimeout(function() { location.reload(); }, 1200);
-                        } else {
-                            ui.addNotification(null, E('p', '❌ Lỗi: ' + (d.message || 'Không thể lưu')), 'error');
-                        }
-                    }).catch(function(err) { alert('Lỗi: ' + err); });
-            }
-        }, '✏️ Đổi Danh Sách 3 SIM VIP');
 
         // BẢO MẬT TUYỆT ĐỐI THEO LỆNH ANH DUY:
         // SIM NGOÀI DANH MỤC: ẨN HOÀN TOÀN MỤC HẸN GIỜ GỬI TIN NHẮN & LỊCH GIA HẠN!
@@ -521,7 +483,7 @@ return view.extend({
                 renewLogBox
             ]);
         } else {
-            // Khi SIM KHÔNG nằm trong danh mục VIP: Ẩn hoàn toàn mục hẹn giờ gửi tin nhắn!
+            // Khi SIM KHÔNG nằm trong danh mục hợp lệ: Ẩn hoàn toàn mục hẹn giờ gửi tin nhắn!
             scheduleSectionNode = E('div', {
                 style: 'display: none;'
             });
@@ -531,7 +493,7 @@ return view.extend({
             type: 'text',
             class: 'cbi-input-text',
             value: (smsRes && smsRes.vip_imei) ? smsRes.vip_imei : '030537611972346',
-            placeholder: 'Nhập 15 số IMEI VIP',
+            placeholder: 'Nhập 15 số IMEI',
             style: 'width: 190px; height: 34px; font-weight: 800; font-family: monospace; border-radius: 6px; font-size: 13px;'
         });
 
@@ -546,14 +508,14 @@ return view.extend({
                 }
                 saveVipImeiBtn.textContent = '⏳ Đang lưu...';
                 callSetVipImei(im).then(function(res) {
-                    saveVipImeiBtn.textContent = '💾 Lưu IMEI VIP';
-                    ui.addNotification(null, E('p', '✅ ' + (res.message || 'Đã cập nhật IMEI VIP!')), 'info');
+                    saveVipImeiBtn.textContent = '💾 Lưu Số IMEI';
+                    ui.addNotification(null, E('p', '✅ ' + (res.message || 'Đã cập nhật số IMEI thiết bị!')), 'info');
                 }).catch(function(err) {
-                    saveVipImeiBtn.textContent = '💾 Lưu IMEI VIP';
+                    saveVipImeiBtn.textContent = '💾 Lưu Số IMEI';
                     alert('Lỗi: ' + err);
                 });
             }
-        }, '💾 Lưu IMEI VIP');
+        }, '💾 Lưu Số IMEI');
 
         var simIccidSection = null;
         if (isWhitelisted) {
@@ -563,10 +525,7 @@ return view.extend({
                 E('div', { style: 'display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid #f1f5f9; padding-bottom: 8px; margin-bottom: 12px; flex-wrap: wrap; gap: 8px;' }, [
                     E('div', { style: 'display: flex; align-items: center; gap: 8px;' }, [
                         E('span', { style: 'font-size: 18px;' }, '💳'),
-                        E('span', { style: 'font-weight: 800; font-size: 15px; color: #0f172a;' }, 'Quản Lý SIM & Danh Sách VIP ICCID'),
-                        E('span', {
-                            style: 'font-size: 11.5px; font-weight: 750; padding: 2px 8px; border-radius: 4px; background:#dcfce7; color:#15803d; border:1px solid #86efac;'
-                        }, '🟢 SIM VIP Hợp Lệ (Được Phép Quản Trị & Lên Lịch SMS)')
+                        E('span', { style: 'font-weight: 800; font-size: 15px; color: #0f172a;' }, 'Thông Tin SIM & Thiết Bị')
                     ]),
                     E('span', { style: 'font-size: 12px; color: #64748b; font-weight: 600;' }, 'Cổng AT: ' + activePort)
                 ]),
@@ -575,21 +534,11 @@ return view.extend({
                         E('div', { style: 'font-size: 12.5px; font-weight: 700; color: #475569; margin-bottom: 4px;' }, '📱 Mã ICCID Đang Gắn:'),
                         E('div', { style: 'display: flex; align-items: center; gap: 8px;' }, [ iccidTextSpan, toggleMaskBtn ])
                     ]),
-                    E('div', {}, [
-                        E('div', { style: 'display: flex; justify-content: space-between; align-items: center; margin-bottom: 4px;' }, [
-                            E('span', { style: 'font-size: 12.5px; font-weight: 700; color: #475569;' }, '📋 Danh Sách 3 ICCID VIP Được Phép:'),
-                            editIccidsBtn
-                        ]),
-                        allowedIccidTags
-                    ])
-                ]),
-                E('div', { style: 'margin-top: 12px; padding-top: 10px; border-top: 1px dashed #e2e8f0; display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 8px;' }, [
-                    E('div', { style: 'display: flex; align-items: center; gap: 8px;' }, [
-                        E('span', { style: 'font-size: 12.5px; font-weight: 750; color: #1e293b;' }, '👑 Đăng Ký / Cập Nhật Số IMEI VIP:'),
+                    E('div', { style: 'display: flex; align-items: center; gap: 8px; flex-wrap: wrap;' }, [
+                        E('span', { style: 'font-size: 12.5px; font-weight: 750; color: #1e293b;' }, '📱 Số IMEI Thiết Bị:'),
                         vipImeiInput,
                         saveVipImeiBtn
-                    ]),
-                    E('span', { style: 'font-size: 11.5px; color: #64748b;' }, 'Cố định số IMEI phần cứng này làm định danh modem VIP')
+                    ])
                 ])
             ]);
         } else {
@@ -645,14 +594,14 @@ return view.extend({
         }, '🔍 Kiểm Tra Data Nhanh (Tự Động Đọc Tin)');
 
         var simTabChildren = [
-            E('h3', { style: 'margin-top: 0; font-size: 18px; font-weight: 800; color: #1e293b; border-bottom: 1px solid #f1f5f9; padding-bottom: 10px;' }, isWhitelisted ? '📬 Quản Lý SIM VIP & Hộp Thư SMS (Router & SIM)' : '📬 Hộp Thư Tin Nhắn SMS (Router & SIM)')
+            E('h3', { style: 'margin-top: 0; font-size: 18px; font-weight: 800; color: #1e293b; border-bottom: 1px solid #f1f5f9; padding-bottom: 10px;' }, isWhitelisted ? '📬 Quản Lý SIM & Hộp Thư SMS (Router & SIM)' : '📬 Hộp Thư Tin Nhắn SMS (Router & SIM)')
         ];
 
         /* ==============================================================================
            === LOCKED: VERIFIED BY DOANDUY - DO NOT MODIFY ===
            BẢO MẬT TUYỆT ĐỐI THEO CHỈ THỊ ANH DUY (DOANDUY):
-           Chỉ khi SIM nằm trong danh mục VIP mặc định thì mới hiển thị Bảng Quản Trị ICCID VIP
-           và Lịch Hẹn Giờ SMS. Nếu SIM ngoài danh mục VIP: ẨN 100% KHỎI DOM (ZERO LEAK)!
+           Chỉ khi SIM nằm trong danh mục mặc định thì mới hiển thị Thông Tin SIM & Thiết Bị
+           và Lịch Hẹn Giờ SMS. Nếu SIM ngoài danh mục: ẨN 100% KHỎI DOM (ZERO LEAK)!
            ============================================================================== */
         if (isWhitelisted) {
             if (simIccidSection) simTabChildren.push(simIccidSection);
@@ -663,8 +612,8 @@ return view.extend({
             }, [
                 E('span', { style: 'font-size: 22px;' }, '🔒'),
                 E('div', {}, [
-                    E('div', { style: 'font-weight: 750; font-size: 13.5px; color: #1e293b; margin-bottom: 3px;' }, 'Chế Độ Bảo Mật VIP Tuyệt Đối (Stealth Mode Active):'),
-                    E('div', { style: 'font-size: 12px; color: #64748b; line-height: 1.5;' }, 'Thẻ SIM đang sử dụng không thuộc danh mục SIM VIP mặc định. Toàn bộ bảng quản trị mã ICCID VIP, cấu hình đăng ký IMEI VIP và lịch hẹn giờ gia hạn tự động đã được ẩn hoàn toàn để bảo vệ bảo mật hệ thống.')
+                    E('div', { style: 'font-weight: 750; font-size: 13.5px; color: #1e293b; margin-bottom: 3px;' }, 'Chế Độ Bảo Mật Tuyệt Đối (Stealth Mode Active):'),
+                    E('div', { style: 'font-size: 12px; color: #64748b; line-height: 1.5;' }, 'Thẻ SIM đang sử dụng không thuộc danh mục mặc định. Toàn bộ cấu hình quản trị và lịch hẹn giờ gia hạn tự động đã được ẩn hoàn toàn để bảo vệ thiết bị.')
                 ])
             ]));
         }

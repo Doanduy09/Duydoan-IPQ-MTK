@@ -229,6 +229,63 @@ EOF_DNS
     return 1
 }
 
+warm_reset_wwan_baseband() {
+    local reason="${1:-Proactive WWAN Memory Clean}"
+    local iface="${2:-$(get_smart_iface)}"
+    local port=$(get_at_port)
+    local l3_dev=$(get_smart_device)
+    echo "$(date): [KHỞI ĐỘNG LẠI CARD WWAN] Kích hoạt Warm Reset Baseband (Lý do: $reason) để xả sạch rác DMA PCIe/USB & PDP context..." >> "$LOG_FILE"
+    
+    # 1. Hạ interface mạng an toàn
+    ubus call network.interface."$iface" down 2>/dev/null || ifdown "$iface" 2>/dev/null
+    sleep 1
+
+    # 2. Khóa cổng AT và phát lệnh Warm Reset tương thích mọi module
+    if [ -c "$port" ]; then
+        local m_type=$(cat /tmp/master_m_type 2>/dev/null || lsusb 2>/dev/null)
+        (
+            flock -x -w 5 200 || exit 0
+            if echo "$m_type" | grep -iqE "sierra|1199:" || lspci 2>/dev/null | grep -iqE "17cb:0306|sdx55"; then
+                printf 'AT!RESET\r\n' | atinout - "$port" - >/dev/null 2>&1 || printf 'AT+CFUN=1,1\r\n' | atinout - "$port" - >/dev/null 2>&1
+            elif echo "$m_type" | grep -iqE "fibocom|1e0e:|2cb7:"; then
+                printf 'AT+CFUN=15\r\n' | atinout - "$port" - >/dev/null 2>&1 || printf 'AT+CFUN=1,1\r\n' | atinout - "$port" - >/dev/null 2>&1
+            else
+                printf 'AT+CFUN=1,1\r\n' | atinout - "$port" - >/dev/null 2>&1
+            fi
+        ) 200>/var/lock/modem_at.lock
+    fi
+
+    # 3. Chờ chip Baseband modem reboot sạch phần cứng (12-14s)
+    sleep 12
+    for w in $(seq 1 12); do
+        [ -e "/dev/cdc-wdm0" ] || [ -e "/dev/wwan0qmi0" ] || [ -e "/dev/ttyUSB0" ] && break
+        sleep 1
+    done
+
+    # 4. Tái kích hoạt interface qua netifd
+    ubus call network.interface."$iface" up 2>/dev/null || ifup "$iface" 2>/dev/null
+    sleep 5
+
+    # 5. Thăm dò và kiểm chứng lấy IP mới
+    local ok=0
+    for w2 in $(seq 1 15); do
+        sleep 2
+        if check_internet_status; then
+            ok=1
+            break
+        fi
+    done
+
+    if [ "$ok" -eq 1 ]; then
+        local new_ip=$(ip -4 addr show "$l3_dev" 2>/dev/null | grep -oE 'inet [0-9.]+' | head -1 | cut -d' ' -f2)
+        echo "$(date): [KHỞI ĐỘNG LẠI CARD WWAN] Tái sinh thành công! IP mới: ${new_ip:-OK}. 100% rác bộ đệm đã được giải phóng sạch sẽ." >> "$LOG_FILE"
+        return 0
+    else
+        echo "$(date): [KHỞI ĐỘNG LẠI CARD WWAN] Đang tiếp tục đàm phán kết nối với trạm BTS..." >> "$LOG_FILE"
+        return 1
+    fi
+}
+
 heal_tier2_wwan_session() {
     local iface="${1:-wwan0}"
     local port=$(get_at_port)
@@ -296,6 +353,10 @@ heal_tier2_wwan_session() {
         fi
     done
     rm -f /tmp/modem_healing.lock
+    echo "$(date): [Tầng 2] Làm mới session không thành công (Nhà mạng có thể đã thu hồi IP). Tự động kích hoạt Warm Reset card WWAN..." >> "$LOG_FILE"
+    if warm_reset_wwan_baseband "Nhà mạng thu hồi IP / Lỗi đàm phán PDP Context" "$iface"; then
+        return 0
+    fi
     return 1
 }
 
@@ -412,8 +473,8 @@ heal_tier3_cfun_cell_failover() {
     fi
 
     if [ -c "$port" ]; then
-        if echo "$m_type" | grep -iqE "sierra|1199:"; then
-            echo -e "AT!RESET\r" | atinout - "$port" - >/dev/null 2>&1
+        if echo "$m_type" | grep -iqE "sierra|1199:" || lspci 2>/dev/null | grep -iqE "17cb:0306|sdx55"; then
+            echo -e "AT!RESET\r" | atinout - "$port" - >/dev/null 2>&1 || echo -e "AT+CFUN=1,1\r" | atinout - "$port" - >/dev/null 2>&1
         elif echo "$m_type" | grep -iqE "fibocom|1e0e:|2cb7:"; then
             echo -e "AT+CFUN=15\r" | atinout - "$port" - >/dev/null 2>&1
             sleep 1
@@ -447,6 +508,10 @@ heal_tier3_cfun_cell_failover() {
     done
 
     rm -f /tmp/modem_healing.lock
+    echo "$(date): [Tầng 2] Làm mới session không thành công (Nhà mạng có thể đã thu hồi IP). Tự động kích hoạt Warm Reset card WWAN..." >> "$LOG_FILE"
+    if warm_reset_wwan_baseband "Nhà mạng thu hồi IP / Lỗi đàm phán PDP Context" "$iface"; then
+        return 0
+    fi
     return 1
 }
 
@@ -789,10 +854,28 @@ while true; do
         fi
         proactive_rf_health_guard
 
-        # TRAFFIC-AWARE PROACTIVE 24H PDP RENEWAL (04:15 - 04:30 AM: Chỉ làm mới khi đường truyền đang rảnh)
+        # TRAFFIC-AWARE PROACTIVE 48H WWAN PURGE & PDP RENEWAL (03:30 - 04:30 AM)
         cur_hm=$(date +%H%M 2>/dev/null || echo "1200")
         today_str=$(date +%Y%m%d 2>/dev/null || echo "00000000")
-        if [ "$cur_hm" -ge "0415" ] && [ "$cur_hm" -le "0430" ] && [ "$LAST_PROACTIVE_RENEW_DATE" != "$today_str" ]; then
+        [ -z "$WWAN_UPTIME_EPOCH" ] && WWAN_UPTIME_EPOCH=$(date +%s)
+        curr_epoch=$(date +%s)
+        conn_duration=$(( curr_epoch - WWAN_UPTIME_EPOCH ))
+
+        # Nếu modem đã chạy liên tục >= 48 giờ (172800 giây) hoặc 72 giờ và đang trong khung giờ vàng 03:00 - 04:30 sáng:
+        if [ "$conn_duration" -ge 172800 ] && [ "$cur_hm" -ge "0300" ] && [ "$cur_hm" -le "0430" ] && [ "$LAST_PROACTIVE_PURGE_DATE" != "$today_str" ]; then
+            ACT_IFACE=$(get_smart_iface)
+            L3_DEV=$(get_smart_device)
+            [ ! -d "/sys/class/net/$L3_DEV" ] && L3_DEV="$ACT_IFACE"
+            rx1=$(cat "/sys/class/net/$L3_DEV/statistics/rx_packets" 2>/dev/null || echo 0)
+            sleep 2
+            rx2=$(cat "/sys/class/net/$L3_DEV/statistics/rx_packets" 2>/dev/null || echo 0)
+            if [ $((rx2 - rx1)) -lt 250 ] || [ "$cur_hm" -ge "0425" ]; then
+                LAST_PROACTIVE_PURGE_DATE="$today_str"
+                WWAN_UPTIME_EPOCH=$(date +%s)
+                echo "$(date): [ĐỊNH KỲ 48H XẢ RÁC WWAN] Card đã chạy liên tục $(($conn_duration / 3600)) giờ: Tự động Warm Reset card WWAN để giải phóng 100% rác RAM & DMA PCIe..." >> "$LOG_FILE"
+                warm_reset_wwan_baseband "Xả rác DMA/RAM modem định kỳ sau 48h" "$ACT_IFACE"
+            fi
+        elif [ "$cur_hm" -ge "0415" ] && [ "$cur_hm" -le "0430" ] && [ "$LAST_PROACTIVE_RENEW_DATE" != "$today_str" ]; then
             ACT_IFACE=$(get_smart_iface)
             L3_DEV=$(get_smart_device)
             [ ! -d "/sys/class/net/$L3_DEV" ] && L3_DEV="$ACT_IFACE"
@@ -896,9 +979,9 @@ while true; do
         fi
     fi
 
-    # TẦNG 3: TÁI SINH SÓNG MODEM & CELL FAILOVER
-    # CHỈ KÍCH HOẠT KHI MẤT MẠNG KÉO DÀI LIÊN TỤC >= 10 LẦN (~3-4 PHÚT)
-    if [ "$FAIL_STREAK" -ge 10 ]; then
+    # TẦNG 3: TÁI SINH SÓNG MODEM & CELL FAILOVER (PHỤC HỒI IP NHÀ MẠNG THU HỒI TỨC THÌ)
+    # KÍCH HOẠT KHI MẤT MẠNG LIÊN TỤC >= 3 LẦN (~15-20 GIÂY)
+    if [ "$FAIL_STREAK" -ge 3 ]; then
         LAST_RECOVER_TS=$CUR_TS
         if heal_tier3_cfun_cell_failover "$ACT_IFACE"; then
             DUR=$(( $(date +%s) - START_HEAL_S ))

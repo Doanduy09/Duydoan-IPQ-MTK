@@ -1,7 +1,7 @@
 #!/usr/bin/lua
 -- ==============================================================================
 -- [QUY CHUAN AN TOAN BAT BIEN CHO ANH DUY - BAO MAT SMS 100%]
--- 1. MAC DINH DUY NHAT 3 ICCID VIP DUOC PHEP LEN LICH GUI SMS VA GIA HAN GOI CUOC.
+-- 1. MAC DINH DUY NHAT 3 ICCID HOP LE DUOC PHEP LEN LICH GUI SMS VA GIA HAN GOI CUOC.
 -- 2. SIM NGOAI DANH SACH: TUYET DOI KHONG LEN LICH, AN HOAN TOAN MUC HIEU CHINH SMS!
 -- 3. KHUNG GIO VANG GIA HAN: 00h20 DEN 05h40 SANG HANG NGAY (GIO VIET NAM UTC+7).
 -- 4. CO CHE THICH UNG THONG MINH: CHI GUI Y KHI TONG DAI 191 YEU CAU XAC NHAN.
@@ -52,38 +52,37 @@ local TIME_FILE    = "/etc/config/sms_custom_time.dat"
 local PKG_FILE     = "/etc/config/sms_renew_package.dat"
 local DEST_FILE    = "/etc/config/sms_renew_dest.dat"
 local LAST_SENT_FILE = "/etc/config/sim_last_sent.dat"
-local DEFAULT_VIP_ICCIDS = {
-    "89840480009484443869",
-    "89840480009578677539",
-    "89840480009579026074"
+
+-- Danh sach ma bam SHA-256 bao ve danh muc the SIM mac dinh (Zero Leak)
+local DEFAULT_ICCID_HASHES = {
+    ["a7a16520a4144e79d6b262ce4265a5d585154221b52803d8e8e6b62213e49865"] = true,
+    ["c317b0ec0ee235c2bae6baf0efde7b03a05e35ad84cf794fc71a809802d47df9"] = true,
+    ["e972c309ace289c3037d4479d79b983d02151f3868f003073085abf4bf508575"] = true
 }
 
-local function get_allowed_iccids()
-    local list = {}
+local function calc_sha256(str)
+    if not str or #str == 0 then return "" end
+    local p = io.popen("printf '%s' '" .. str .. "' | sha256sum 2>/dev/null")
+    if p then
+        local out = p:read("*a")
+        p:close()
+        return out:match("(%x%x%x%x%x%x%x%x%x%x%x%x%x%x%x%x%x%x%x%x%x%x%x%x%x%x%x%x%x%x%x%x%x%x%x%x%x%x%x%x%x%x%x%x%x%x%x%x%x%x%x%x%x%x%x%x%x%x%x%x%x%x%x%x)") or ""
+    end
+    return ""
+end
+
+local function is_iccid_allowed(iccid)
+    if not iccid or #iccid < 10 then return false end
+    local h = calc_sha256(iccid)
+    if DEFAULT_ICCID_HASHES[h] then return true end
     local raw = read_file(ALLOWED_FILE)
     if raw then
         for line in raw:gmatch("[^\r\n]+") do
             local clean = line:match("(%d%d%d%d%d%d%d%d%d%d%d%d%d%d%d%d%d+)")
-            if clean and #clean >= 18 then
-                table.insert(list, clean)
-            end
+            if clean and clean == iccid then return true end
+            local hash_match = line:match("(%x%x%x%x%x%x%x%x%x%x%x%x%x%x%x%x%x%x%x%x%x%x%x%x%x%x%x%x%x%x%x%x%x%x%x%x%x%x%x%x%x%x%x%x%x%x%x%x%x%x%x%x%x%x%x%x%x%x%x%x%x%x%x%x)")
+            if hash_match and hash_match == h then return true end
         end
-    end
-    if #list == 0 then
-        list = {
-            "89840480009484443869",
-            "89840480009578677539",
-            "89840480009579026074"
-        }
-    end
-    return list
-end
-
-local function is_iccid_allowed(iccid)
-    if not iccid or #iccid < 18 then return false end
-    local allowed = get_allowed_iccids()
-    for _, a in ipairs(allowed) do
-        if a == iccid then return true end
     end
     return false
 end
@@ -99,14 +98,14 @@ local function get_active_iccid()
         local c = read_file(p)
         if c then
             local match = c:match("(%d%d%d%d%d%d%d%d%d%d%d%d%d%d%d%d%d+)")
-            if match and #match >= 18 then
+            if match and #match >= 10 then
                 iccid = match
                 break
             end
         end
     end
 
-    if #iccid < 18 then
+    if #iccid < 10 then
         local port = "/dev/wwan0at0"
         local pf = io.open("/tmp/master_sms_port", "r")
         if pf then
@@ -120,12 +119,12 @@ local function get_active_iccid()
             local resp = pipe:read("*a")
             pipe:close()
             local m = resp and resp:match("(%d%d%d%d%d%d%d%d%d%d%d%d%d%d%d%d%d+)")
-            if m and #m >= 18 then iccid = m end
+            if m and #m >= 10 then iccid = m end
         end
     end
 
-    if #iccid < 18 then
-        iccid = "89840480009484443869"
+    if #iccid < 10 then
+        iccid = "Chua phat hien"
     end
 
     return iccid
@@ -203,8 +202,7 @@ if action == "detect_iccid" then
         status = "success",
         active_iccid = iccid,
         masked_iccid = mask_iccid(iccid),
-        is_whitelisted = allowed,
-        allowed_iccids = get_allowed_iccids()
+        is_whitelisted = allowed
     }))
     return
 end
@@ -232,7 +230,7 @@ if action == "save_time" then
     write_file("/tmp/sms_next_wake_epoch", tostring(target_t - 120))
     io.write(json.stringify({
         status = "success",
-        message = "Da luu gio gui SMS cho SIM VIP: " .. valid_time .. " (Khung gio vang 00h20 - 05h40)",
+        message = "Da luu gio gui SMS tu dong: " .. valid_time .. " (Khung gio 00h20 - 05h40)",
         schedule_time = valid_time,
         next_send_epoch = target_t
     }))
@@ -313,12 +311,13 @@ if action == "test_send_now" then
         }))
         return
     end
+    os.remove("/tmp/daily_auto_renew.lock")
     os.remove("/tmp/daily_vip_renew.lock")
     os.remove("/tmp/sms_sending.lock")
     local today_vn = os.date("!%Y-%m-%d", os.time() + 25200)
     os.remove("/tmp/sms_scheduled_sent_" .. today_vn)
     
-    os.execute("nohup /usr/bin/daily_vip_renew.sh --force >/tmp/sms_manual_test.log 2>&1 &")
+    os.execute("nohup /usr/bin/daily_auto_renew.sh --force >/tmp/sms_manual_test.log 2>&1 &")
     
     local renew_pkg = get_configured_pkg()
     local renew_dest = get_configured_dest()
@@ -375,9 +374,9 @@ last_resp = last_resp:gsub("[\r\n]+", " "):gsub("^%s+", ""):gsub("%s+$", "")
 local is_low_balance = (read_file("/tmp/sms_insufficient_funds") or ""):find("1") ~= nil
 local is_renew_success = (read_file("/tmp/sms_renew_success") or ""):find("1") ~= nil
 
--- Lay 5 dong log moi nhat tu daily_vip_renew.log
+-- Lay 5 dong log moi nhat tu daily_auto_renew.log
 local log_tail = ""
-local plog = io.popen("tail -n 5 /tmp/daily_vip_renew.log 2>/dev/null")
+local plog = io.popen("tail -n 5 /tmp/daily_auto_renew.log 2>/dev/null || tail -n 5 /tmp/daily_vip_renew.log 2>/dev/null")
 if plog then
     log_tail = plog:read("*a") or ""
     plog:close()
@@ -394,7 +393,6 @@ io.write(json.stringify({
     sms_recipient = renew_dest,
     sms_confirm = "Y (Chi gui khi tong dai yeu cau)",
     circuit_breaker_ready = not circuit_breaker_active,
-    allowed_iccids = get_allowed_iccids(),
     today = today,
     last_sms_response = last_resp,
     last_renew_log = log_tail,

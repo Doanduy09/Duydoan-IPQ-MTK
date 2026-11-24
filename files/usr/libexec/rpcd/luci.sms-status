@@ -376,10 +376,11 @@ case "$1" in
             setVipImei)
                 new_imei=$(echo "$input" | jsonfilter -e '$.imei' 2>/dev/null | tr -cd '0-9')
                 if [ -n "$new_imei" ] && [ ${#new_imei} -ge 14 ]; then
+                    echo "$new_imei" > /etc/config/default_device_imei
                     echo "$new_imei" > /etc/config/default_vip_imei
                     echo "$new_imei" > /tmp/master_imei
                     sync
-                    echo '{"success":true,"message":"Đã đăng ký IMEI VIP ['"$new_imei"'] thành công!"}'
+                    echo '{"success":true,"message":"Đã đăng ký IMEI thiết bị ['"$new_imei"'] thành công!"}'
                 else
                     echo '{"success":false,"message":"Số IMEI không hợp lệ (phải từ 14 đến 16 số)!"}'
                 fi
@@ -436,7 +437,7 @@ case "$1" in
                 echo '{"success":true,"message":"Gửi SMS thành công!"}'
                 ;;
             setCustomSchedule)
-                # Bảo mật SIM mặc định: Chỉ SIM thuộc danh mục VIP mới được phép đặt lịch gia hạn
+                # Bảo mật SIM mặc định: Chỉ SIM thuộc danh mục hợp lệ mới được phép đặt lịch gia hạn
                 cur_sim_status=$(cat /tmp/master_sim_status 2>/dev/null || echo "LOCKED")
                 is_auth=0
                 [ "$cur_sim_status" = "VALID" ] && is_auth=1
