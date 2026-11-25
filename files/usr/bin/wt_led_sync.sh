@@ -3,7 +3,10 @@
 # Wireless-Tag ZX7981PD (5G CPE) Smart LED Manager
 # ==============================================================================
 
-[ "$(cat /tmp/sysinfo/board_name 2>/dev/null)" = "wirelesstag,zx7981pd" ] || exit 0
+case "$(cat /tmp/sysinfo/board_name 2>/dev/null)" in
+    wirelesstag,zx7981pd|wirelesstag,zx7981pd-ubootmod) ;;
+    *) exit 0 ;;
+esac
 
 LED_4G_B="/sys/class/leds/wt:4g:blue"
 LED_4G_Y="/sys/class/leds/wt:4g:yellow"
