@@ -13,6 +13,21 @@ if [ ! -d "package/luci-app-doanduy-modem" ]; then
 fi
 
 ./scripts/feeds update -a || ./scripts/feeds update -a
+
+# Fix +wget-any virtual dependency on opkg branches (where USE_APK depends on BROKEN)
+if [ -f config/Config-build.in ] && awk '/config USE_APK/,/comment /' config/Config-build.in | grep -q 'depends on BROKEN'; then
+  for fd in feeds/luci feeds/packages feeds/all; do
+    [ -d "$fd" ] && find "$fd" -type f \( -name 'Makefile' -o -name '*.mk' \) -exec sed -i 's/+wget-any/+wget-ssl/g' {} + || true
+  done
+fi
+
+# Prioritize luci-app-doanduy-modem ownership of modem_ctrl & 11_modem.js (prevent apk/opkg clash with qmodem)
+rm -f \
+  feeds/qmodem/application/qmodem/files/usr/libexec/rpcd/modem_ctrl \
+  feeds/qmodem/luci/luci-app-qmodem/htdocs/luci-static/resources/view/status/include/11_modem.js \
+  feeds/qmodem/luci/luci-app-qmodem-next/htdocs/luci-static/resources/view/status/include/11_modem.js \
+  feeds/all/qmodem/files/usr/libexec/rpcd/modem_ctrl \
+  feeds/all/luci-app-qmodem/htdocs/luci-static/resources/view/status/include/11_modem.js 2>/dev/null || true
 ./scripts/feeds install -a
 
 echo "=========================================================="
