@@ -518,9 +518,72 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 15
     steps:
-      - name: Audit Build Matrix Results & Notify Telegram
+      - name: Signal Debian VM Hermes Sentinel (Build Completed)
+        id: vm_signal
         env:
           BUILD_RESULT: ${{ needs.build.result }}
+          REPO: ${{ github.repository }}
+          RUN_ID: ${{ github.run_id }}
+          BRANCH: ${{ needs.plan.outputs.target_ref || github.ref_name }}
+          WORKFLOW_NAME: ${{ github.workflow }}
+          VM_WEBHOOK_URL: ${{ secrets.VM_WEBHOOK_URL }}
+          VM_WEBHOOK_SECRET: ${{ secrets.VM_WEBHOOK_SECRET }}
+        run: |
+          python3 - << 'PYEOF'
+          import hashlib, hmac, json, os, time, urllib.request
+
+          out_path = os.environ.get("GITHUB_OUTPUT", "")
+          def set_out(k, v):
+              if out_path:
+                  with open(out_path, "a", encoding="utf-8") as f:
+                      f.write(f"{k}={v}\n")
+
+          url = os.environ.get("VM_WEBHOOK_URL", "").strip()
+          if not url:
+              print("VM_WEBHOOK_URL secret not configured; falling back to direct Telegram.")
+              set_out("delivered", "false")
+              raise SystemExit(0)
+
+          secret = os.environ.get("VM_WEBHOOK_SECRET", "").strip().encode("utf-8")
+          repo = os.environ.get("REPO", "")
+          run_id = os.environ.get("RUN_ID", "")
+          delivered = False
+          for attempt in range(1, 4):
+              payload = {
+                  "event": "build_completed",
+                  "repo": repo,
+                  "run_id": run_id,
+                  "branch": os.environ.get("BRANCH", ""),
+                  "workflow": os.environ.get("WORKFLOW_NAME", ""),
+                  "result": os.environ.get("BUILD_RESULT", "unknown"),
+                  "run_url": f"https://github.com/{repo}/actions/runs/{run_id}",
+                  "ts": int(time.time()),
+              }
+              body = json.dumps(payload, separators=(",", ":")).encode("utf-8")
+              headers = {"Content-Type": "application/json"}
+              if secret:
+                  sig = hmac.new(secret, body, hashlib.sha256).hexdigest()
+                  headers["X-Sentinel-Signature"] = f"sha256={sig}"
+              try:
+                  req = urllib.request.Request(url, data=body, headers=headers, method="POST")
+                  with urllib.request.urlopen(req, timeout=15) as resp:
+                      print(f"Debian VM signal delivered (attempt {attempt}): HTTP {resp.status}")
+                      if 200 <= resp.status < 300:
+                          delivered = True
+                          break
+              except Exception as e:
+                  print(f"Debian VM webhook attempt {attempt} warn: {e}")
+                  if attempt < 3:
+                      time.sleep(5)
+
+          set_out("delivered", "true" if delivered else "false")
+          PYEOF
+
+      - name: Fallback Direct Telegram (Only if VM Webhook Unreachable)
+        if: steps.vm_signal.outputs.delivered != 'true'
+        env:
+          BUILD_RESULT: ${{ needs.build.result }}
+          BRANCH: ${{ needs.plan.outputs.target_ref || github.ref_name }}
           REPO: ${{ github.repository }}
           RUN_ID: ${{ github.run_id }}
           TG_BOT_TOKEN: ${{ secrets.TG_BOT_TOKEN }}
@@ -535,25 +598,24 @@ jobs:
               print("Telegram notification skipped: TG_BOT_TOKEN or TG_CHAT_ID secret is not configured.")
               raise SystemExit(0)
           result = os.environ.get("BUILD_RESULT", "unknown")
+          branch = os.environ.get("BRANCH", "master")
           run_id = os.environ.get("RUN_ID", "")
           repo = os.environ.get("REPO", "")
 
           if result == "success":
               status_emoji = "✅"
-              status_text = "<b>TẤT CẢ 3 NỀN TẢNG ĐÃ BIÊN DỊCH XUẤT XƯỞNG THÀNH CÔNG 100%!</b>"
-              desc = "• MediaTek Filogic (266 thiết bị)\n• Qualcomm IPQ807x (43 thiết bị)\n• Qualcomm IPQ60xx (NSS 12.5)\nĐầy đủ cả 2 định dạng file .bin và .itb."
+              status_text = f"<b>BUILD HOÀN THÀNH 100% ({branch}) [Fallback — VM không phản hồi]</b>"
+              desc = "• MediaTek Filogic\n• Qualcomm IPQ807x\n• Qualcomm IPQ60xx"
           else:
               status_emoji = "⚠️"
-              status_text = "<b>PHÁT HIỆN LỖI TRONG QUÁ TRÌNH BIÊN DỊCH</b>"
-              desc = "Hermes Sentinel đang tự động bóc tách log lỗi và kích hoạt quy trình Self-Healing..."
+              status_text = f"<b>BUILD LỖI ({branch}) [Fallback — VM không phản hồi]</b>"
+              desc = "Không gửi được tín hiệu sang Debian VM sau 3 lần thử; nhờ Anh Duy kiểm tra VM."
 
           msg = (
-              f"{status_emoji} <b>HERMES 24/24 GIÁM SÁT BUILD OPENWRT (08:00 AM)</b>\n\n"
-              f"Kính báo <b>Anh Duy (DOANDUY)</b>:\n"
-              f"{status_text}\n\n"
+              f"{status_emoji} <b>GITHUB ACTIONS AUDIT FALLBACK</b>\n\n"
+              f"{status_text}\n"
               f"📌 <b>Run ID</b>: <a href='https://github.com/{repo}/actions/runs/{run_id}'>{run_id}</a>\n"
-              f"{desc}\n\n"
-              f"🤖 <i>Đã gửi báo cáo tự động từ Hermes AI Sentinel.</i>"
+              f"{desc}"
           )
 
           try:
@@ -563,51 +625,7 @@ jobs:
                   headers={"Content-Type": "application/json"}
               )
               urllib.request.urlopen(req, timeout=10)
-              print("Sent Telegram audit notification successfully.")
+              print("Sent Telegram fallback notification.")
           except Exception as e:
               print(f"Telegram error: {e}")
-          PYEOF
-
-      - name: Notify Debian VM Hermes Sentinel (Webhook)
-        env:
-          BUILD_RESULT: ${{ needs.build.result }}
-          REPO: ${{ github.repository }}
-          RUN_ID: ${{ github.run_id }}
-          BRANCH: ${{ needs.plan.outputs.target_ref || github.ref_name }}
-          WORKFLOW_NAME: ${{ github.workflow }}
-          VM_WEBHOOK_URL: ${{ secrets.VM_WEBHOOK_URL }}
-          VM_WEBHOOK_SECRET: ${{ secrets.VM_WEBHOOK_SECRET }}
-        run: |
-          python3 - << 'PYEOF'
-          import hashlib, hmac, json, os, time, urllib.request
-
-          url = os.environ.get("VM_WEBHOOK_URL", "").strip()
-          if not url:
-              print("VM_WEBHOOK_URL secret not configured; skipping Debian VM webhook.")
-              raise SystemExit(0)
-
-          secret = os.environ.get("VM_WEBHOOK_SECRET", "").strip().encode("utf-8")
-          repo = os.environ.get("REPO", "")
-          run_id = os.environ.get("RUN_ID", "")
-          payload = {
-              "repo": repo,
-              "run_id": run_id,
-              "branch": os.environ.get("BRANCH", ""),
-              "workflow": os.environ.get("WORKFLOW_NAME", ""),
-              "result": os.environ.get("BUILD_RESULT", "unknown"),
-              "run_url": f"https://github.com/{repo}/actions/runs/{run_id}",
-              "ts": int(time.time()),
-          }
-          body = json.dumps(payload, separators=(",", ":")).encode("utf-8")
-          headers = {"Content-Type": "application/json"}
-          if secret:
-              sig = hmac.new(secret, body, hashlib.sha256).hexdigest()
-              headers["X-Sentinel-Signature"] = f"sha256={sig}"
-
-          try:
-              req = urllib.request.Request(url, data=body, headers=headers, method="POST")
-              with urllib.request.urlopen(req, timeout=15) as resp:
-                  print(f"Debian VM webhook delivered: HTTP {resp.status}")
-          except Exception as e:
-              print(f"Debian VM webhook warn (non-fatal): {e}")
           PYEOF
