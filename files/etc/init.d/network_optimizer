@@ -29,24 +29,26 @@ start_service() {
                   net.ipv4.tcp_wmem="4096 65536 16777216" >/dev/null 2>&1
     fi
 
-    # Dynamic multi-core RPS mask across LAN/Wi-Fi interfaces (skip WWAN so 30-ext-devices-rps-setting keeps core 2-3 steering)
-    local nprocs rps_hex q ifpath ifn
-    nprocs=$(grep -c '^processor' /proc/cpuinfo 2>/dev/null || echo 1)
-    [ "$nprocs" -lt 1 ] 2>/dev/null && nprocs=1
-    [ "$nprocs" -gt 16 ] 2>/dev/null && nprocs=16
-    rps_hex=$(printf '%x' $(( (1 << nprocs) - 1 )))
-    for ifpath in /sys/class/net/*; do
-        ifn="${ifpath##*/}"
-        case "$ifn" in
-            lo|wwan*|usb*|rmnet*|mhi*|eth2) continue ;;
-        esac
-        for q in "${ifpath}"/queues/rx-*/rps_cpus; do
-            [ -f "$q" ] && echo "$rps_hex" > "$q" 2>/dev/null
+    # Dynamic multi-core RPS mask across LAN/Wi-Fi interfaces (skip if NSS/mtk-smp manages RPS, and skip WWAN for 30-ext-devices-rps-setting)
+    if [ ! -x /etc/init.d/qca-nss-ecm ] && [ ! -x /etc/init.d/mtk_smp ] && [ ! -x /etc/init.d/mtk-smp ]; then
+        local nprocs rps_hex q ifpath ifn
+        nprocs=$(grep -c '^processor' /proc/cpuinfo 2>/dev/null || echo 1)
+        [ "$nprocs" -lt 1 ] 2>/dev/null && nprocs=1
+        [ "$nprocs" -gt 16 ] 2>/dev/null && nprocs=16
+        rps_hex=$(printf '%x' $(( (1 << nprocs) - 1 )))
+        for ifpath in /sys/class/net/*; do
+            ifn="${ifpath##*/}"
+            case "$ifn" in
+                lo|wwan*|usb*|rmnet*|mhi*|eth2) continue ;;
+            esac
+            for q in "${ifpath}"/queues/rx-*/rps_cpus; do
+                [ -f "$q" ] && echo "$rps_hex" > "$q" 2>/dev/null
+            done
+            for q in "${ifpath}"/queues/rx-*/rps_flow_cnt; do
+                [ -f "$q" ] && echo 4096 > "$q" 2>/dev/null
+            done
         done
-        for q in "${ifpath}"/queues/rx-*/rps_flow_cnt; do
-            [ -f "$q" ] && echo 4096 > "$q" 2>/dev/null
-        done
-    done
+    fi
 
     for iface in eth0 eth1 eth2 lan1 lan2 wan br-lan phy0-ap0 phy1-ap0; do
         [ -d "/sys/class/net/$iface" ] && ip link set "$iface" txqueuelen 2048 2>/dev/null
