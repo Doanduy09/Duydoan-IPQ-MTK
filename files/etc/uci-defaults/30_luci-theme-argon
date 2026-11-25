@@ -1,0 +1,8 @@
+#!/bin/sh
+uci -q batch <<-EOF
+	set luci.themes.Argon='/luci-static/argon'
+	set luci.main.mediaurlbase='/luci-static/argon'
+	commit luci
+EOF
+rm -rf /tmp/luci-indexcache* /tmp/luci-modulecache* 2>/dev/null
+exit 0

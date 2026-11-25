@@ -1,0 +1,16 @@
+# Put your custom commands here that should be executed once
+# the system init finished. By default this file does nothing.
+
+# Rescan PCIe bus on every boot so M.2 5G modems (FM350-GL/RM520N) enumerate reliably after cold reboot
+[ -f /sys/bus/pci/rescan ] && echo 1 > /sys/bus/pci/rescan 2>/dev/null || true
+
+# Disable PCIe runtime PM only for wireless/WWAN PCIe controllers (class 0x0d*)
+for pdev in /sys/bus/pci/devices/*; do
+    [ -f "$pdev/class" ] || continue
+    case "$(cat "$pdev/class" 2>/dev/null)" in
+        0x0d*) [ -f "$pdev/power/control" ] && echo on > "$pdev/power/control" 2>/dev/null || true ;;
+    esac
+done
+
+[ -x /usr/bin/sysfixtime ] && /usr/bin/sysfixtime start &
+exit 0
