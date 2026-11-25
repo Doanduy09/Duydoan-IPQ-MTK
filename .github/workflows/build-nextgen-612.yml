@@ -1,0 +1,395 @@
+name: Duydoan Next-Gen 6.12 Builder (Full-NSS & Filogic WED)
+
+on:
+  workflow_dispatch:
+    inputs:
+      platform:
+        description: 'Nền tảng Kernel 6.12 cần build'
+        required: true
+        default: 'all'
+        type: choice
+        options:
+          - all
+          - qualcomm-ipq60xx
+          - qualcomm-ipq807x
+          - mediatek-filogic
+      passwall:
+        description: 'Biến thể PassWall (false = Thuần, true = Có PassWall, both = Cả hai)'
+        required: true
+        default: 'false'
+        type: choice
+        options:
+          - 'false'
+          - 'true'
+          - 'both'
+      release:
+        description: 'Xuất bản lên GitHub Releases'
+        required: false
+        default: true
+        type: boolean
+
+concurrency:
+  group: duydoan-nextgen612-${{ inputs.platform || 'all' }}-${{ inputs.passwall || 'false' }}
+  cancel-in-progress: false
+
+permissions:
+  contents: write
+  actions: write
+
+jobs:
+  plan:
+    name: Plan Next-Gen 6.12 Matrix
+    runs-on: ubuntu-latest
+    outputs:
+      matrix: ${{ steps.set-matrix.outputs.matrix }}
+    steps:
+      - name: Generate Next-Gen 6.12 Build Matrix
+        id: set-matrix
+        run: |
+          python3 - << 'PYEOF' > matrix.json
+          import json, os
+
+          plat = os.environ.get("PLAT", "all")
+          pw_opt = os.environ.get("PW_OPT", "false")
+          pw_modes = [False, True] if pw_opt == "both" else [pw_opt == "true"]
+
+          defs = [
+              {
+                  "id": "qualcomm-ipq60xx",
+                  "ref": "qualcomm-nss-25.12",
+                  "config": "qualcomm_ipq60xx_nss.config",
+                  "target_dir": "bin/targets/qualcommax/ipq60xx",
+                  "base_title": "Qualcomm IPQ60xx (Full-NSS 12.5 Kernel 6.12)",
+                  "tag_base": "Duydoan-6.12-FullNSS-IPQ60xx",
+                  "copy_itb_to_bin": False,
+              },
+              {
+                  "id": "qualcomm-ipq807x",
+                  "ref": "qualcomm-nss-25.12",
+                  "config": "qualcomm_ipq807x_nss.config",
+                  "target_dir": "bin/targets/qualcommax/ipq807x",
+                  "base_title": "Qualcomm IPQ807x (Full-NSS 12.5 Kernel 6.12)",
+                  "tag_base": "Duydoan-6.12-FullNSS-IPQ807x",
+                  "copy_itb_to_bin": False,
+              },
+              {
+                  "id": "mediatek-filogic",
+                  "ref": "filogic-wed-25.12",
+                  "config": "mediatek_filogic_wed.config",
+                  "target_dir": "bin/targets/mediatek/filogic",
+                  "base_title": "MediaTek Filogic (PPE/WED Kernel 6.12)",
+                  "tag_base": "Duydoan-6.12-Filogic-WED",
+                  "copy_itb_to_bin": True,
+              },
+          ]
+
+          selected_defs = defs if plat == "all" else [d for d in defs if d["id"] == plat]
+          include = []
+          for d in selected_defs:
+              for pw in pw_modes:
+                  badge = "[Có PassWall]" if pw else "[Không PassWall]"
+                  tag_prefix = f"{d['tag_base']}-Passwall" if pw else d["tag_base"]
+                  include.append({
+                      "id": d["id"],
+                      "ref": d["ref"],
+                      "config": d["config"],
+                      "target_dir": d["target_dir"],
+                      "passwall": pw,
+                      "title": f"{d['base_title']} {badge}",
+                      "tag_prefix": tag_prefix,
+                      "release_title": f"{d['base_title']} {badge} All-Devices Release",
+                      "copy_itb_to_bin": d["copy_itb_to_bin"],
+                  })
+          print(json.dumps({"include": include}))
+          PYEOF
+          MATRIX=$(cat matrix.json)
+          echo "matrix=$MATRIX" >> "$GITHUB_OUTPUT"
+          echo "Matrix: $MATRIX"
+        env:
+          PLAT: ${{ inputs.platform || 'all' }}
+          PW_OPT: ${{ inputs.passwall || 'false' }}
+
+  build:
+    name: Build ${{ matrix.title }}
+    needs: plan
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix: ${{ fromJson(needs.plan.outputs.matrix) }}
+
+    steps:
+      - name: Checkout Branch (${{ matrix.ref }})
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ matrix.ref }}
+
+      - name: Free Disk, Mount /mnt SSD & Install Build Dependencies
+        env:
+          DEBIAN_FRONTEND: noninteractive
+        run: |
+          sudo rm -rf /usr/share/dotnet /usr/local/lib/android /opt/ghc /usr/local/.ghcup
+          sudo docker system prune -af --volumes || true
+          sudo -E apt-get -qq update
+          sudo -E apt-get -qq install -y --no-install-recommends \
+            autoconf automake autopoint bc binutils bison build-essential bzip2 ca-certificates \
+            ccache clang cmake cpio curl device-tree-compiler dos2unix file flex gawk gettext \
+            gcc-multilib g++-multilib genisoimage git gperf help2man intltool jq \
+            libbpf-dev libc6-dev-i386 libclang-dev libdw-dev libelf-dev libglib2.0-dev \
+            libgmp3-dev libltdl-dev libmpc-dev libmpfr-dev libncurses-dev libreadline-dev \
+            libssl-dev libtool lld llvm ninja-build p7zip p7zip-full patch perl pkgconf \
+            python3 python3-cryptography python3-dev python3-docutils python3-packaging \
+            python3-pip python3-ply python3-pyelftools python3-setuptools qemu-utils re2c \
+            rsync squashfs-tools subversion swig texinfo unzip wget xmlto xxd xz-utils \
+            zlib1g-dev zstd
+          sudo timedatectl set-timezone "Asia/Ho_Chi_Minh"
+
+          sudo mkdir -p /mnt/build_wrt/.ccache /mnt/build_wrt/build_dir /mnt/build_wrt/staging_dir /mnt/build_wrt/dl
+          sudo chown -R "$USER:$USER" /mnt/build_wrt
+          for d in .ccache build_dir staging_dir dl; do
+            rm -rf "$GITHUB_WORKSPACE/$d"
+            ln -sfn "/mnt/build_wrt/$d" "$GITHUB_WORKSPACE/$d"
+          done
+
+          python3 - << 'PYEOF'
+          import json, os, re
+          mf = "scripts/projectsmirrors.json"
+          if os.path.isfile(mf):
+              with open(mf, "r", encoding="utf-8") as f:
+                  data = json.load(f)
+              bad = re.compile(r"(\.cn/|tencent|aliyun)", re.I)
+              for k, v in list(data.items()):
+                  if isinstance(v, list):
+                      filtered = [u for u in v if not bad.search(str(u))]
+                      if filtered:
+                          data[k] = filtered
+              with open(mf, "w", encoding="utf-8") as f:
+                  json.dump(data, f, indent="\t")
+                  f.write("\n")
+          PYEOF
+          df -h
+
+      - name: Restore Next-Gen 6.12 Build Cache (${{ matrix.id }})
+        id: cache-restore
+        uses: actions/cache/restore@v4
+        with:
+          path: |
+            /mnt/build_wrt/.ccache
+            /mnt/build_wrt/staging_dir/host*
+            /mnt/build_wrt/staging_dir/tool*
+          key: wrt612-${{ matrix.ref }}-${{ matrix.id }}-${{ hashFiles('tools/**', 'toolchain/**', 'feeds.conf.default', matrix.config) }}
+          restore-keys: |
+            wrt612-${{ matrix.ref }}-${{ matrix.id }}-
+
+      - name: Prepare Restored Build Cache
+        if: steps.cache-restore.outputs.cache-matched-key != ''
+        run: |
+          find /mnt/build_wrt/staging_dir -type d -name "stamp" -not -path "*target*" | while read -r DIR; do
+            find "$DIR" -type f -exec touch {} +
+          done
+          mkdir -p tmp
+          echo "1" > tmp/.build
+
+      - name: Prepare Feeds, Kernel 6.12 Patches & Decrypt Assets
+        env:
+          ALL_SECRET_KEY: ${{ secrets.ALL_SECRET_KEY }}
+        run: |
+          chmod +x scripts/ci-prepare.sh .github/scripts/*.sh
+          ./scripts/ci-prepare.sh
+
+      - name: Configure Seed & PassWall Toggle + Preflight Gate
+        run: |
+          cp "${{ matrix.config }}" .config
+          if [ "${{ matrix.passwall }}" = "true" ]; then
+            echo ">> [PASSWALL] Bật PassWall + Xray + Sing-Box + ChinaDNS-NG + Haproxy"
+            cat << 'EOF' >> .config
+          CONFIG_PACKAGE_luci-app-passwall=y
+          CONFIG_PACKAGE_luci-app-passwall_INCLUDE_Xray=y
+          CONFIG_PACKAGE_luci-app-passwall_INCLUDE_SingBox=y
+          CONFIG_PACKAGE_luci-app-passwall_INCLUDE_ChinaDNS_NG=y
+          CONFIG_PACKAGE_luci-app-passwall_INCLUDE_Haproxy=y
+          CONFIG_PACKAGE_luci-app-passwall_INCLUDE_Geosite=y
+          CONFIG_PACKAGE_luci-app-passwall_INCLUDE_Geoip=y
+          CONFIG_PACKAGE_xray-core=y
+          CONFIG_PACKAGE_sing-box=y
+          CONFIG_PACKAGE_chinadns-ng=y
+          CONFIG_PACKAGE_haproxy=y
+          EOF
+          else
+            sed -i '/luci-app-passwall/d' .config
+            echo "# CONFIG_PACKAGE_luci-app-passwall is not set" >> .config
+          fi
+
+          bash .github/scripts/prepare-build-host.sh
+          make defconfig
+          if grep -q '^CONFIG_USE_LLVM_BUILD=y$' .config; then
+            echo "ERROR: CONFIG_USE_LLVM_BUILD=y still active!" >&2
+            exit 1
+          fi
+          if ! grep -q '^CONFIG_PACKAGE_luci-app-doanduy-modem=y$' .config; then
+            echo "::error::CRITICAL — luci-app-doanduy-modem=y dropped by make defconfig!" >&2
+            exit 1
+          fi
+          bash .github/scripts/prepare-rust.sh
+          echo ">> Active target devices count: $(grep -c '^CONFIG_TARGET_DEVICE_.*=y$' .config || echo 0)"
+
+      - name: Download Package Sources
+        run: |
+          make download -j$(nproc)
+          find dl/ -size -1024c -exec ls -l {} \;
+          find dl/ -size -1024c -exec rm -f {} \;
+
+      - name: Compile Next-Gen 6.12 Firmware (${{ matrix.id }})
+        id: compile
+        env:
+          CCACHE_DIR: /mnt/build_wrt/.ccache
+          CCACHE_MAXSIZE: 1.5G
+          CCACHE_COMPRESS: 1
+          CMAKE_POLICY_VERSION_MINIMUM: "3.5"
+        run: |
+          echo "Compiling ${{ matrix.title }} with $(nproc) threads..."
+          make -j$(nproc) || make -j1 V=s
+          ccache -s || true
+          echo "status=success" >> "$GITHUB_OUTPUT"
+
+      - name: Save Next-Gen 6.12 Build Cache (${{ matrix.id }})
+        if: success() && steps.cache-restore.outputs.cache-hit != 'true'
+        uses: actions/cache/save@v4
+        with:
+          key: wrt612-${{ matrix.ref }}-${{ matrix.id }}-${{ hashFiles('tools/**', 'toolchain/**', 'feeds.conf.default', matrix.config) }}
+          path: |
+            /mnt/build_wrt/.ccache
+            /mnt/build_wrt/staging_dir/host*
+            /mnt/build_wrt/staging_dir/tool*
+
+      - name: Prepare Firmware Artifacts
+        id: organize
+        if: steps.compile.outputs.status == 'success'
+        run: |
+          cd "${{ matrix.target_dir }}"
+          rm -rf packages kernel-debug.tar.zst
+          if [ "${{ matrix.copy_itb_to_bin }}" = "true" ]; then
+            for itb in *sysupgrade.itb; do
+              [ -f "$itb" ] && [ ! -f "${itb%.itb}.bin" ] && cp -f "$itb" "${itb%.itb}.bin"
+            done
+          fi
+          echo "FIRMWARE=$PWD" >> "$GITHUB_ENV"
+          echo "BUILD_DATE=$(date +'%Y.%m.%d-%H%M')" >> "$GITHUB_ENV"
+          echo "status=success" >> "$GITHUB_OUTPUT"
+
+      - name: Generate Dynamic Release Notes (Verified from profiles.json & manifest)
+        if: steps.organize.outputs.status == 'success' && (inputs.release != false)
+        run: |
+          python3 - << 'PYEOF'
+          import glob, json, os, re
+
+          fw_dir = os.environ["FIRMWARE"]
+          rel_title = os.environ["MATRIX_RELEASE_TITLE"]
+          build_date = os.environ["BUILD_DATE"]
+          profiles = []
+          pp = os.path.join(fw_dir, "profiles.json")
+          if os.path.isfile(pp):
+              with open(pp, "r", encoding="utf-8") as f:
+                  profiles = sorted(json.load(f).get("profiles", {}).keys())
+
+          mf_pkgs = set()
+          kernel_ver = "6.12"
+          for mf in glob.glob(os.path.join(fw_dir, "*.manifest")):
+              with open(mf, "r", encoding="utf-8", errors="replace") as f:
+                  for ln in f:
+                      pkg, _, ver = ln.partition(" - ")
+                      pkg = pkg.strip()
+                      if pkg:
+                          mf_pkgs.add(pkg)
+                          if pkg == "kernel":
+                              mk = re.match(r"(\d+\.\d+\.\d+)", ver.strip())
+                              if mk:
+                                  kernel_ver = mk.group(1)
+
+          core_pkgs = ("luci-app-passwall", "luci-app-passwall2", "xray-core", "xray-plugin", "sing-box", "chinadns-ng", "haproxy")
+          has_pw = ("luci-app-passwall" in mf_pkgs) or ("luci-app-passwall2" in mf_pkgs)
+          has_modem = "luci-app-doanduy-modem" in mf_pkgs
+          found_cores = [p for p in core_pkgs if p in mf_pkgs]
+          pw_line = f"✅ **CÓ tích hợp PassWall** (`{', '.join(found_cores)}`)" if has_pw else "❌ **KHÔNG tích hợp PassWall** (Bản Thuần / No-PassWall)"
+
+          accel_parts = []
+          if "qca-nss-ecm" in mf_pkgs or "kmod-qca-nss-ecm" in mf_pkgs:
+              nss_mods = [m.replace("kmod-qca-nss-drv-", "") for m in ("kmod-qca-nss-drv-pppoe", "kmod-qca-nss-drv-bridge-mgr", "kmod-qca-nss-drv-vlan-mgr", "kmod-qca-nss-drv-qdisc") if m in mf_pkgs]
+              accel_parts.append(f"Qualcomm Full-NSS 12.5 (`{', '.join(nss_mods) if nss_mods else 'ECM'}`)")
+          if "bridger" in mf_pkgs:
+              accel_parts.append("MediaTek PPE + WED + `bridger`")
+          accel_line = " + ".join(accel_parts) if accel_parts else "Hardware Offload"
+
+          lines = [
+              f"### 🚀 {rel_title} ({build_date})",
+              "",
+              f"* **Base Version**: ImmortalWrt 25.12 Next-Gen (Kernel {kernel_ver})",
+              f"* **PassWall**: {pw_line}",
+              f"* **Modem 5G Suite**: {'✅ `luci-app-doanduy-modem` (tích hợp sẵn)' if has_modem else '⚠️ Không thấy trong manifest'}",
+              f"* **Hardware Acceleration**: {accel_line}",
+              f"* **Compilation Mode**: Unified Multi-Device Build (**{len(profiles)} thiết bị**)",
+              "",
+              f"#### 📱 Danh Sách {len(profiles)} Thiết Bị:",
+          ]
+          for p in profiles:
+              lines.append(f"- `{p}`")
+
+          with open("release_notes.md", "w", encoding="utf-8") as out:
+              out.write("\n".join(lines) + "\n")
+          PYEOF
+        env:
+          MATRIX_RELEASE_TITLE: ${{ matrix.release_title }}
+
+      - name: Upload Firmware Artifacts
+        uses: actions/upload-artifact@v4
+        if: steps.organize.outputs.status == 'success'
+        with:
+          name: ${{ matrix.tag_prefix }}_${{ env.BUILD_DATE }}
+          path: ${{ env.FIRMWARE }}/*
+          retention-days: 3
+
+      - name: Create GitHub Release
+        uses: softprops/action-gh-release@v2
+        if: steps.organize.outputs.status == 'success' && (inputs.release != false)
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          tag_name: ${{ matrix.tag_prefix }}-${{ env.BUILD_DATE }}
+          name: ${{ matrix.release_title }} (${{ env.BUILD_DATE }})
+          body_path: release_notes.md
+          files: ${{ env.FIRMWARE }}/*
+
+  hermes_audit:
+    name: Hermes Sentinel Report (Next-Gen 6.12)
+    needs: [build]
+    if: always()
+    runs-on: ubuntu-latest
+    steps:
+      - name: Notify Telegram
+        env:
+          BUILD_RESULT: ${{ needs.build.result }}
+          REPO: ${{ github.repository }}
+          RUN_ID: ${{ github.run_id }}
+        run: |
+          python3 - << 'PYEOF'
+          import os, json, urllib.request
+          tg_token = "8202975990:AAGiqgBlXeYv-NJKmFf2i2cQLChNE2dNdEk"
+          tg_chat_id = "832873894"
+          res = os.environ.get("BUILD_RESULT", "unknown")
+          rid = os.environ.get("RUN_ID", "")
+          repo = os.environ.get("REPO", "")
+          emoji = "✅" if res == "success" else "⚠️"
+          msg = (
+              f"{emoji} <b>NEXT-GEN KERNEL 6.12 BUILD ({res.upper()})</b>\n"
+              f"📌 <b>Run ID</b>: <a href='https://github.com/{repo}/actions/runs/{rid}'>{rid}</a>\n"
+              f"• Branch: Full-NSS (LiBwrt) / Filogic WED (chasey-dev)"
+          )
+          try:
+              req = urllib.request.Request(
+                  f"https://api.telegram.org/bot{tg_token}/sendMessage",
+                  data=json.dumps({"chat_id": tg_chat_id, "text": msg, "parse_mode": "HTML"}).encode("utf-8"),
+                  headers={"Content-Type": "application/json"},
+              )
+              urllib.request.urlopen(req, timeout=10)
+          except Exception as e:
+              print(f"Telegram warn: {e}")
+          PYEOF
