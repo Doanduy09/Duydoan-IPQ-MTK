@@ -170,7 +170,7 @@ jobs:
           print(f"Hoàn tất dọn dẹp Releases! Đã xóa: {len(to_delete)} bản.")
           PYEOF
 
-      - name: Purge Legacy ccache-25-* & Superseded wrt612-* Caches
+      - name: Purge Legacy ccache-25-* & Rollover Active Cache Prefixes
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           GH_REPO: ${{ github.repository }}
@@ -183,6 +183,12 @@ jobs:
           done < <(gh cache list --repo "$GH_REPO" --key "ccache-25-" --limit 50 --json id,key --jq '.[] | [.id, .key] | @tsv')
 
           for prefix in \
+            wrt-master-qualcomm-ipq60xx- \
+            wrt-master-qualcomm-ipq807x- \
+            wrt-master-mediatek-filogic- \
+            wrt-master-passwall-qualcomm-ipq60xx- \
+            wrt-master-passwall-qualcomm-ipq807x- \
+            wrt-master-passwall-mediatek-filogic- \
             wrt612-qualcomm-nss-25.12-qualcomm-ipq60xx- \
             wrt612-qualcomm-nss-25.12-qualcomm-ipq807x- \
             wrt612-filogic-wed-25.12-mediatek-filogic-; do
@@ -190,11 +196,73 @@ jobs:
             while IFS=$'\t' read -r cid ckey; do
               [ -n "$cid" ] || continue
               if [ "$kept" -eq 0 ]; then
-                echo "Keep latest wrt612 cache: $ckey (id=$cid)"
+                echo "Keep latest cache: $ckey (id=$cid)"
                 kept=1
                 continue
               fi
-              echo "Delete superseded wrt612 cache: $ckey (id=$cid)"
+              echo "Delete superseded cache: $ckey (id=$cid)"
               gh cache delete "$cid" --repo "$GH_REPO" || true
             done < <(gh cache list --repo "$GH_REPO" --key "$prefix" --sort created_at --order desc --limit 50 --json id,key --jq '.[] | [.id, .key] | @tsv')
           done
+
+      - name: Purge Completed Workflow Artifacts (Protect In-Progress Runs)
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          REPO: ${{ github.repository }}
+        run: |
+          python3 - << 'PYEOF'
+          import json, os, subprocess
+
+          repo = os.environ.get("REPO", "")
+          if not repo:
+              raise SystemExit(0)
+
+          active_ids = set()
+          try:
+              out = subprocess.check_output(
+                  ["gh", "run", "list", "--repo", repo, "--limit", "50", "--json", "databaseId,status"],
+                  text=True,
+              )
+              for r in json.loads(out):
+                  if r.get("status") in ("in_progress", "queued"):
+                      active_ids.add(int(r["databaseId"]))
+          except Exception as e:
+              print(f"Active run lookup warning: {e}")
+
+          try:
+              raw = subprocess.check_output(
+                  ["gh", "api", f"repos/{repo}/actions/artifacts?per_page=100", "--paginate"],
+                  text=True,
+              )
+              # gh api --paginate may emit concatenated JSON objects if multiple pages exist
+              decoder = json.JSONDecoder()
+              idx = 0
+              artifacts = []
+              s = raw.strip()
+              while idx < len(s):
+                  obj, next_idx = decoder.raw_decode(s, idx)
+                  artifacts.extend(obj.get("artifacts", []))
+                  idx = next_idx
+                  while idx < len(s) and s[idx].isspace():
+                      idx += 1
+          except Exception as e:
+              print(f"Artifact list warning: {e}")
+              raise SystemExit(0)
+
+          deleted = 0
+          for art in artifacts:
+              wr_id = int((art.get("workflow_run") or {}).get("id") or 0)
+              if wr_id and wr_id in active_ids:
+                  print(f"🛡️ [GIỮ ARTIFACT ĐANG BUILD] {art.get('name')} (run {wr_id})")
+                  continue
+              aid = art.get("id")
+              print(f"🗑️ [XÓA ARTIFACT ĐÃ HOÀN TẤT] {art.get('name')} (id={aid}, run={wr_id})")
+              subprocess.run(
+                  ["gh", "api", "-X", "DELETE", f"repos/{repo}/actions/artifacts/{aid}"],
+                  stdout=subprocess.DEVNULL,
+                  stderr=subprocess.DEVNULL,
+              )
+              deleted += 1
+
+          print(f"Hoàn tất dọn Artifacts! Đã xóa: {deleted} artifact.")
+          PYEOF
