@@ -40,6 +40,7 @@ update_leds() {
             if [ -n "$lte_band" ] && [ "$lte_band" != "--" ] && [ "$lte_band" != "Không có thiết bị" ]; then
                 has_4g=1
             fi
+            case "$score" in ''|*[!0-9]*) score=100 ;; esac
             if [ "$score" -lt 60 ]; then
                 grade_5g="weak"
                 grade_4g="weak"

@@ -1,4 +1,5 @@
 #!/bin/sh
+[ "$(cat /tmp/sysinfo/board_name 2>/dev/null)" = "wirelesstag,zx7981pd" ] || exit 0
 case "$INTERFACE" in
     eth2|wwan*|usb*|rmnet_mhi*)
         /usr/bin/wt_led_sync.sh &

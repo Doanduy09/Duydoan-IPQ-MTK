@@ -38,7 +38,7 @@ permissions:
 jobs:
   plan:
     name: Plan Target Matrix
-    runs-on: ubuntu-22.04
+    runs-on: ubuntu-latest
     outputs:
       matrix: ${{ steps.set-matrix.outputs.matrix }}
     steps:
@@ -206,7 +206,7 @@ jobs:
   build:
     name: Build ${{ matrix.title }}
     needs: plan
-    runs-on: ubuntu-22.04
+    runs-on: ubuntu-latest
     strategy:
       fail-fast: false
       max-parallel: 1
@@ -291,8 +291,6 @@ jobs:
           if [ "${{ matrix.id }}" = "mediatek-filogic" ]; then
             echo ">> [HNAT ACCELERATION] Kích hoạt MediaTek MT798x HNAT & TurboACC MTK..."
             cat << 'EOF' >> .config
-          CONFIG_PACKAGE_kmod-mediatek_hnat=y
-          CONFIG_PACKAGE_luci-app-turboacc-mtk=y
           CONFIG_PACKAGE_TURBOACC_INCLUDE_FLOW_OFFLOADING=y
           CONFIG_PACKAGE_TURBOACC_INCLUDE_BBR_CCA=y
           CONFIG_MTK_WHNAT_SUPPORT=m
@@ -436,7 +434,7 @@ jobs:
 
       - name: Upload Firmware to Actions Artifacts
         uses: actions/upload-artifact@v4
-        if: steps.organize.outputs.status == 'success'
+        if: steps.organize.outputs.status == 'success' && inputs.release == false
         with:
           name: ${{ matrix.tag_prefix }}_${{ env.BUILD_DATE }}
           path: ${{ env.FIRMWARE }}/*
