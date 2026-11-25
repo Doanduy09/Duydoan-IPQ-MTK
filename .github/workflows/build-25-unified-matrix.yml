@@ -506,3 +506,46 @@ jobs:
           except Exception as e:
               print(f"Telegram error: {e}")
           PYEOF
+      - name: Notify Debian VM Hermes Sentinel (Webhook)
+        env:
+          BUILD_RESULT: ${{ needs.build.result }}
+          REPO: ${{ github.repository }}
+          RUN_ID: ${{ github.run_id }}
+          BRANCH: ${{ github.ref_name }}
+          WORKFLOW_NAME: ${{ github.workflow }}
+          VM_WEBHOOK_URL: ${{ secrets.VM_WEBHOOK_URL }}
+          VM_WEBHOOK_SECRET: ${{ secrets.VM_WEBHOOK_SECRET }}
+        run: |
+          python3 - << 'PYEOF'
+          import hashlib, hmac, json, os, time, urllib.request
+
+          url = os.environ.get("VM_WEBHOOK_URL", "").strip()
+          if not url:
+              print("VM_WEBHOOK_URL secret not configured; skipping Debian VM webhook.")
+              raise SystemExit(0)
+
+          secret = os.environ.get("VM_WEBHOOK_SECRET", "").strip().encode("utf-8")
+          repo = os.environ.get("REPO", "")
+          run_id = os.environ.get("RUN_ID", "")
+          payload = {
+              "repo": repo,
+              "run_id": run_id,
+              "branch": os.environ.get("BRANCH", ""),
+              "workflow": os.environ.get("WORKFLOW_NAME", ""),
+              "result": os.environ.get("BUILD_RESULT", "unknown"),
+              "run_url": f"https://github.com/{repo}/actions/runs/{run_id}",
+              "ts": int(time.time()),
+          }
+          body = json.dumps(payload, separators=(",", ":")).encode("utf-8")
+          headers = {"Content-Type": "application/json"}
+          if secret:
+              sig = hmac.new(secret, body, hashlib.sha256).hexdigest()
+              headers["X-Sentinel-Signature"] = f"sha256={sig}"
+
+          try:
+              req = urllib.request.Request(url, data=body, headers=headers, method="POST")
+              with urllib.request.urlopen(req, timeout=15) as resp:
+                  print(f"Debian VM webhook delivered: HTTP {resp.status}")
+          except Exception as e:
+              print(f"Debian VM webhook warn (non-fatal): {e}")
+          PYEOF
