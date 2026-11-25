@@ -13,12 +13,6 @@ rm -rf /tmp/doanduy-modem
 
 ./scripts/feeds update -a || ./scripts/feeds update -a
 
-# Fix wget-any virtual provide / dependency across OpenWrt 25.12 feeds (luci-theme-argon)
-if [ -f feeds/packages/net/wget/Makefile ]; then
-  sed -i 's/@wget-any/wget-any/g' feeds/packages/net/wget/Makefile
-fi
-grep -rl '+wget-any' feeds/luci feeds/packages 2>/dev/null | xargs -r sed -i 's/+wget-any/+wget-ssl/g'
-
 # Fix haproxy 3.2.21 USE_QUIC=1 build failure against OpenSSL 3.0.22
 if [ -f feeds/packages/net/haproxy/Makefile ]; then
   sed -i '/ADDON+=USE_QUIC=1/d' feeds/packages/net/haproxy/Makefile
@@ -84,3 +78,6 @@ if [ -f "$TARGET_FILE" ]; then
   sh -n "$TARGET_FILE"
   echo "   [PASS] Syntax check passed for $TARGET_FILE"
 fi
+for d in files/etc/init.d files/etc/uci-defaults files/usr/bin files/etc/hotplug.d; do
+  [ -d "$d" ] && find "$d" -type f -exec chmod +x {} + 2>/dev/null || true
+done

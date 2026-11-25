@@ -381,7 +381,7 @@ wavlink,wl-wn586x3b)
 	ucidef_set_led_netdev "lan-2" "lan-2" "blue:lan-2" "lan2" "link tx rx"
 	ucidef_set_led_netdev "wan" "wan" "blue:wan" "eth1" "link tx rx"
 	;;
-wirelesstag,zx7981pd|
+wirelesstag,zx7981pd|\
 wirelesstag,zx7981pd-ubootmod)
 	ucidef_set_led_default "power" "POWER" "wt:power:blue" "1"
 	ucidef_set_led_netdev "wlan2g" "WLAN2G" "wt:wifi:blue" "ra0" "link tx rx"
