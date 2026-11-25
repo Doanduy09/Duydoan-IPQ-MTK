@@ -3,7 +3,6 @@ name: Duydoan Multi-Target Firmware Builder (Master & 24.10)
 on:
   push:
     branches:
-      - main
       - master
       - master-passwall
       - immortalwrt-24
@@ -82,22 +81,6 @@ jobs:
                       subprocess.run(["gh", "run", "delete", str(rid), "--repo", repo], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
           except Exception as e:
               print(f"Workflow clean warning: {e}")
-
-          # 2. Dọn dẹp Releases cũ để không bị quá tải
-          try:
-              out = subprocess.check_output(
-                  ["gh", "release", "list", "--repo", repo, "--limit", "50", "--json", "tagName"],
-                  text=True,
-              )
-              releases = json.loads(out)
-              if len(releases) > 6:
-                  # Giữ lại 6 bản phát hành mới nhất (2 bản cho mỗi dòng chip), xóa các bản còn lại
-                  for old_rel in releases[6:]:
-                      tag = old_rel.get("tagName")
-                      print(f"🗑️ [PRE-BUILD CLEAN RELEASE] {tag}")
-                      subprocess.run(["gh", "release", "delete", tag, "--repo", repo, "-y", "--cleanup-tag"], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
-          except Exception as e:
-              print(f"Release clean warning: {e}")
 
           print(">> [PRE-BUILD CLEAN] Dọn dẹp an toàn hoàn tất.")
           PYEOF
@@ -481,12 +464,17 @@ jobs:
           BUILD_RESULT: ${{ needs.build.result }}
           REPO: ${{ github.repository }}
           RUN_ID: ${{ github.run_id }}
+          TG_BOT_TOKEN: ${{ secrets.TG_BOT_TOKEN }}
+          TG_CHAT_ID: ${{ secrets.TG_CHAT_ID }}
         run: |
           python3 - << 'PYEOF'
           import os, json, urllib.request
 
-          tg_token = "8202975990:AAGiqgBlXeYv-NJKmFf2i2cQLChNE2dNdEk"
-          tg_chat_id = "832873894"
+          tg_token = os.environ.get("TG_BOT_TOKEN", "").strip()
+          tg_chat_id = os.environ.get("TG_CHAT_ID", "").strip()
+          if not tg_token or not tg_chat_id:
+              print("Telegram notification skipped: TG_BOT_TOKEN or TG_CHAT_ID secret is not configured.")
+              raise SystemExit(0)
           result = os.environ.get("BUILD_RESULT", "unknown")
           run_id = os.environ.get("RUN_ID", "")
           repo = os.environ.get("REPO", "")

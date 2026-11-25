@@ -76,8 +76,14 @@ jobs:
                 "target/linux/qualcommax/image/ipq807x.mk"
                 "package/firmware/ipq-wifi/Makefile"
                 ".github/workflows/build-25-unified-matrix.yml"
+                ".github/workflows/build-passwall-matrix.yml"
+                ".github/workflows/build-nextgen-612.yml"
                 ".github/workflows/Auto-Clean.yml"
                 ".github/workflows/sync-immortalwrt.yml"
+                "files/etc/uci-defaults/99-performance-defaults"
+                "files/etc/init.d/network_optimizer"
+                "files/etc/sysctl.d/99-performance.conf"
+                "files/etc/rc.local"
               )
               for pf in "${PROTECTED_FILES[@]}"; do
                 git checkout --ours "$pf" 2>/dev/null || true
@@ -91,8 +97,8 @@ jobs:
             echo ">> Đã đẩy cập nhật thành công lên master!"
           fi
 
-      - name: Trigger Unified Matrix Build (When New Updates Exist on master)
-        if: (steps.sync_check.outputs.has_updates == 'true' || inputs.force_build == true) && !cancelled()
+      - name: Trigger Unified Matrix Build (When Requested Manually)
+        if: inputs.force_build == true && !cancelled()
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
@@ -155,8 +161,14 @@ jobs:
                 "target/linux/qualcommax/image/ipq807x.mk"
                 "package/firmware/ipq-wifi/Makefile"
                 ".github/workflows/build-25-unified-matrix.yml"
+                ".github/workflows/build-passwall-matrix.yml"
+                ".github/workflows/build-nextgen-612.yml"
                 ".github/workflows/Auto-Clean.yml"
                 ".github/workflows/sync-immortalwrt.yml"
+                "files/etc/uci-defaults/99-performance-defaults"
+                "files/etc/init.d/network_optimizer"
+                "files/etc/sysctl.d/99-performance.conf"
+                "files/etc/rc.local"
               )
               for pf in "${PROTECTED_FILES[@]}"; do
                 git checkout --ours "$pf" 2>/dev/null || true
@@ -201,7 +213,32 @@ jobs:
               echo ">> Hợp nhất không xung đột!"
             else
               echo ">> Bảo lưu 100% cấu hình & thiết bị Doanduy..."
-              git checkout --ours feeds.conf.default *.config 2>/dev/null || true
+              PROTECTED_FILES=(
+                "mediatek_filogic_all.config"
+                "qualcomm_ipq60xx_all.config"
+                "qualcomm_ipq807x_all.config"
+                "feeds.conf.default"
+                "scripts/ci-prepare.sh"
+                "scripts/hermes_lab_auto_runner.js"
+                "scripts/qmodem_manager.sh"
+                "package/base-files/files/etc/duydoan_wwan_matrix.json"
+                "package/base-files/files/etc/init.d/all.enc"
+                "target/linux/mediatek/image/filogic.mk"
+                "target/linux/mediatek/dts/mt7981b-wirelesstag-zx7981pd.dts"
+                "target/linux/mediatek/dts/mt7981b-viettel-nr3053.dts"
+                "target/linux/mediatek/dts/mt7981b-sdmc-mt3053.dts"
+                "target/linux/qualcommax/image/ipq60xx.mk"
+                "target/linux/qualcommax/image/ipq807x.mk"
+                "package/firmware/ipq-wifi/Makefile"
+                ".github/workflows/build-25-unified-matrix.yml"
+                ".github/workflows/build-passwall-matrix.yml"
+                ".github/workflows/Auto-Clean.yml"
+                ".github/workflows/sync-immortalwrt.yml"
+              )
+              for pf in "${PROTECTED_FILES[@]}"; do
+                git checkout --ours "$pf" 2>/dev/null || true
+              done
+              git rm -f --cached package/base-files/files/etc/init.d/all 2>/dev/null || true
               git add -A
               git commit -m "sync: resolve merge conflicts preserving Doanduy configs" || true
             fi
@@ -210,7 +247,7 @@ jobs:
           fi
 
   sync_master_passwall:
-    name: Sync master-passwall with upstream immortalwrt:master
+    name: Sync master-passwall with upstream immortalwrt:openwrt-25.12
     runs-on: ubuntu-latest
     steps:
       - name: Checkout Source Branch master-passwall
@@ -225,24 +262,54 @@ jobs:
           git config user.email "doanduy09@gmail.com"
           git checkout -B master-passwall origin/master-passwall
 
-      - name: Check and Sync Upstream ImmortalWrt Master
+      - name: Check and Sync Upstream ImmortalWrt 25.12
         id: sync_check
         run: |
           git remote add upstream https://github.com/immortalwrt/immortalwrt.git || git remote set-url upstream https://github.com/immortalwrt/immortalwrt.git
-          git fetch upstream master --depth=100
+          git fetch upstream openwrt-25.12 --depth=100
 
-          UPSTREAM_SHA=$(git rev-parse upstream/master)
-          if git merge-base --is-ancestor upstream/master HEAD; then
+          UPSTREAM_SHA=$(git rev-parse upstream/openwrt-25.12)
+          if git merge-base --is-ancestor upstream/openwrt-25.12 HEAD; then
             echo ">> [ALREADY UP-TO-DATE] Nhánh master-passwall đã đồng bộ hoàn toàn."
           else
-            echo ">> [NEW UPDATES DETECTED] Đang hợp nhất upstream/master..."
-            if git merge upstream/master -m "sync: auto-merge upstream immortalwrt:master ($UPSTREAM_SHA)"; then
+            echo ">> [NEW UPDATES DETECTED] Đang hợp nhất upstream/openwrt-25.12..."
+            if git merge upstream/openwrt-25.12 -m "sync: auto-merge upstream immortalwrt:openwrt-25.12 ($UPSTREAM_SHA)"; then
               echo ">> Hợp nhất không xung đột!"
             else
-              echo ">> Bảo lưu 100% cấu hình & thiết bị Doanduy..."
-              git checkout --ours feeds.conf.default *.config 2>/dev/null || true
+              echo ">> Phát hiện xung đột — bảo lưu 100% cấu hình PassWall & thiết bị Doanduy..."
+              PROTECTED_FILES=(
+                "mediatek_filogic_all.config"
+                "qualcomm_ipq60xx_all.config"
+                "qualcomm_ipq807x_all.config"
+                "feeds.conf.default"
+                "scripts/ci-prepare.sh"
+                "scripts/hermes_lab_auto_runner.js"
+                "scripts/qmodem_manager.sh"
+                "package/base-files/files/etc/duydoan_wwan_matrix.json"
+                "package/base-files/files/etc/init.d/all.enc"
+                "target/linux/mediatek/image/filogic.mk"
+                "target/linux/mediatek/dts/mt7981b-wirelesstag-zx7981pd.dts"
+                "target/linux/mediatek/dts/mt7981b-viettel-nr3053.dts"
+                "target/linux/mediatek/dts/mt7981b-sdmc-mt3053.dts"
+                "target/linux/qualcommax/image/ipq60xx.mk"
+                "target/linux/qualcommax/image/ipq807x.mk"
+                "package/firmware/ipq-wifi/Makefile"
+                ".github/workflows/build-25-unified-matrix.yml"
+                ".github/workflows/build-passwall-matrix.yml"
+                ".github/workflows/build-nextgen-612.yml"
+                ".github/workflows/Auto-Clean.yml"
+                ".github/workflows/sync-immortalwrt.yml"
+                "files/etc/uci-defaults/99-performance-defaults"
+                "files/etc/init.d/network_optimizer"
+                "files/etc/sysctl.d/99-performance.conf"
+                "files/etc/rc.local"
+              )
+              for pf in "${PROTECTED_FILES[@]}"; do
+                git checkout --ours "$pf" 2>/dev/null || true
+              done
+              git rm -f --cached package/base-files/files/etc/init.d/all 2>/dev/null || true
               git add -A
-              git commit -m "sync: resolve merge conflicts preserving Doanduy configs" || true
+              git commit -m "sync: resolve merge conflicts preserving Doanduy hardware & PassWall configs" || true
             fi
             git push origin master-passwall
             echo ">> Đã đẩy cập nhật lên master-passwall!"

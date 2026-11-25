@@ -5,8 +5,8 @@ name: Auto-Clean & Release Purge
 
 on:
   schedule:
-    # 02:30 AM Asia/Ho_Chi_Minh daily (19:30 UTC) - Chạy trước lịch build sáng 03:15 AM
-    - cron: '30 19 * * *'
+    # 00:37 AM Asia/Ho_Chi_Minh daily (17:37 UTC) - Dọn sạch 1.5h trước đợt build 02:07 AM
+    - cron: '37 17 * * *'
   workflow_dispatch:
     inputs:
       delete_all_old_releases:
@@ -123,9 +123,6 @@ jobs:
           
           # Nếu chọn xóa sạch (purge_all=True) hoặc giữ lại tối đa 1 bản mới nhất cho mỗi nền tảng
           prefixes = [
-              "Duydoan-25.12-MediaTek-Filogic-All-",
-              "Duydoan-25.12-Qualcomm-IPQ60xx-All-",
-              "Duydoan-25.12-Qualcomm-IPQ807x-All-",
               "Duydoan-Master-MediaTek-Filogic-All-",
               "Duydoan-Master-Qualcomm-IPQ60xx-All-",
               "Duydoan-Master-Qualcomm-IPQ807x-All-",
@@ -138,7 +135,14 @@ jobs:
               "Duydoan-24.10-Passwall-MediaTek-Filogic-All-",
               "Duydoan-24.10-Passwall-Qualcomm-IPQ60xx-All-",
               "Duydoan-24.10-Passwall-Qualcomm-IPQ807x-All-",
+              "Duydoan-6.12-FullNSS-IPQ60xx-",
+              "Duydoan-6.12-FullNSS-IPQ60xx-Passwall-",
+              "Duydoan-6.12-FullNSS-IPQ807x-",
+              "Duydoan-6.12-FullNSS-IPQ807x-Passwall-",
+              "Duydoan-6.12-Filogic-WED-",
+              "Duydoan-6.12-Filogic-WED-Passwall-",
           ]
+          sorted_prefixes = sorted(prefixes, key=len, reverse=True)
 
           to_delete = []
           kept = set()
@@ -148,7 +152,7 @@ jobs:
               if purge_all:
                   to_delete.append(tag)
               else:
-                  matched = next((p for p in prefixes if tag.startswith(p)), None)
+                  matched = next((p for p in sorted_prefixes if tag.startswith(p)), None)
                   if matched:
                       if matched not in kept:
                           kept.add(matched)
@@ -165,3 +169,32 @@ jobs:
 
           print(f"Hoàn tất dọn dẹp Releases! Đã xóa: {len(to_delete)} bản.")
           PYEOF
+
+      - name: Purge Legacy ccache-25-* & Superseded wrt612-* Caches
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GH_REPO: ${{ github.repository }}
+        run: |
+          set -euo pipefail
+          while IFS=$'\t' read -r cid ckey; do
+            [ -n "$cid" ] || continue
+            echo "Delete legacy cache: $ckey (id=$cid)"
+            gh cache delete "$cid" --repo "$GH_REPO" || true
+          done < <(gh cache list --repo "$GH_REPO" --key "ccache-25-" --limit 50 --json id,key --jq '.[] | [.id, .key] | @tsv')
+
+          for prefix in \
+            wrt612-qualcomm-nss-25.12-qualcomm-ipq60xx- \
+            wrt612-qualcomm-nss-25.12-qualcomm-ipq807x- \
+            wrt612-filogic-wed-25.12-mediatek-filogic-; do
+            kept=0
+            while IFS=$'\t' read -r cid ckey; do
+              [ -n "$cid" ] || continue
+              if [ "$kept" -eq 0 ]; then
+                echo "Keep latest wrt612 cache: $ckey (id=$cid)"
+                kept=1
+                continue
+              fi
+              echo "Delete superseded wrt612 cache: $ckey (id=$cid)"
+              gh cache delete "$cid" --repo "$GH_REPO" || true
+            done < <(gh cache list --repo "$GH_REPO" --key "$prefix" --sort created_at --order desc --limit 50 --json id,key --jq '.[] | [.id, .key] | @tsv')
+          done
