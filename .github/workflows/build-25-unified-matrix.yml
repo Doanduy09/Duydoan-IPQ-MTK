@@ -180,7 +180,7 @@ jobs:
               else:
                   prefix = "Duydoan-Master"
 
-          badge = " [Passwall]" if "passwall" in ref_name.lower() else ""
+          badge = " [Có PassWall]" if "passwall" in ref_name.lower() else " [Không PassWall]"
           all_targets = [
               {
                   "id": "qualcomm-ipq60xx",
@@ -188,7 +188,7 @@ jobs:
                   "config": "qualcomm_ipq60xx_all.config",
                   "target_dir": "bin/targets/qualcommax/ipq60xx",
                   "tag_prefix": f"{prefix}-Qualcomm-IPQ60xx-All",
-                  "release_title": f"{prefix} Qualcomm IPQ60xx Unified All-Devices Release",
+                  "release_title": f"{prefix} Qualcomm IPQ60xx{badge} Unified All-Devices Release",
                   "copy_itb_to_bin": False
               },
               {
@@ -197,7 +197,7 @@ jobs:
                   "config": "qualcomm_ipq807x_all.config",
                   "target_dir": "bin/targets/qualcommax/ipq807x",
                   "tag_prefix": f"{prefix}-Qualcomm-IPQ807x-All",
-                  "release_title": f"{prefix} Qualcomm IPQ807x Unified All-Devices Release",
+                  "release_title": f"{prefix} Qualcomm IPQ807x{badge} Unified All-Devices Release",
                   "copy_itb_to_bin": False
               },
               {
@@ -206,7 +206,7 @@ jobs:
                   "config": "mediatek_filogic_all.config",
                   "target_dir": "bin/targets/mediatek/filogic",
                   "tag_prefix": f"{prefix}-MediaTek-Filogic-All",
-                  "release_title": f"{prefix} MediaTek Filogic Unified All-Devices Release",
+                  "release_title": f"{prefix} MediaTek Filogic{badge} Unified All-Devices Release",
                   "copy_itb_to_bin": True
               }
           ]
@@ -377,10 +377,12 @@ jobs:
         if: steps.organize.outputs.status == 'success' && (inputs.release != false)
         run: |
           python3 - << 'PYEOF'
-          import json, os
+          import glob, json, os, re
 
           fw_dir = os.environ["FIRMWARE"]
           title = os.environ["MATRIX_TITLE"]
+          rel_title = os.environ.get("MATRIX_RELEASE_TITLE", title)
+          ref_name = os.environ.get("REF_NAME", "master")
           build_date = os.environ["BUILD_DATE"]
           profiles_path = os.path.join(fw_dir, "profiles.json")
           profiles = []
@@ -389,10 +391,48 @@ jobs:
                   data = json.load(f)
               profiles = sorted(data.get("profiles", {}).keys())
 
+          mf_pkgs = set()
+          for mf in glob.glob(os.path.join(fw_dir, "*.manifest")):
+              with open(mf, "r", encoding="utf-8", errors="replace") as f:
+                  for ln in f:
+                      pkg = ln.split(" - ", 1)[0].strip()
+                      if pkg:
+                          mf_pkgs.add(pkg)
+
+          core_pkgs = ("luci-app-passwall", "luci-app-passwall2", "xray-core", "xray-plugin", "sing-box", "chinadns-ng", "haproxy")
+          has_pw = ("luci-app-passwall" in mf_pkgs) or ("luci-app-passwall2" in mf_pkgs)
+          found_cores = [p for p in core_pkgs if p in mf_pkgs]
+          if has_pw:
+              actual_badge = "[Có PassWall]"
+              pw_line = f"✅ **CÓ tích hợp PassWall** (`{', '.join(found_cores)}`)"
+          else:
+              actual_badge = "[Không PassWall]"
+              pw_line = "❌ **KHÔNG tích hợp PassWall** (Bản Thuần / No-PassWall)"
+
+          clean_rel = re.sub(r"\s*\[(Có PassWall|Không PassWall|Passwall)\]", "", rel_title).strip()
+          if "Unified All-Devices Release" in clean_rel:
+              final_rel_title = clean_rel.replace("Unified All-Devices Release", f"{actual_badge} Unified All-Devices Release", 1)
+          else:
+              final_rel_title = f"{clean_rel} {actual_badge}"
+
+          gh_env = os.environ.get("GITHUB_ENV")
+          if gh_env:
+              with open(gh_env, "a", encoding="utf-8") as ef:
+                  ef.write(f"FINAL_RELEASE_TITLE={final_rel_title}\n")
+
+          if "24" in ref_name:
+              ver_short = "Duydoan-24.10"
+              ver_desc = "ImmortalWrt 24.10"
+          else:
+              ver_short = "Duydoan-Master (25.12)"
+              ver_desc = "ImmortalWrt Master (25.12 Snapshot / Kernel 6.12)"
+
+          clean_title = re.sub(r"\s*\[(Có PassWall|Không PassWall|Passwall)\]", "", title).strip()
           lines = [
-              f"### 🚀 {title} — Duydoan-25.12 Unified Release ({build_date})",
+              f"### 🚀 {clean_title} {actual_badge} — {ver_short} Unified Release ({build_date})",
               "",
-              f"* **Base Version**: ImmortalWrt 25.12 (Kernel 6.12 Bleeding Edge)",
+              f"* **Base Version**: {ver_desc}",
+              f"* **PassWall**: {pw_line}",
               f"* **Compilation Mode**: Unified Multi-Target Matrix Build (**{len(profiles)} thiết bị được biên dịch & xác thực thực tế**)",
               f"* **Default Theme**: LuCI Argon (Tiếng Việt + Argon Config đầy đủ)",
               f"* **5G/4G Smart Engine**: WWAN Smart Dialer + Bác Sĩ 5G Watchdog + Zero-Delay Interface Guard + Chống thu hồi IP 3 tầng + TTL/HopLimit 65",
@@ -404,10 +444,12 @@ jobs:
 
           with open("release_notes.md", "w", encoding="utf-8") as out:
               out.write("\n".join(lines) + "\n")
-          print(f"Generated release_notes.md with {len(profiles)} verified profiles.")
+          print(f"Generated release_notes.md ({actual_badge}) with {len(profiles)} verified profiles.")
           PYEOF
         env:
           MATRIX_TITLE: ${{ matrix.title }}
+          MATRIX_RELEASE_TITLE: ${{ matrix.release_title }}
+          REF_NAME: ${{ github.ref_name }}
 
       - name: Upload Firmware to Actions Artifacts
         uses: actions/upload-artifact@v4
@@ -424,7 +466,7 @@ jobs:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         with:
           tag_name: ${{ matrix.tag_prefix }}-${{ env.BUILD_DATE }}
-          name: ${{ matrix.release_title }} ${{ env.BUILD_DATE }}
+          name: ${{ env.FINAL_RELEASE_TITLE }} ${{ env.BUILD_DATE }}
           body_path: release_notes.md
           files: ${{ env.FIRMWARE }}/*
 
