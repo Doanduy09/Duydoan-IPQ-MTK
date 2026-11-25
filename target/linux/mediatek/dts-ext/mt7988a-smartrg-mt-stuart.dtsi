@@ -14,7 +14,7 @@
 
 / {
 	aliases {
-		serial0 = &serial0;
+		serial0 = &uart0;
 		label-mac-device = &gmac1;
 		led-boot = &led_sys_green;
 		led-failsafe = &led_sys_blue;
@@ -23,7 +23,7 @@
 	};
 
 	chosen {
-		stdout-path = &serial0;
+		stdout-path = &uart0;
 		bootargs = "console=ttyS0,115200n1 pci=pcie_bus_perf root=PARTLABEL=rootfs";
 	};
 
@@ -790,11 +790,11 @@
 	status = "okay";
 };
 
-&serial0 {
+&uart0 {
 	status = "okay";
 };
 
-&serial1 {
+&uart1 {
 	pinctrl-names = "default";
 	pinctrl-0 = <&uart1_pins>;
 	status = "okay";
@@ -802,7 +802,7 @@
 	/* Airoha AG3352 GPS */
 };
 
-&serial2 {
+&uart2 {
 	pinctrl-names = "default";
 	pinctrl-0 = <&uart2_pins>;
 	status = "okay";
@@ -814,6 +814,6 @@
 	status = "okay";
 };
 
-&xsphy {
+&xphy {
 	status = "okay";
 };

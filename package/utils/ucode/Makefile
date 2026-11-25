@@ -184,6 +184,15 @@ $(eval $(call UcodeModule, \
 	digest, DIGEST_SUPPORT, , \
 	The digest module allows ucode scripts to use libmd digests.))
 
+define ucode_fix_c23_const_host
+	[ -f "$(HOST_BUILD_DIR)/CMakeLists.txt" ] && $(SED) 's/-Wno-error=unused-variable/-Wno-error=unused-variable -Wno-error=discarded-qualifiers/g' "$(HOST_BUILD_DIR)/CMakeLists.txt" || true
+endef
+Hooks/HostPrepare/Post += ucode_fix_c23_const_host
+
+define ucode_fix_c23_const_target
+	[ -f "$(PKG_BUILD_DIR)/CMakeLists.txt" ] && $(SED) 's/-Wno-error=unused-variable/-Wno-error=unused-variable -Wno-error=discarded-qualifiers/g' "$(PKG_BUILD_DIR)/CMakeLists.txt" || true
+endef
+Hooks/Prepare/Post += ucode_fix_c23_const_target
 $(eval $(call BuildPackage,libucode))
 $(eval $(call BuildPackage,ucode))
 

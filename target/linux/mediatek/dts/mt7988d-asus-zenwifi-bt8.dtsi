@@ -78,7 +78,7 @@
 
 / {
 	aliases {
-		serial0 = &serial0;
+		serial0 = &uart0;
 		label-mac-device = &gmac0;
 		led-boot = &led_status_green;
 		led-failsafe = &led_status_red;
@@ -374,7 +374,7 @@
 	status = "okay";
 };
 
-&serial0 {
+&uart0 {
 	status = "okay";
 };
 
@@ -382,7 +382,7 @@
 	status = "okay";
 };
 
-&xsphy {
+&xphy {
 	status = "okay";
 };
 

@@ -11,7 +11,7 @@
 	model = "MediaTek / Arcadyan - Mozart";
 
 	aliases {
-		serial0 = &serial0;
+		serial0 = &uart0;
 		led-boot = &led_status_blue;
 		led-failsafe = &led_status_red;
 		led-running = &led_status_green;
@@ -163,7 +163,7 @@
 	status = "okay";
 };
 
-&serial1 {
+&uart1 {
 	status = "okay";
 };
 

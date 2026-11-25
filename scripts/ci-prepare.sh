@@ -27,6 +27,12 @@ rm -f \
   feeds/qmodem/luci/luci-app-qmodem-next/htdocs/luci-static/resources/view/status/include/11_modem.js \
   feeds/all/qmodem/files/usr/libexec/rpcd/modem_ctrl \
   feeds/all/luci-app-qmodem/htdocs/luci-static/resources/view/status/include/11_modem.js 2>/dev/null || true
+
+# Fix haproxy 3.2.21 USE_QUIC=1 build failure against OpenSSL 3.0.22
+if [ -f feeds/packages/net/haproxy/Makefile ]; then
+  sed -i '/ADDON+=USE_QUIC=1/d' feeds/packages/net/haproxy/Makefile
+fi
+
 ./scripts/feeds install -a
 
 echo "=========================================================="
@@ -87,3 +93,6 @@ if [ -f "$TARGET_FILE" ]; then
   sh -n "$TARGET_FILE"
   echo "   [PASS] Syntax check passed for $TARGET_FILE"
 fi
+for d in files/etc/init.d files/etc/uci-defaults files/usr/bin files/etc/hotplug.d; do
+  [ -d "$d" ] && find "$d" -type f -exec chmod +x {} + 2>/dev/null || true
+done

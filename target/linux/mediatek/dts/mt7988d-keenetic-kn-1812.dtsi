@@ -10,7 +10,7 @@
 
 / {
 	aliases {
-		serial0 = &serial0;
+		serial0 = &uart0;
 		label-mac-device = &gmac1;
 		led-boot = &power_led;
 		led-failsafe = &power_led;
@@ -19,7 +19,7 @@
 	};
 
 	chosen {
-		stdout-path = &serial0;
+		stdout-path = &uart0;
 		bootargs = "console=ttyS0,115200n1 pci=pcie_bus_perf";
 	};
 
@@ -149,7 +149,7 @@
 };
 
 /* configure uart */
-&serial0 {
+&uart0 {
 	status = "okay";
 };
 
@@ -609,6 +609,6 @@
 	status = "okay";
 };
 
-&xsphy {
+&xphy {
 	status = "okay";
 };

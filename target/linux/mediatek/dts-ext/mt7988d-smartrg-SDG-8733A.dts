@@ -156,10 +156,10 @@
 	status = "disabled";
 };
 
-&serial1 {
+&uart1 {
 	status = "disabled";
 };
 
-&xsphy {
+&xphy {
 	status = "disabled";
 };
