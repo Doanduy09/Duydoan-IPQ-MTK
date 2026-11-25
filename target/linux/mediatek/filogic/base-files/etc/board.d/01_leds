@@ -6,7 +6,8 @@ board=$(board_name)
 board_config_update
 
 case $board in
-	wirelesstag,zx7981pd)
+	wirelesstag,zx7981pd|\
+	wirelesstag,zx7981pd-ubootmod)
 		ucidef_set_led_default "power" "POWER" "wt:power:blue" "1"
 		ucidef_set_led_netdev "wifi" "WIFI" "wt:wifi:blue" "phy0-ap0" "link tx rx"
 		ucidef_set_led_netdev "4g" "4G" "wt:4g:blue" "eth2" "link tx rx"
