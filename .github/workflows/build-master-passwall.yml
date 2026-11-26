@@ -1,7 +1,7 @@
-# [VERIFIED-GOLDEN: workflow-master-passwall-1to1 | 2026-11-26 | DO NOT MODIFY UNLESS TARGETED]
-name: "[master-passwall] Build IPQ60xx + IPQ807x + Filogic [Có PassWall]"
+# [VERIFIED-GOLDEN: workflow-master-passwall-v2 | 2026-11-26 | DO NOT MODIFY UNLESS TARGETED]
+name: "[master-passwall] Build IPQ60xx + IPQ807x + Filogic (SNAPSHOT Kernel 6.18) [Có PassWall]"
 
-run-name: "[master-passwall] Build ${{ inputs.target || 'all (IPQ60xx + IPQ807x + Filogic)' }} [Có PassWall]"
+run-name: "[master-passwall] Build ${{ inputs.target || 'all (IPQ60xx + IPQ807x + Filogic)' }} (SNAPSHOT Kernel 6.18) [Có PassWall]"
 
 on:
   push:
@@ -16,12 +16,12 @@ on:
       - '.github/workflows/build-*.yml'
       - '!.github/workflows/build-master-passwall.yml'
   schedule:
-    # 04:00 AM Thứ 2 & Thứ 5 ICT (21:00 UTC Chủ Nhật & Thứ 4) — Bản Master Có PassWall
+    # 04:00 AM Thứ 2 & Thứ 5 ICT — ImmortalWrt Master SNAPSHOT (Kernel 6.18) Có PassWall
     - cron: '0 21 * * 1,4'
   workflow_dispatch:
     inputs:
       target:
-        description: 'Chọn dòng chip cần build trên nhánh master-passwall'
+        description: 'Chọn dòng chip cần build trên nhánh master-passwall (SNAPSHOT Kernel 6.18)'
         required: true
         default: 'all'
         type: choice
@@ -70,34 +70,34 @@ jobs:
               {
                   "ref": branch_ref,
                   "id": "qualcomm-ipq60xx",
-                  "title": f"Qualcomm IPQ60xx (NSS 12.5){badge}",
-                  "job_title": f"[master-passwall] Qualcomm IPQ60xx (NSS 12.5){badge}",
+                  "title": f"Qualcomm IPQ60xx (SNAPSHOT Kernel 6.18){badge}",
+                  "job_title": f"[master-passwall] Qualcomm IPQ60xx (SNAPSHOT Kernel 6.18){badge}",
                   "config": "qualcomm_ipq60xx_all.config",
                   "target_dir": "bin/targets/qualcommax/ipq60xx",
                   "tag_prefix": f"{prefix}-Qualcomm-IPQ60xx-All",
-                  "release_title": f"{prefix} Qualcomm IPQ60xx{badge} Unified All-Devices Release",
+                  "release_title": f"[master-passwall] Duydoan-SNAPSHOT-K6.18-Passwall Qualcomm IPQ60xx{badge} Unified All-Devices Release",
                   "copy_itb_to_bin": False
               },
               {
                   "ref": branch_ref,
                   "id": "qualcomm-ipq807x",
-                  "title": f"Qualcomm IPQ807x (NSS 12.5){badge}",
-                  "job_title": f"[master-passwall] Qualcomm IPQ807x (NSS 12.5){badge}",
+                  "title": f"Qualcomm IPQ807x (SNAPSHOT Kernel 6.18){badge}",
+                  "job_title": f"[master-passwall] Qualcomm IPQ807x (SNAPSHOT Kernel 6.18){badge}",
                   "config": "qualcomm_ipq807x_all.config",
                   "target_dir": "bin/targets/qualcommax/ipq807x",
                   "tag_prefix": f"{prefix}-Qualcomm-IPQ807x-All",
-                  "release_title": f"{prefix} Qualcomm IPQ807x{badge} Unified All-Devices Release",
+                  "release_title": f"[master-passwall] Duydoan-SNAPSHOT-K6.18-Passwall Qualcomm IPQ807x{badge} Unified All-Devices Release",
                   "copy_itb_to_bin": False
               },
               {
                   "ref": branch_ref,
                   "id": "mediatek-filogic",
-                  "title": f"MediaTek Filogic (MT7981/7986/7988 HNAT){badge}",
-                  "job_title": f"[master-passwall] MediaTek Filogic (MT7981/7986/7988 HNAT){badge}",
+                  "title": f"MediaTek Filogic (SNAPSHOT Kernel 6.18){badge}",
+                  "job_title": f"[master-passwall] MediaTek Filogic (SNAPSHOT Kernel 6.18){badge}",
                   "config": "mediatek_filogic_all.config",
                   "target_dir": "bin/targets/mediatek/filogic",
                   "tag_prefix": f"{prefix}-MediaTek-Filogic-All",
-                  "release_title": f"{prefix} MediaTek Filogic{badge} Unified All-Devices Release",
+                  "release_title": f"[master-passwall] Duydoan-SNAPSHOT-K6.18-Passwall MediaTek Filogic{badge} Unified All-Devices Release",
                   "copy_itb_to_bin": True
               }
           ]
@@ -172,7 +172,6 @@ jobs:
               with open(mf, "w", encoding="utf-8") as f:
                   json.dump(data, f, indent="\t")
                   f.write("\n")
-              print("Stripped slow CN/Aliyun/Tencent mirrors safely from projectsmirrors.json")
           PYEOF
           df -h
 
@@ -196,11 +195,8 @@ jobs:
           done
           mkdir -p tmp
           echo "1" > tmp/.build
-          echo ">> Restored build cache: ${{ steps.cache-restore.outputs.cache-matched-key }}"
 
-      - name: Prepare Feeds, Kernel Patches & Decrypt Assets
-        env:
-          ALL_SECRET_KEY: ${{ secrets.ALL_SECRET_KEY }}
+      - name: Prepare Feeds & Driver Compatibility Patches
         run: |
           chmod +x scripts/ci-prepare.sh .github/scripts/*.sh
           ./scripts/ci-prepare.sh
@@ -211,52 +207,32 @@ jobs:
           sed -i '/wwand-datapath-rmnet_nss/d' .config
           echo "CONFIG_CCACHE=y" >> .config
 
-          if [ "${{ matrix.id }}" = "qualcomm-ipq60xx" ] || [ "${{ matrix.id }}" = "qualcomm-ipq807x" ]; then
-            echo ">> [NSS 12.5 ACCELERATION] Kích hoạt Qualcomm Full-NSS & ECM Engine cho ${{ matrix.id }}..."
-            sed -i '/luci-app-turboacc/d; /TURBOACC_INCLUDE_/d' .config
-            cat << 'EOF' >> .config
-          CONFIG_FEED_nss_packages=y
-          CONFIG_PACKAGE_kmod-qca-nss-dp=y
-          CONFIG_PACKAGE_kmod-qca-nss-drv=y
-          CONFIG_PACKAGE_kmod-qca-nss-ecm=y
-          CONFIG_PACKAGE_kmod-qca-nss-drv-pppoe=y
-          CONFIG_PACKAGE_kmod-qca-nss-drv-bridge-mgr=y
-          CONFIG_PACKAGE_kmod-qca-nss-drv-vlan-mgr=y
-          CONFIG_PACKAGE_kmod-qca-nss-drv-qdisc=y
-          CONFIG_PACKAGE_kmod-nss-ifb=y
-          CONFIG_PACKAGE_nss-utils=y
-          CONFIG_PACKAGE_nss-firmware=y
-          # CONFIG_PACKAGE_luci-app-turboacc is not set
-          CONFIG_PACKAGE_kmod-tcp-bbr=y
-          EOF
-            if [ "${{ matrix.id }}" = "qualcomm-ipq807x" ]; then
-              cat << 'EOF' >> .config
-          CONFIG_PACKAGE_nss-firmware-ipq807x=y
-          CONFIG_PACKAGE_kmod-pcie_mhi_nss=y
-          CONFIG_PACKAGE_kmod-qmi_wwan_q_nss=y
-          CONFIG_PACKAGE_qmodem_INCLUDE_nss-qmi-wwan=y
-          CONFIG_PACKAGE_qmodem_NSS_MHI_PCIe_DRIVER=y
-          EOF
-            else
-              sed -i '/pcie_mhi_nss/d; /qmi_wwan_q_nss/d; /nss-qmi-wwan/d; /NSS_MHI_PCIe_DRIVER/d' .config
-              cat << 'EOF' >> .config
-          CONFIG_PACKAGE_nss-firmware-ipq60xx=y
-          EOF
-            fi
-          fi
-
-          if [ "${{ matrix.id }}" = "mediatek-filogic" ]; then
-            echo ">> [PPE/WED ACCELERATION] Kích hoạt MediaTek MT798x PPE, WED & bridger..."
-            sed -i '/kmod-mediatek_hnat/d; /luci-app-turboacc-mtk/d; /MTK_SCS_FW_OFFLOAD/d; /MTK_WHNAT_SUPPORT/d; /TURBOACC_INCLUDE_/d' .config
-            if grep -q 'KERNEL_PATCHVER:=6.6' target/linux/mediatek/Makefile 2>/dev/null; then
-              sed -i '/_DEVICE_.*\(glinet_gl-mt3600be\|bananapi_bpi-r4-lite\|hiveton_h5000m\|mediatek_mt7987a-rfb\|routerich_be7200\)/d; /mt7987-2p5g-phy-firmware/d; /trusted-firmware-a-mt7987/d' .config
-            fi
-            cat << 'EOF' >> .config
-          CONFIG_PACKAGE_bridger=y
+          # Nhánh master-passwall chạy ImmortalWrt Master SNAPSHOT (Kernel 6.18, APK) -> Mainline Flow Offload + Mainline 5G MHI/WWAN/T7xx
+          sed -i '/kmod-qca-nss/d; /nss-firmware/d; /nss-utils/d; /pcie_mhi/d; /qmi_wwan_q/d; /fibocom_QMI_WWAN/d; /simcom_QMI_WWAN/d; /quectel_QMI_WWAN/d; /luci-app-turboacc/d' .config
+          cat << 'EOF' >> .config
+          # CONFIG_PACKAGE_kmod-qca-nss-drv is not set
+          # CONFIG_PACKAGE_kmod-qca-nss-ecm is not set
+          # CONFIG_PACKAGE_kmod-pcie_mhi is not set
+          # CONFIG_PACKAGE_kmod-qmi_wwan_q is not set
+          # CONFIG_PACKAGE_kmod-fibocom_QMI_WWAN is not set
+          # CONFIG_PACKAGE_kmod-simcom_QMI_WWAN is not set
+          # CONFIG_PACKAGE_kmod-quectel_QMI_WWAN is not set
           CONFIG_PACKAGE_kmod-nft-offload=y
           CONFIG_PACKAGE_kmod-nf-flow=y
           CONFIG_PACKAGE_kmod-tcp-bbr=y
+          CONFIG_PACKAGE_kmod-usb-net-qmi-wwan=y
+          CONFIG_PACKAGE_kmod-usb-net-cdc-mbim=y
+          CONFIG_PACKAGE_kmod-usb-net-rndis=y
+          CONFIG_PACKAGE_kmod-usb-net-cdc-ether=y
+          CONFIG_PACKAGE_kmod-usb-serial-option=y
+          CONFIG_PACKAGE_kmod-usb-serial-wwan=y
+          CONFIG_PACKAGE_kmod-mhi-bus=y
+          CONFIG_PACKAGE_kmod-mhi-pci-generic=y
+          CONFIG_PACKAGE_kmod-mhi-net=y
+          CONFIG_PACKAGE_kmod-mtk-t7xx=y
           EOF
+          if [ "${{ matrix.id }}" = "mediatek-filogic" ]; then
+            echo "CONFIG_PACKAGE_bridger=y" >> .config
           fi
 
           echo ">> [PASSWALL AUTO-INJECT] Kích hoạt đầy đủ Passwall Suite cho nhánh master-passwall..."
@@ -288,8 +264,6 @@ jobs:
             echo "ERROR: CONFIG_USE_LLVM_BUILD=y still active — host LLVM BPF override failed!" >&2
             exit 1
           fi
-          grep -q '^CONFIG_BPF_TOOLCHAIN_HOST=y$' .config && echo ">> [OK] Host LLVM BPF toolchain active"
-          grep -q '^CONFIG_CCACHE=y$' .config && echo ">> [OK] CCACHE active"
           bash .github/scripts/prepare-rust.sh
           echo ">> [master-passwall] Active target devices count: $(grep -c '^CONFIG_TARGET_DEVICE_.*=y$' .config || echo 0)"
 
@@ -388,7 +362,7 @@ jobs:
               accel_parts.append(f"Qualcomm Full-NSS 12.5 (`{', '.join(nss_mods) if nss_mods else 'ECM'}`)")
           if "bridger" in mf_pkgs:
               accel_parts.append("MediaTek PPE + WED + `bridger`")
-          accel_line = " + ".join(accel_parts) if accel_parts else "Hardware Flow Offloading + BBR"
+          accel_line = " + ".join(accel_parts) if accel_parts else "Mainline NFTables Hardware/Software Flow Offload + BBR"
 
           clean_rel = re.sub(r"\s*\[(Có PassWall|Không PassWall|Passwall)\]", "", rel_title).strip()
           if "Unified All-Devices Release" in clean_rel:
@@ -401,14 +375,14 @@ jobs:
               with open(gh_env, "a", encoding="utf-8") as ef:
                   ef.write(f"FINAL_RELEASE_TITLE={final_rel_title}\n")
 
-          k_label = f"Kernel {kernel_ver}" if kernel_ver else "Kernel 6.6"
-          modem_line = "✅ `luci-app-doanduy-modem` v2.5.0+ (tích hợp sẵn trong ROM)" if has_modem else "⚠️ Chưa phát hiện trong manifest"
+          k_label = f"Kernel {kernel_ver}" if kernel_ver else "SNAPSHOT Kernel 6.18"
+          modem_line = "✅ `luci-app-doanduy-modem` v2.5.0+ (tích hợp sẵn trong ROM, không dùng file `all` cũ)" if has_modem else "⚠️ Chưa phát hiện trong manifest"
           clean_title = re.sub(r"\s*\[(Có PassWall|Không PassWall|Passwall)\]", "", title).strip()
           lines = [
-              f"### 🚀 [master-passwall] {clean_title} {actual_badge} — Duydoan-Master-Passwall Unified Release ({build_date})",
+              f"### 🚀 [master-passwall] {clean_title} {actual_badge} — Duydoan-SNAPSHOT-K6.18-Passwall ({build_date})",
               "",
               f"* **Source Branch**: `master-passwall`",
-              f"* **Base Version**: ImmortalWrt Master (Feeds 25.12) ({k_label})",
+              f"* **Base Version**: ImmortalWrt Master SNAPSHOT (APK) ({k_label})",
               f"* **PassWall**: {pw_line}",
               f"* **Modem 5G & SmartHome Suite**: {modem_line}",
               f"* **Hardware Acceleration**: {accel_line}",
@@ -422,7 +396,6 @@ jobs:
 
           with open("release_notes.md", "w", encoding="utf-8") as out:
               out.write("\n".join(lines) + "\n")
-          print(f"Generated release_notes.md ({actual_badge}) with {len(profiles)} verified profiles.")
           PYEOF
 
       - name: Upload Firmware to Actions Artifacts
@@ -463,12 +436,10 @@ jobs:
             while IFS=$'\t' read -r cid ckey; do
               [ -n "$cid" ] || continue
               if [ "$kept" -eq 0 ]; then
-                echo "Keep latest cache: $ckey (id=$cid)"
                 kept=1
                 continue
               fi
-              echo "Delete superseded cache: $ckey (id=$cid)"
-              gh cache delete "$cid" --repo "$GH_REPO" || echo "warn: delete failed for $cid"
+              gh cache delete "$cid" --repo "$GH_REPO" || true
             done < <(gh cache list --repo "$GH_REPO" --key "$prefix" --sort created_at --order desc --limit 50 --json id,key --jq '.[] | [.id, .key] | @tsv')
           done
 
@@ -492,19 +463,15 @@ jobs:
         run: |
           python3 - << 'PYEOF'
           import hashlib, hmac, json, os, time, urllib.request
-
           out_path = os.environ.get("GITHUB_OUTPUT", "")
           def set_out(k, v):
               if out_path:
                   with open(out_path, "a", encoding="utf-8") as f:
                       f.write(f"{k}={v}\n")
-
           url = os.environ.get("VM_WEBHOOK_URL", "").strip()
           if not url:
-              print("VM_WEBHOOK_URL secret not configured; falling back to direct Telegram.")
               set_out("delivered", "false")
               raise SystemExit(0)
-
           secret = os.environ.get("VM_WEBHOOK_SECRET", "").strip().encode("utf-8")
           repo = os.environ.get("REPO", "")
           run_id = os.environ.get("RUN_ID", "")
@@ -514,7 +481,7 @@ jobs:
                   "event": "build_completed",
                   "repo": repo,
                   "run_id": run_id,
-                  "branch": os.environ.get("BRANCH", "master-passwall"),
+                  "branch": "master-passwall",
                   "workflow": os.environ.get("WORKFLOW_NAME", ""),
                   "result": os.environ.get("BUILD_RESULT", "unknown"),
                   "run_url": f"https://github.com/{repo}/actions/runs/{run_id}",
@@ -528,15 +495,12 @@ jobs:
               try:
                   req = urllib.request.Request(url, data=body, headers=headers, method="POST")
                   with urllib.request.urlopen(req, timeout=15) as resp:
-                      print(f"Debian VM signal delivered (attempt {attempt}): HTTP {resp.status}")
                       if 200 <= resp.status < 300:
                           delivered = True
                           break
-              except Exception as e:
-                  print(f"Debian VM webhook attempt {attempt} warn: {e}")
+              except Exception:
                   if attempt < 3:
                       time.sleep(5)
-
           set_out("delivered", "true" if delivered else "false")
           PYEOF
 
@@ -551,7 +515,6 @@ jobs:
         run: |
           python3 - << 'PYEOF'
           import os, json, urllib.request
-
           tg_token = os.environ.get("TG_BOT_TOKEN", "").strip()
           tg_chat_id = os.environ.get("TG_CHAT_ID", "").strip()
           if not tg_token or not tg_chat_id:
@@ -560,10 +523,7 @@ jobs:
           run_id = os.environ.get("RUN_ID", "")
           repo = os.environ.get("REPO", "")
           emoji = "✅" if result == "success" else "⚠️"
-          msg = (
-              f"{emoji} <b>[master-passwall] BUILD {result.upper()} [Có PassWall]</b>\n"
-              f"📌 <b>Run ID</b>: <a href='https://github.com/{repo}/actions/runs/{run_id}'>{run_id}</a>"
-          )
+          msg = f"{emoji} <b>[master-passwall] BUILD {result.upper()} (SNAPSHOT Kernel 6.18) [Có PassWall]</b>\n📌 <a href='https://github.com/{repo}/actions/runs/{run_id}'>{run_id}</a>"
           try:
               req = urllib.request.Request(
                   f"https://api.telegram.org/bot{tg_token}/sendMessage",
@@ -571,7 +531,7 @@ jobs:
                   headers={"Content-Type": "application/json"}
               )
               urllib.request.urlopen(req, timeout=10)
-          except Exception as e:
-              print(f"Telegram error: {e}")
+          except Exception:
+              pass
           PYEOF
 # [/VERIFIED-GOLDEN]
