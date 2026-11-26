@@ -8,6 +8,14 @@ mediatek_setup_interfaces()
 	local board="$1"
 
 	case $board in
+	sdmc,mt3053|\
+	viettel,nr3053)
+		ucidef_set_interfaces_lan_wan "lan1 lan2 lan3" wan
+		;;
+	wirelesstag,zx7981pd|\
+	wirelesstag,zx7981pd-ubootmod)
+		ucidef_set_interfaces_lan_wan "lan1 lan2" wan
+		;;
 	abt,asr3000|\
 	buffalo,wsr-6000ax8|\
 	cmcc,rax3000m|\
@@ -218,6 +226,12 @@ mediatek_setup_interfaces()
 	smartrg,sdg-8622|\
 	smartrg,sdg-8632|\
 	smartrg,sdg-8733a|\
+	wirelesstag,zx7981pd|\
+	wirelesstag,zx7981pd-ubootmod)
+		label_mac=$(mtd_get_mac_binary wtinfo 10)
+		lan_mac=$label_mac
+		wan_mac=$(macaddr_add "$label_mac" 1)
+		;;
 	yuncore,ax835)
 		ucidef_set_interfaces_lan_wan lan wan
 		;;

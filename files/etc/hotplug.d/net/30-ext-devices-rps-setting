@@ -1,0 +1,18 @@
+#!/bin/sh
+# [VERIFIED-GOLDEN: part2-wwan-rps-hotplug | 2026-11-26 | DO NOT MODIFY UNLESS TARGETED]
+# Multi-Core RPS Steering strictly for 5G WWAN hotplug add events (prevents hotplug storm)
+[ "$ACTION" = "add" ] || exit 0
+case "$INTERFACE" in
+    wwan*|usb*|rmnet*|mhi*|eth2) ;;
+    *) exit 0 ;;
+esac
+
+NPROCS="$(grep -c '^processor' /proc/cpuinfo 2>/dev/null || echo 1)"
+[ "$NPROCS" -gt 1 ] || exit 0
+[ "$NPROCS" -gt 2 ] && MASK="c" || MASK="2"
+
+for q in "/sys/class/net/${INTERFACE}"/queues/rx-*/rps_cpus; do
+    [ -f "$q" ] && echo "$MASK" > "$q" 2>/dev/null || true
+done
+[ -x /etc/init.d/mtk_smp ] && /etc/init.d/mtk_smp restart >/dev/null 2>&1 || true
+# [/VERIFIED-GOLDEN]

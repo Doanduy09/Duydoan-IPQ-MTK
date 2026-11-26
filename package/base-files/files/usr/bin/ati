@@ -1,0 +1,195 @@
+#!/bin/sh
+# ==============================================================================
+# 🛰️ ATI - Universal AT Command CLI & Modem Diagnostics Tool
+# Hỗ trợ 100% PCIe (/dev/wwan0at0, /dev/mhi_DUN) và USB (/dev/ttyUSB*)
+# Thiết bị: WirelessTag ZX7981PD, Swaiot S10-SKY & mọi router OpenWrt
+# Tác giả: DOANDUY
+# ==============================================================================
+
+PORT=""
+CMD=""
+
+while [ $# -gt 0 ]; do
+    case "$1" in
+        -p|-d|--port|--device)
+            PORT="$2"
+            shift 2
+            ;;
+        -h|--help)
+            echo "Cú pháp: ati [-p <cổng>] [LỆNH_AT]"
+            echo "Ví dụ:"
+            echo "  ati                  # Tự dò cổng và hiển thị thông tin toàn diện modem"
+            echo "  ati ATI              # Gửi lệnh ATI"
+            echo "  ati AT+CPIN?         # Kiểm tra trạng thái SIM"
+            echo "  ati AT+CSQ           # Kiểm tra cường độ sóng"
+            echo "  ati AT+COPS?         # Kiểm tra nhà mạng"
+            echo "  ati -p /dev/ttyUSB1 ATI # Chỉ định cổng AT cụ thể"
+            exit 0
+            ;;
+        *)
+            if [ -z "$CMD" ]; then
+                CMD="$1"
+            else
+                CMD="$CMD $1"
+            fi
+            shift
+            ;;
+    esac
+done
+
+# Tự động dò tìm cổng AT nếu không chỉ định
+if [ -z "$PORT" ] || [ ! -c "$PORT" ]; then
+    if [ -f /tmp/duydoan5g_modem_meta ]; then
+        META_AT_PORT=""
+        . /tmp/duydoan5g_modem_meta 2>/dev/null
+        [ -n "$META_AT_PORT" ] && [ -c "$META_AT_PORT" ] && PORT="$META_AT_PORT"
+    fi
+fi
+
+if [ -z "$PORT" ] || [ ! -c "$PORT" ]; then
+    for candidate in $(cat /tmp/master_sms_port 2>/dev/null) $(cat /tmp/custom_at_port 2>/dev/null); do
+        if [ -n "$candidate" ] && [ -c "$candidate" ]; then
+            PORT="$candidate"
+            break
+        fi
+    done
+fi
+
+if [ -z "$PORT" ] || [ ! -c "$PORT" ]; then
+    # Tự động ưu tiên cổng theo dòng modem phát hiện
+    if lsusb 2>/dev/null | grep -iqE "0e8d:7127|2cb7:|mediatek|fm350"; then
+        search_list="/dev/ttyUSB3 /dev/ttyUSB2 /dev/ttyUSB1 /dev/wwan0at0 /dev/ttyUSB0"
+    elif lsusb 2>/dev/null | grep -iqE "1199:|sierra"; then
+        search_list="/dev/ttyUSB0 /dev/ttyUSB2 /dev/wwan0at0 /dev/ttyUSB1"
+    else
+        search_list="/dev/wwan0at0 /dev/wwan1at0 /dev/mhi_DUN /dev/ttyFMI0 /dev/ttyUSB2 /dev/ttyUSB3 /dev/ttyUSB1 /dev/ttyUSB0 /dev/ttyACM0"
+    fi
+
+    for candidate in $search_list; do
+        if [ -c "$candidate" ]; then
+            PORT="$candidate"
+            break
+        fi
+    done
+fi
+
+if [ -z "$PORT" ] || [ ! -c "$PORT" ]; then
+    echo "❌ Lỗi: Không tìm thấy cổng AT Modem nào trên router!" >&2
+    echo "   Vui lòng kiểm tra cắm card M.2 PCIe hoặc Modem USB." >&2
+    exit 1
+fi
+
+# [VERIFIED-GOLDEN: ati-locked-bus-safe | 2026-11-26 | DO NOT MODIFY UNLESS TARGETED]
+send_at_unlocked() {
+    local p="$1"
+    local c="$2"
+    local res=""
+
+    case "$p" in
+        /dev/wwan*|/dev/mhi*)
+            if [ -x /usr/bin/read_pcie_sms.lua ]; then
+                res=$(_AT_FLOCKED=1 timeout 4 /usr/bin/read_pcie_sms.lua -p "$p" --at "$c" 2>/dev/null)
+                if [ -n "$res" ]; then
+                    echo "$res"
+                    return 0
+                fi
+            fi
+            ;;
+    esac
+
+    if command -v atinout >/dev/null 2>&1; then
+        res=$(printf '\033%s\r\n' "$c" | timeout 3 atinout - "$p" - 2>/dev/null)
+    fi
+    if [ -z "$res" ] && command -v sms_tool >/dev/null 2>&1 && [ "${p#/dev/wwan}" = "$p" ]; then
+        res=$(timeout 4 sms_tool -d "$p" at "$c" 2>/dev/null)
+    fi
+    if [ -z "$res" ] && command -v gcom >/dev/null 2>&1; then
+        local gcom_script="/tmp/gcom_cmd_$$.gcom"
+        printf 'send "%s\\r"\nwait 1 "OK"\n' "$c" > "$gcom_script"
+        res=$(timeout 3 gcom -d "$p" -s "$gcom_script" 2>/dev/null)
+        rm -f "$gcom_script" 2>/dev/null
+    fi
+    if [ -z "$res" ]; then
+        local tmp_in="/tmp/ati_in_$$.tmp"
+        local tmp_out="/tmp/ati_out_$$.tmp"
+        printf '%s\r\n' "$c" > "$tmp_in"
+        timeout 2 cat "$p" > "$tmp_out" 2>/dev/null &
+        local cat_pid=$!
+        sleep 0.1
+        cat "$tmp_in" > "$p" 2>/dev/null
+        sleep 0.8
+        kill -9 "$cat_pid" 2>/dev/null
+        res=$(cat "$tmp_out" 2>/dev/null)
+        rm -f "$tmp_in" "$tmp_out" 2>/dev/null
+    fi
+    echo "$res"
+}
+
+send_at() {
+    if [ "${_MODEM_AT_LOCKED:-0}" != "1" ] && [ -x /usr/bin/modem_lock_run ]; then
+        /usr/bin/modem_lock_run /bin/sh -c '
+            p="$1"; c="$2"
+            case "$p" in
+                /dev/wwan*|/dev/mhi*)
+                    if [ -x /usr/bin/read_pcie_sms.lua ]; then
+                        res=$(_AT_FLOCKED=1 timeout 4 /usr/bin/read_pcie_sms.lua -p "$p" --at "$c" 2>/dev/null)
+                        [ -n "$res" ] && { printf "%s\n" "$res"; exit 0; }
+                    fi
+                    ;;
+            esac
+            if command -v atinout >/dev/null 2>&1; then
+                res=$(printf "\033%s\r\n" "$c" | timeout 3 atinout - "$p" - 2>/dev/null)
+                [ -n "$res" ] && { printf "%s\n" "$res"; exit 0; }
+            fi
+            if command -v sms_tool >/dev/null 2>&1 && [ "${p#/dev/wwan}" = "$p" ]; then
+                res=$(timeout 4 sms_tool -d "$p" at "$c" 2>/dev/null)
+                [ -n "$res" ] && { printf "%s\n" "$res"; exit 0; }
+            fi
+        ' _ "$1" "$2"
+        return $?
+    fi
+    send_at_unlocked "$1" "$2"
+}
+# [/VERIFIED-GOLDEN]
+
+if [ -n "$CMD" ]; then
+    echo "[Gửi lệnh tới $PORT]: $CMD"
+    send_at "$PORT" "$CMD"
+    exit $?
+fi
+
+DEVICE_MODEL=$(cat /tmp/sysinfo/model 2>/dev/null || cat /proc/cpuinfo | grep -m1 "machine" | cut -d: -f2 | xargs || echo "OpenWrt Router")
+
+echo "=============================================================="
+echo "  🛰️  THÔNG TIN MODEM 5G/LTE - $DEVICE_MODEL"
+echo "  Cổng AT đang sử dụng: $PORT"
+echo "=============================================================="
+
+ati_out=$(send_at "$PORT" "ATI")
+if [ -n "$ati_out" ]; then
+    echo "[1] Nhận Diện Modem (ATI):"
+    echo "$ati_out" | sed 's/^/    /'
+    echo ""
+fi
+
+cpin_out=$(send_at "$PORT" "AT+CPIN?")
+echo "[2] Trạng Thái SIM (AT+CPIN?):"
+echo "$cpin_out" | grep -iE 'READY|SIM|ERROR|PIN' | sed 's/^/    /' || echo "    $cpin_out"
+echo ""
+
+csq_out=$(send_at "$PORT" "AT+CSQ")
+echo "[3] Tín Hiệu Sóng (AT+CSQ):"
+echo "$csq_out" | grep -i '+CSQ:' | sed 's/^/    /' || echo "    $csq_out"
+echo ""
+
+cops_out=$(send_at "$PORT" "AT+COPS?")
+echo "[4] Nhà Mạng Đang Đăng Ký (AT+COPS?):"
+echo "$cops_out" | grep -i '+COPS:' | sed 's/^/    /' || echo "    $cops_out"
+echo ""
+
+cgsn_out=$(send_at "$PORT" "AT+CGSN")
+echo "[5] Số IMEI Thiết Bị (AT+CGSN):"
+echo "$cgsn_out" | grep -E '^[0-9]{14,17}$' | sed 's/^/    /' || echo "    $cgsn_out"
+echo ""
+
+echo "=============================================================="

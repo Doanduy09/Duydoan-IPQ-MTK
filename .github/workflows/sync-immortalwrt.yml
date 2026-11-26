@@ -1,0 +1,139 @@
+# SPDX-License-Identifier: MIT
+# [VERIFIED-GOLDEN: upstream-sync-master-618-and-2410 | 2026-11-26 | DO NOT MODIFY UNLESS TARGETED]
+name: Sync Upstream ImmortalWrt (master->SNAPSHOT & 24.10->immortalwrt-24)
+run-name: "[Hệ Thống] Sync Upstream ImmortalWrt (master=SNAPSHOT 6.18 | immortalwrt-24=24.10)"
+
+on:
+  schedule:
+    # Đồng bộ định kỳ 2 lần/ngày (01:00 & 13:00 VN = 18:00 & 06:00 UTC)
+    - cron: '0 18,6 * * *'
+  workflow_dispatch:
+    inputs:
+      force_build:
+        description: 'Kích hoạt build nhánh master sau khi đồng bộ'
+        required: false
+        default: false
+        type: boolean
+
+concurrency:
+  group: duydoan-upstream-sync
+  cancel-in-progress: false
+
+permissions:
+  contents: write
+  actions: write
+
+jobs:
+  sync_branches:
+    name: "Sync [${{ matrix.branch }}] <- immortalwrt:${{ matrix.upstream_ref }}"
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - branch: master
+            upstream_ref: master
+          - branch: master-passwall
+            upstream_ref: master
+          - branch: immortalwrt-24
+            upstream_ref: openwrt-24.10
+          - branch: immortalwrt-24-passwall
+            upstream_ref: openwrt-24.10
+    steps:
+      - name: Checkout Source Branch ${{ matrix.branch }}
+        uses: actions/checkout@v5
+        with:
+          ref: ${{ matrix.branch }}
+          fetch-depth: 0
+
+      - name: Configure Git Identity
+        run: |
+          git config user.name "Doanduy09-Bot"
+          git config user.email "doanduy09@gmail.com"
+          git config pull.rebase false
+          git checkout -B "${{ matrix.branch }}" "origin/${{ matrix.branch }}"
+
+      - name: Sync Upstream ImmortalWrt (${{ matrix.upstream_ref }})
+        run: |
+          set -euo pipefail
+          BRANCH="${{ matrix.branch }}"
+          UP_REF="${{ matrix.upstream_ref }}"
+          PRE_MERGE_SHA=$(git rev-parse HEAD)
+
+          git remote add upstream https://github.com/immortalwrt/immortalwrt.git 2>/dev/null || git remote set-url upstream https://github.com/immortalwrt/immortalwrt.git
+          git fetch upstream "$UP_REF" --depth=200
+
+          UPSTREAM_SHA=$(git rev-parse "upstream/$UP_REF")
+          if git merge-base --is-ancestor "upstream/$UP_REF" HEAD; then
+            echo ">> [ALREADY UP-TO-DATE] Nhánh $BRANCH đã đồng bộ hoàn toàn với immortalwrt:$UP_REF."
+            exit 0
+          fi
+
+          PROTECTED_PATHS=(
+            "mediatek_filogic_all.config"
+            "qualcomm_ipq60xx_all.config"
+            "qualcomm_ipq807x_all.config"
+            "feeds.conf.default"
+            "scripts/ci-prepare.sh"
+            "include/version.mk"
+            "package/base-files/files/etc/banner"
+            "package/base-files/files/etc/uci-defaults/99-custom-init.sh"
+            "package/base-files/files/usr/bin/ati"
+            "package/base-files/files/bin/ati"
+            "package/luci-app-athena-led"
+            "target/linux/mediatek/dts/mt7981b-wirelesstag-zx7981pd.dts"
+            "target/linux/mediatek/dts/mt7981b-wirelesstag-zx7981pd-ubootmod.dts"
+            "target/linux/mediatek/dts/mt7981b-viettel-nr3053.dts"
+            "target/linux/mediatek/dts/mt7981b-sdmc-mt3053.dts"
+            ".github/workflows"
+            ".github/scripts"
+            "files"
+            "README.md"
+          )
+
+          git merge --no-commit --no-ff "upstream/$UP_REF" || echo ">> Tự động bảo lưu cấu hình Doanduy khi hợp nhất $UP_REF..."
+
+          for pf in "${PROTECTED_PATHS[@]}"; do
+            if git cat-file -e "${PRE_MERGE_SHA}:${pf}" 2>/dev/null; then
+              git checkout "$PRE_MERGE_SHA" -- "$pf" 2>/dev/null || true
+            fi
+          done
+
+          # Tuyệt đối không cho phép file all / all.enc cũ quay trở lại
+          git rm -f --ignore-unmatch \
+            package/base-files/files/etc/init.d/all \
+            package/base-files/files/etc/init.d/all.enc \
+            files/etc/init.d/all \
+            files/etc/init.d/all.enc \
+            package/base-files/files/etc/init.d/pcie_5g_dialer \
+            package/base-files/files/etc/uci-defaults/patch_hnat.lua \
+            package/base-files/files/etc/uci-defaults/99-qmodem-pcie \
+            package/base-files/files/etc/uci-defaults/99-default-theme-argon \
+            package/base-files/files/usr/bin/modem_autodial.sh \
+            package/base-files/files/usr/bin/logall \
+            package/base-files/files/lib/netifd/proto/duydoan5g.sh \
+            package/base-files/files/www/luci-static/resources/protocol/duydoan5g.js 2>/dev/null || true
+
+          UNMERGED=$(git diff --name-only --diff-filter=U || true)
+          if [ -n "$UNMERGED" ]; then
+            echo "::error::Unresolved merge conflicts on $BRANCH: $UNMERGED" >&2
+            git merge --abort || true
+            exit 1
+          fi
+
+          git add -A
+          if git diff --cached --quiet; then
+            git merge --abort 2>/dev/null || true
+            exit 0
+          fi
+
+          git commit -m "sync($BRANCH): merge upstream immortalwrt:$UP_REF ($UPSTREAM_SHA) [skip ci]"
+          git push origin "$BRANCH"
+
+      - name: Trigger Master Build (When Requested Manually)
+        if: matrix.branch == 'master' && inputs.force_build == true && !cancelled()
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: gh workflow run "build-master.yml" --repo "${{ github.repository }}" -r master -f target=all || true
+# [/VERIFIED-GOLDEN]
