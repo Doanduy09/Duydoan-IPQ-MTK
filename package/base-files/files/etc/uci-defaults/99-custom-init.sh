@@ -11,10 +11,20 @@ uci -q set system.@system[0].zonename='Asia/Ho_Chi_Minh'
 uci -q set system.@system[0].timezone='<+07>-7'
 uci commit system 2>/dev/null
 
-# 3. Enable Hardware Flow Offloading (MediaTek / Qualcomm NSS)
-uci -q set firewall.@defaults[0].flow_offloading='1'
-uci -q set firewall.@defaults[0].flow_offloading_hw='1'
+# [VERIFIED-GOLDEN: offload-soc-isolation | 2026-11-26 | DO NOT MODIFY UNLESS TARGETED]
+# 3. Enable Hardware Flow Offloading only on non-NSS / non-mt_wifi+HNAT targets
+if grep -qiE "ipq807|ipq60|qualcomm" /proc/cpuinfo /sys/firmware/devicetree/base/compatible 2>/dev/null; then
+    uci -q set firewall.@defaults[0].flow_offloading='0'
+    uci -q set firewall.@defaults[0].flow_offloading_hw='0'
+elif [ -d /sys/module/mt_wifi ] || ls /etc/modules.d/*mt_wifi* /etc/modules.d/*hnat* >/dev/null 2>&1; then
+    uci -q set firewall.@defaults[0].flow_offloading='0'
+    uci -q set firewall.@defaults[0].flow_offloading_hw='0'
+else
+    uci -q set firewall.@defaults[0].flow_offloading='1'
+    uci -q set firewall.@defaults[0].flow_offloading_hw='1'
+fi
 uci commit firewall 2>/dev/null
+# [/VERIFIED-GOLDEN]
 
 # 4. Boost Wi-Fi TX Power (30dBm / 1000mW), Beamforming & Silence log flood
 for rad in radio0 radio1 radio2; do

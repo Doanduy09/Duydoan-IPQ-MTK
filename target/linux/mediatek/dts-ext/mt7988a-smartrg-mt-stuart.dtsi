@@ -654,14 +654,14 @@
 		};
 	};
 
-	i2c0_pins: i2c0-g0-pins {
+	i2c0_pins: i2c0-pins-g0 {
 		mux {
 			function = "i2c";
 			groups = "i2c0_1";
 		};
 	};
 
-	i2c1_pins: i2c1-g0-pins {
+	i2c1_pins: i2c1-pins-g0 {
 		mux {
 			function = "i2c";
 			groups = "i2c1_0";
@@ -680,7 +680,7 @@
 		};
 	};
 
-	mmc0_pins_emmc_51: mmc0-emmc-51-pins {
+	mmc0_pins_emmc_51: mmc0-pins-emmc-51 {
 		mux {
 			function = "flash";
 			groups = "emmc_51";

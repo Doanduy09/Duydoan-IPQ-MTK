@@ -275,6 +275,9 @@ jobs:
           if [ "${{ matrix.id }}" = "mediatek-filogic" ]; then
             echo ">> [PPE/WED ACCELERATION] Kích hoạt MediaTek MT798x PPE, WED & bridger..."
             sed -i '/kmod-mediatek_hnat/d; /luci-app-turboacc-mtk/d; /MTK_SCS_FW_OFFLOAD/d; /MTK_WHNAT_SUPPORT/d; /TURBOACC_INCLUDE_/d' .config
+            if grep -q 'KERNEL_PATCHVER:=6.6' target/linux/mediatek/Makefile 2>/dev/null; then
+              sed -i '/_DEVICE_.*\(glinet_gl-mt3600be\|bananapi_bpi-r4-lite\|hiveton_h5000m\|mediatek_mt7987a-rfb\|routerich_be7200\)/d; /mt7987-2p5g-phy-firmware/d; /trusted-firmware-a-mt7987/d' .config
+            fi
             cat << 'EOF' >> .config
           CONFIG_PACKAGE_bridger=y
           CONFIG_PACKAGE_kmod-nft-offload=y
@@ -303,6 +306,7 @@ jobs:
           
           # Đảm bảo toàn bộ router đều có DoanDuy Modem Suite & wget-ssl cho Argon Theme
           echo "CONFIG_PACKAGE_luci-app-doanduy-modem=y" >> .config
+          echo "CONFIG_PACKAGE_curl=y" >> .config
           echo "CONFIG_PACKAGE_wget-ssl=y" >> .config
 
           # Reuse runner Go + LLVM/BPF & skip Host Python PGO before defconfig

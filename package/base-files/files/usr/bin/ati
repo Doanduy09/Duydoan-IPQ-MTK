@@ -39,6 +39,14 @@ done
 
 # Tự động dò tìm cổng AT nếu không chỉ định
 if [ -z "$PORT" ] || [ ! -c "$PORT" ]; then
+    if [ -f /tmp/duydoan5g_modem_meta ]; then
+        META_AT_PORT=""
+        . /tmp/duydoan5g_modem_meta 2>/dev/null
+        [ -n "$META_AT_PORT" ] && [ -c "$META_AT_PORT" ] && PORT="$META_AT_PORT"
+    fi
+fi
+
+if [ -z "$PORT" ] || [ ! -c "$PORT" ]; then
     for candidate in $(cat /tmp/master_sms_port 2>/dev/null) $(cat /tmp/custom_at_port 2>/dev/null); do
         if [ -n "$candidate" ] && [ -c "$candidate" ]; then
             PORT="$candidate"
@@ -49,12 +57,12 @@ fi
 
 if [ -z "$PORT" ] || [ ! -c "$PORT" ]; then
     # Tự động ưu tiên cổng theo dòng modem phát hiện
-    if lsusb 2>/dev/null | grep -iqE "0e8d:7127|mediatek|fm350"; then
-        search_list="/dev/ttyUSB1 /dev/wwan0at0 /dev/ttyUSB2 /dev/ttyUSB0 /dev/ttyUSB3"
+    if lsusb 2>/dev/null | grep -iqE "0e8d:7127|2cb7:|mediatek|fm350"; then
+        search_list="/dev/ttyUSB3 /dev/ttyUSB2 /dev/ttyUSB1 /dev/wwan0at0 /dev/ttyUSB0"
     elif lsusb 2>/dev/null | grep -iqE "1199:|sierra"; then
         search_list="/dev/ttyUSB0 /dev/ttyUSB2 /dev/wwan0at0 /dev/ttyUSB1"
     else
-        search_list="/dev/wwan0at0 /dev/wwan1at0 /dev/mhi_DUN /dev/ttyFMI0 /dev/ttyUSB1 /dev/ttyUSB2 /dev/ttyUSB0 /dev/ttyUSB3 /dev/ttyACM0"
+        search_list="/dev/wwan0at0 /dev/wwan1at0 /dev/mhi_DUN /dev/ttyFMI0 /dev/ttyUSB2 /dev/ttyUSB3 /dev/ttyUSB1 /dev/ttyUSB0 /dev/ttyACM0"
     fi
 
     for candidate in $search_list; do
@@ -71,13 +79,26 @@ if [ -z "$PORT" ] || [ ! -c "$PORT" ]; then
     exit 1
 fi
 
-send_at() {
+# [VERIFIED-GOLDEN: ati-locked-bus-safe | 2026-11-26 | DO NOT MODIFY UNLESS TARGETED]
+send_at_unlocked() {
     local p="$1"
     local c="$2"
     local res=""
 
+    case "$p" in
+        /dev/wwan*|/dev/mhi*)
+            if [ -x /usr/bin/read_pcie_sms.lua ]; then
+                res=$(_AT_FLOCKED=1 timeout 4 /usr/bin/read_pcie_sms.lua -p "$p" --at "$c" 2>/dev/null)
+                if [ -n "$res" ]; then
+                    echo "$res"
+                    return 0
+                fi
+            fi
+            ;;
+    esac
+
     if command -v atinout >/dev/null 2>&1; then
-        res=$(printf '%s\r\n' "$c" | timeout 3 atinout - "$p" - 2>/dev/null)
+        res=$(printf '\033%s\r\n' "$c" | timeout 3 atinout - "$p" - 2>/dev/null)
     fi
     if [ -z "$res" ] && command -v sms_tool >/dev/null 2>&1 && [ "${p#/dev/wwan}" = "$p" ]; then
         res=$(timeout 4 sms_tool -d "$p" at "$c" 2>/dev/null)
@@ -103,6 +124,33 @@ send_at() {
     fi
     echo "$res"
 }
+
+send_at() {
+    if [ "${_MODEM_AT_LOCKED:-0}" != "1" ] && [ -x /usr/bin/modem_lock_run ]; then
+        /usr/bin/modem_lock_run /bin/sh -c '
+            p="$1"; c="$2"
+            case "$p" in
+                /dev/wwan*|/dev/mhi*)
+                    if [ -x /usr/bin/read_pcie_sms.lua ]; then
+                        res=$(_AT_FLOCKED=1 timeout 4 /usr/bin/read_pcie_sms.lua -p "$p" --at "$c" 2>/dev/null)
+                        [ -n "$res" ] && { printf "%s\n" "$res"; exit 0; }
+                    fi
+                    ;;
+            esac
+            if command -v atinout >/dev/null 2>&1; then
+                res=$(printf "\033%s\r\n" "$c" | timeout 3 atinout - "$p" - 2>/dev/null)
+                [ -n "$res" ] && { printf "%s\n" "$res"; exit 0; }
+            fi
+            if command -v sms_tool >/dev/null 2>&1 && [ "${p#/dev/wwan}" = "$p" ]; then
+                res=$(timeout 4 sms_tool -d "$p" at "$c" 2>/dev/null)
+                [ -n "$res" ] && { printf "%s\n" "$res"; exit 0; }
+            fi
+        ' _ "$1" "$2"
+        return $?
+    fi
+    send_at_unlocked "$1" "$2"
+}
+# [/VERIFIED-GOLDEN]
 
 if [ -n "$CMD" ]; then
     echo "[Gửi lệnh tới $PORT]: $CMD"

@@ -89,10 +89,25 @@ fi
 echo "=========================================================="
 echo ">> [4/4] Pre-flight Shell Syntax Gate (Fail-Fast)..."
 echo "=========================================================="
+# [VERIFIED-GOLDEN: preflight-shell-gate | 2026-11-26 | DO NOT MODIFY UNLESS TARGETED]
 if [ -f "$TARGET_FILE" ]; then
   sh -n "$TARGET_FILE"
   echo "   [PASS] Syntax check passed for $TARGET_FILE"
 fi
-for d in files/etc/init.d files/etc/uci-defaults files/usr/bin files/etc/hotplug.d; do
-  [ -d "$d" ] && find "$d" -type f -exec chmod +x {} + 2>/dev/null || true
+for d in files/etc/init.d files/etc/uci-defaults files/usr/bin files/etc/hotplug.d \
+         package/base-files/files/etc/uci-defaults package/base-files/files/usr/bin; do
+  [ -d "$d" ] || continue
+  find "$d" -type f -exec chmod +x {} + 2>/dev/null || true
+  for sf in "$d"/*; do
+    [ -f "$sf" ] || continue
+    case "$sf" in *.enc|*.json|*.conf) continue ;; esac
+    if head -n 1 "$sf" | grep -qE '^#!/(usr/)?bin/(ba)?sh'; then
+      sh -n "$sf"
+    elif [ "${d%uci-defaults}" != "$d" ]; then
+      # Every file in uci-defaults is sourced/executed by /bin/sh on first boot!
+      sh -n "$sf"
+    fi
+  done
 done
+echo "   [PASS] All uci-defaults & custom shell scripts passed sh -n gate"
+# [/VERIFIED-GOLDEN]
