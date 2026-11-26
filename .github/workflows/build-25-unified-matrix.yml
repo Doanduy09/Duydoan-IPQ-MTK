@@ -471,16 +471,16 @@ jobs:
           path: ${{ env.FIRMWARE }}/*
           retention-days: 3
 
-      - name: Create GitHub Release
-        uses: softprops/action-gh-release@v3
+      - name: Create GitHub Release (Batched & Rate-Limit Resilient)
         if: steps.organize.outputs.status == 'success' && (inputs.release != false)
         env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        with:
-          tag_name: ${{ matrix.tag_prefix }}-${{ env.BUILD_DATE }}
-          name: ${{ env.FINAL_RELEASE_TITLE }} ${{ env.BUILD_DATE }}
-          body_path: release_notes.md
-          files: ${{ env.FIRMWARE }}/*
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GH_REPO: ${{ github.repository }}
+          RELEASE_TAG: ${{ matrix.tag_prefix }}-${{ env.BUILD_DATE }}
+          RELEASE_TITLE: ${{ env.FINAL_RELEASE_TITLE }} ${{ env.BUILD_DATE }}
+          RELEASE_NOTES_FILE: release_notes.md
+          FIRMWARE_DIR: ${{ env.FIRMWARE }}
+        run: python3 "$GITHUB_WORKSPACE/.github/scripts/publish-release.py"
 
   cache-rollover:
     name: Roll Old Build Caches
