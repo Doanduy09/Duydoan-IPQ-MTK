@@ -10,7 +10,10 @@ Atomic & Secondary-Rate-Limit-Resilient GitHub Release Publisher for OpenWrt CI.
 4. Publishes release (--draft=false) only after 100% of assets succeed.
 """
 
+import hashlib
+import json
 import os
+import re
 import subprocess
 import sys
 import time
@@ -19,6 +22,92 @@ BATCH_SIZE = 15
 PACE_SECONDS = 1.5
 BACKOFF_SCHEDULE = [20, 45, 90, 150, 240]
 SKIP_NAMES = {"release_notes.md"}
+TARGET_TAIL_RE = re.compile(r"((?:qualcommax-ipq60xx|qualcommax-ipq807x|mediatek-filogic).*)$")
+
+
+def compute_doanduy_prefix(tag: str, fw_dir: str) -> str:
+    t_low = (tag or "").lower()
+    has_pw = ("passwall" in t_low) and ("nopasswall" not in t_low)
+    # Also inspect .manifest if present to guarantee 100% ground-truth PassWall badge
+    for name in os.listdir(fw_dir):
+        if name.endswith(".manifest"):
+            try:
+                with open(os.path.join(fw_dir, name), "r", encoding="utf-8", errors="replace") as mf:
+                    txt = mf.read()
+                if "\nluci-app-passwall " in txt or txt.startswith("luci-app-passwall ") or "\nluci-app-passwall2 " in txt:
+                    has_pw = True
+                else:
+                    has_pw = False
+                break
+            except Exception:
+                pass
+    pw_tag = "PassWall" if has_pw else "NoPassWall"
+    if "24.10" in t_low or "immortalwrt-24" in t_low:
+        ver_tag = "24.10"
+    elif "6.12-fullnss" in t_low or "25.12-nss" in t_low or "qualcomm-nss" in t_low:
+        ver_tag = "25.12-NSS"
+    elif "6.12-filogic" in t_low or "25.12-wed" in t_low or "filogic-wed" in t_low:
+        ver_tag = "25.12-WED"
+    else:
+        ver_tag = "Master-6.18"
+    return f"Doanduy-{ver_tag}-{pw_tag}"
+
+
+def normalize_firmware_filenames(fw_dir: str, tag: str) -> None:
+    if not os.path.isdir(fw_dir):
+        return
+    prefix = compute_doanduy_prefix(tag, fw_dir)
+    rename_map = {}
+    for name in sorted(os.listdir(fw_dir)):
+        if name in SKIP_NAMES or name in ("profiles.json", "sha256sums", "config.buildinfo", "feeds.buildinfo", "version.buildinfo"):
+            continue
+        full = os.path.join(fw_dir, name)
+        if not os.path.isfile(full):
+            continue
+        m = TARGET_TAIL_RE.search(name)
+        if not m:
+            continue
+        new_name = f"{prefix}-{m.group(1)}"
+        if new_name != name:
+            dst = os.path.join(fw_dir, new_name)
+            os.replace(full, dst)
+            rename_map[name] = new_name
+
+    # Update profiles.json image names if renamed
+    pp = os.path.join(fw_dir, "profiles.json")
+    if rename_map and os.path.isfile(pp):
+        try:
+            with open(pp, "r", encoding="utf-8") as pf:
+                pdata = json.load(pf)
+            pdata["image_prefix"] = prefix
+            for prof in (pdata.get("profiles") or {}).values():
+                for img in prof.get("images") or []:
+                    old_n = img.get("name", "")
+                    if old_n in rename_map:
+                        img["name"] = rename_map[old_n]
+            with open(pp, "w", encoding="utf-8") as pf:
+                json.dump(pdata, pf, indent=2)
+                pf.write("\n")
+        except Exception as e:
+            print(f"[WARN] profiles.json update skipped: {e}", flush=True)
+
+    # Regenerate accurate sha256sums covering all normalized artifacts
+    sha_lines = []
+    for name in sorted(os.listdir(fw_dir)):
+        if name in SKIP_NAMES or name == "sha256sums" or name.startswith("."):
+            continue
+        full = os.path.join(fw_dir, name)
+        if not os.path.isfile(full) or os.path.getsize(full) == 0:
+            continue
+        h = hashlib.sha256()
+        with open(full, "rb") as bf:
+            for chunk in iter(lambda: bf.read(1024 * 1024), b""):
+                h.update(chunk)
+        sha_lines.append(f"{h.hexdigest()} *{name}")
+    if sha_lines:
+        with open(os.path.join(fw_dir, "sha256sums"), "w", encoding="utf-8", newline="\n") as sf:
+            sf.write("\n".join(sha_lines) + "\n")
+    print(f">> Normalized {len(rename_map)} firmware file(s) to prefix '{prefix}-*'.", flush=True)
 
 
 def run_gh(args, timeout=300):
@@ -188,6 +277,7 @@ def main() -> int:
         if os.path.isfile(cand):
             notes_file = cand
 
+    normalize_firmware_filenames(fw_dir, tag)
     assets = collect_assets(fw_dir)
     if not assets:
         print(f"[ERR] No uploadable firmware files found in {fw_dir}", file=sys.stderr)
