@@ -208,8 +208,6 @@ jobs:
           echo "1" > tmp/.build
 
       - name: Prepare Feeds, Kernel 6.12 Patches & Decrypt Assets
-        env:
-          ALL_SECRET_KEY: ${{ secrets.ALL_SECRET_KEY }}
         run: |
           chmod +x scripts/ci-prepare.sh .github/scripts/*.sh
           ./scripts/ci-prepare.sh
