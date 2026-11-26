@@ -1,0 +1,348 @@
+# [VERIFIED-GOLDEN: part2-auto-clean-cache-prefix | 2026-11-26 | DO NOT MODIFY UNLESS TARGETED]
+# SPDX-License-Identifier: MIT
+# Smart Maintenance Workflow: Purge old releases & obsolete runs safely (NEVER TOUCH IN-PROGRESS RUNS)
+
+name: Auto-Clean & Release Purge
+run-name: "[Hệ Thống] Auto-Clean & Release Purge (Giữ 1 Release & Cache Mới Nhất)"
+
+on:
+  schedule:
+    # 00:30 AM Asia/Ho_Chi_Minh daily (17:30 UTC) - Dọn sạch 30m trước đồng bộ & 1h trước build
+    - cron: '30 17 * * *'
+  workflow_dispatch:
+    inputs:
+      delete_all_old_releases:
+        description: 'Xóa toàn bộ các bản phát hành cũ trên GitHub Releases (true/false)'
+        required: false
+        default: false
+        type: boolean
+      keep_success_runs:
+        description: 'Số run thành công giữ lại (Mặc định 1. Run đang build được BẢO TỒN NGUYÊN VẸN)'
+        required: false
+        default: '1'
+        type: string
+
+concurrency:
+  group: duydoan-auto-clean
+  cancel-in-progress: false
+
+permissions:
+  contents: write
+  actions: write
+
+jobs:
+  smart_clean:
+    name: Clean Old Runs & Releases
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - name: Purge Obsolete Workflow Runs (BẢO VỆ TIẾN TRÌNH ĐANG BUILD)
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          REPO: ${{ github.repository }}
+          CURRENT_RUN_ID: ${{ github.run_id }}
+          KEEP_SUCCESS: ${{ inputs.keep_success_runs || '1' }}
+        run: |
+          python3 - << 'PYEOF'
+          from datetime import datetime, timezone
+          import json, os, subprocess
+
+          repo = os.environ.get("REPO", "")
+          current_run_id = int(os.environ.get("CURRENT_RUN_ID", "0"))
+          keep_success = max(1, int(os.environ.get("KEEP_SUCCESS", "1")))
+          now_utc = datetime.now(timezone.utc)
+
+          try:
+              out = subprocess.check_output(
+                  ["gh", "run", "list", "--repo", repo, "--limit", "100", "--json", "databaseId,status,conclusion,name,headBranch,createdAt"],
+                  text=True,
+              )
+              runs = json.loads(out)
+          except Exception as e:
+              print(f"Error listing runs: {e}")
+              exit(0)
+
+          print(f"Tìm thấy {len(runs)} workflow runs.")
+          success_counts = {}
+          deleted_count = 0
+
+          for r in runs:
+              rid = r.get("databaseId")
+              status = r.get("status")
+              conclusion = r.get("conclusion")
+              branch = r.get("headBranch", "")
+              name = r.get("name", "")
+              created_at = r.get("createdAt", "")
+
+              # BẢO TỒN TUYỆT ĐỐI TIẾN TRÌNH ĐANG CHẠY / HÀNG ĐỢI
+              if status in ["in_progress", "queued"]:
+                  print(f"🛡️ [GIỮ LẠI - ĐANG BUILD] Run {rid} ({name} - {branch})")
+                  continue
+
+              # Bỏ qua chính bản thân job Auto-Clean này nếu nó đang chạy
+              if rid == current_run_id:
+                  continue
+
+              # Bảo vệ run lỗi mới trong 6 giờ để Hermes Sentinel trên Debian VM kịp tải log & auto-fix
+              if conclusion in ["failure", "cancelled", "startup_failure", "timed_out"]:
+                  age_hours = 999.0
+                  if created_at:
+                      try:
+                          dt = datetime.fromisoformat(created_at.replace("Z", "+00:00"))
+                          age_hours = (now_utc - dt).total_seconds() / 3600.0
+                      except Exception:
+                          pass
+                  if conclusion in ["failure", "timed_out", "startup_failure"] and age_hours < 6.0:
+                      print(f"🛡️ [GIỮ LOG CHO HERMES] Run {rid} ({conclusion}, {age_hours:.1f}h < 6h)")
+                      continue
+                  print(f"🗑️ [XÓA LỖI/HỦY] Run {rid} ({conclusion})")
+                  subprocess.run(["gh", "run", "delete", str(rid), "--repo", repo], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+                  deleted_count += 1
+                  continue
+
+              # Các run thành công: giữ lại theo từng (workflow, branch) để không xóa nhầm workflow khác
+              if conclusion == "success":
+                  run_key = (name, branch)
+                  cur_keep = success_counts.get(run_key, 0)
+                  if cur_keep < keep_success:
+                      success_counts[run_key] = cur_keep + 1
+                      print(f"✅ [GIỮ THÀNH CÔNG GẦN NHẤT] Run {rid} ({name} - {branch})")
+                  else:
+                      print(f"🗑️ [XÓA RUN CŨ] Run {rid} ({name} - {branch})")
+                      subprocess.run(["gh", "run", "delete", str(rid), "--repo", repo], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+                      deleted_count += 1
+
+          print(f"Hoàn tất dọn dẹp workflow runs! Đã xóa: {deleted_count} runs.")
+          PYEOF
+
+      - name: Purge Old Releases (Xóa Releases cũ theo yêu cầu)
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          REPO: ${{ github.repository }}
+          PURGE_ALL: ${{ inputs.delete_all_old_releases || 'false' }}
+        run: |
+          python3 - << 'PYEOF'
+          import json, os, subprocess
+
+          repo = os.environ.get("REPO", "")
+          purge_all = os.environ.get("PURGE_ALL", "false").lower() == "true"
+
+          from datetime import datetime, timezone
+          now_utc = datetime.now(timezone.utc)
+
+          try:
+              out = subprocess.check_output(
+                  ["gh", "release", "list", "--repo", repo, "--limit", "100", "--json", "tagName,createdAt,isLatest,isDraft"],
+                  text=True,
+              )
+              releases = json.loads(out)
+          except Exception as e:
+              print(f"Error listing releases: {e}")
+              exit(0)
+
+          if not releases:
+              print("Không có release nào trên kho lưu trữ.")
+              exit(0)
+
+          print(f"Tìm thấy {len(releases)} bản phát hành.")
+
+          # Nếu chọn xóa sạch (purge_all=True) hoặc giữ lại tối đa 1 bản mới nhất cho mỗi nền tảng
+          prefixes = [
+              "Duydoan-Master-MediaTek-Filogic-All-",
+              "Duydoan-Master-Qualcomm-IPQ60xx-All-",
+              "Duydoan-Master-Qualcomm-IPQ807x-All-",
+              "Duydoan-Master-Passwall-MediaTek-Filogic-All-",
+              "Duydoan-Master-Passwall-Qualcomm-IPQ60xx-All-",
+              "Duydoan-Master-Passwall-Qualcomm-IPQ807x-All-",
+              "Duydoan-24.10-MediaTek-Filogic-All-",
+              "Duydoan-24.10-Qualcomm-IPQ60xx-All-",
+              "Duydoan-24.10-Qualcomm-IPQ807x-All-",
+              "Duydoan-24.10-Passwall-MediaTek-Filogic-All-",
+              "Duydoan-24.10-Passwall-Qualcomm-IPQ60xx-All-",
+              "Duydoan-24.10-Passwall-Qualcomm-IPQ807x-All-",
+              "Duydoan-6.12-FullNSS-IPQ60xx-",
+              "Duydoan-6.12-FullNSS-IPQ60xx-Passwall-",
+              "Duydoan-6.12-FullNSS-IPQ807x-",
+              "Duydoan-6.12-FullNSS-IPQ807x-Passwall-",
+              "Duydoan-6.12-Filogic-WED-",
+              "Duydoan-6.12-Filogic-WED-Passwall-",
+              "Duydoan-6.12-Filogic-MT7981-WED-",
+              "Duydoan-6.12-Filogic-MT7981-WED-Passwall-",
+              "Duydoan-6.12-Filogic-MT7986-WED-",
+              "Duydoan-6.12-Filogic-MT7986-WED-Passwall-",
+          ]
+          sorted_prefixes = sorted(prefixes, key=len, reverse=True)
+
+          to_delete = []
+          kept = set()
+
+          for r in releases:
+              tag = r.get("tagName", "")
+              is_draft = bool(r.get("isDraft", False))
+              age_hours = 999.0
+              created_at = r.get("createdAt", "")
+              if created_at:
+                  try:
+                      dt = datetime.fromisoformat(created_at.replace("Z", "+00:00"))
+                      age_hours = (now_utc - dt).total_seconds() / 3600.0
+                  except Exception:
+                      pass
+
+              # Bảo vệ bản Draft mới (< 3h) đang trong quá trình upload batch; xóa Draft gãy cũ (>= 3h)
+              if is_draft:
+                  if age_hours < 3.0 and not purge_all:
+                      print(f"🛡️ [GIỮ DRAFT ĐANG UPLOAD] {tag} ({age_hours:.1f}h < 3h)")
+                  else:
+                      to_delete.append(tag)
+                  continue
+
+              if purge_all:
+                  to_delete.append(tag)
+              else:
+                  matched = next((p for p in sorted_prefixes if tag.startswith(p)), None)
+                  if matched:
+                      if matched not in kept:
+                          kept.add(matched)
+                          print(f"🛡️ [GIỮ LATEST PER PLATFORM] {tag}")
+                      else:
+                          to_delete.append(tag)
+                  else:
+                      # Release cũ đơn lẻ
+                      to_delete.append(tag)
+
+          for tag in to_delete:
+              print(f"🗑️ [XÓA RELEASE CŨ] {tag}")
+              subprocess.run(["gh", "release", "delete", tag, "--repo", repo, "-y", "--cleanup-tag"], check=False)
+
+          print(f"Hoàn tất dọn dẹp Releases! Đã xóa: {len(to_delete)} bản.")
+          PYEOF
+
+      - name: Purge Legacy ccache-25-* & Rollover Active Cache Prefixes
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GH_REPO: ${{ github.repository }}
+        run: |
+          python3 - << 'PYEOF'
+          import json, os, subprocess
+
+          repo = os.environ.get("GH_REPO", "")
+          if not repo:
+              raise SystemExit(0)
+
+          active_prefixes = [
+              "wrt-master-qualcomm-ipq60xx-",
+              "wrt-master-qualcomm-ipq807x-",
+              "wrt-master-mediatek-filogic-",
+              "wrt-master-passwall-qualcomm-ipq60xx-",
+              "wrt-master-passwall-qualcomm-ipq807x-",
+              "wrt-master-passwall-mediatek-filogic-",
+              "wrt-immortalwrt-24-qualcomm-ipq60xx-",
+              "wrt-immortalwrt-24-qualcomm-ipq807x-",
+              "wrt-immortalwrt-24-mediatek-filogic-",
+              "wrt-immortalwrt-24-passwall-qualcomm-ipq60xx-",
+              "wrt-immortalwrt-24-passwall-qualcomm-ipq807x-",
+              "wrt-immortalwrt-24-passwall-mediatek-filogic-",
+              "wrt612-qualcomm-nss-25.12-qualcomm-ipq60xx-",
+              "wrt612-qualcomm-nss-25.12-qualcomm-ipq807x-",
+              "wrt612-filogic-wed-25.12-mediatek-filogic-mt7981-",
+              "wrt612-filogic-wed-25.12-mediatek-filogic-mt7986-",
+          ]
+          # Longest-first prevents wrt-master-* or wrt612-filogic-* from colliding with passwall/mt7981/mt7986
+          sorted_prefixes = sorted(active_prefixes, key=len, reverse=True)
+
+          try:
+              out = subprocess.check_output(
+                  ["gh", "cache", "list", "--repo", repo, "--sort", "created_at", "--order", "desc", "--limit", "100", "--json", "id,key,createdAt"],
+                  text=True,
+              )
+              caches = json.loads(out)
+          except Exception as e:
+              print(f"Cache list warning: {e}")
+              raise SystemExit(0)
+
+          kept = set()
+          for c in caches:
+              cid = str(c.get("id", ""))
+              ckey = c.get("key", "")
+              if not cid:
+                  continue
+              is_obsolete_612 = ckey.startswith("wrt612-filogic-wed-25.12-mediatek-filogic-") and not (
+                  ckey.startswith("wrt612-filogic-wed-25.12-mediatek-filogic-mt7981-")
+                  or ckey.startswith("wrt612-filogic-wed-25.12-mediatek-filogic-mt7986-")
+              )
+              if ckey.startswith("ccache-25-") or is_obsolete_612:
+                  print(f"Delete legacy cache: {ckey} (id={cid})")
+                  subprocess.run(["gh", "cache", "delete", cid, "--repo", repo], check=False)
+                  continue
+              matched = next((p for p in sorted_prefixes if ckey.startswith(p)), None)
+              if matched:
+                  if matched not in kept:
+                      kept.add(matched)
+                      print(f"Keep latest cache: {ckey} (id={cid})")
+                  else:
+                      print(f"Delete superseded cache: {ckey} (id={cid})")
+                      subprocess.run(["gh", "cache", "delete", cid, "--repo", repo], check=False)
+          PYEOF
+
+      - name: Purge Completed Workflow Artifacts (Protect In-Progress Runs)
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          REPO: ${{ github.repository }}
+        run: |
+          python3 - << 'PYEOF'
+          import json, os, subprocess
+
+          repo = os.environ.get("REPO", "")
+          if not repo:
+              raise SystemExit(0)
+
+          active_ids = set()
+          try:
+              out = subprocess.check_output(
+                  ["gh", "run", "list", "--repo", repo, "--limit", "50", "--json", "databaseId,status"],
+                  text=True,
+              )
+              for r in json.loads(out):
+                  if r.get("status") in ("in_progress", "queued"):
+                      active_ids.add(int(r["databaseId"]))
+          except Exception as e:
+              print(f"Active run lookup warning: {e}")
+
+          try:
+              raw = subprocess.check_output(
+                  ["gh", "api", f"repos/{repo}/actions/artifacts?per_page=100", "--paginate"],
+                  text=True,
+              )
+              # gh api --paginate may emit concatenated JSON objects if multiple pages exist
+              decoder = json.JSONDecoder()
+              idx = 0
+              artifacts = []
+              s = raw.strip()
+              while idx < len(s):
+                  obj, next_idx = decoder.raw_decode(s, idx)
+                  artifacts.extend(obj.get("artifacts", []))
+                  idx = next_idx
+                  while idx < len(s) and s[idx].isspace():
+                      idx += 1
+          except Exception as e:
+              print(f"Artifact list warning: {e}")
+              raise SystemExit(0)
+
+          deleted = 0
+          for art in artifacts:
+              wr_id = int((art.get("workflow_run") or {}).get("id") or 0)
+              if wr_id and wr_id in active_ids:
+                  print(f"🛡️ [GIỮ ARTIFACT ĐANG BUILD] {art.get('name')} (run {wr_id})")
+                  continue
+              aid = art.get("id")
+              print(f"🗑️ [XÓA ARTIFACT ĐÃ HOÀN TẤT] {art.get('name')} (id={aid}, run={wr_id})")
+              subprocess.run(
+                  ["gh", "api", "-X", "DELETE", f"repos/{repo}/actions/artifacts/{aid}"],
+                  stdout=subprocess.DEVNULL,
+                  stderr=subprocess.DEVNULL,
+              )
+              deleted += 1
+
+          print(f"Hoàn tất dọn Artifacts! Đã xóa: {deleted} artifact.")
+          PYEOF
+# [/VERIFIED-GOLDEN]

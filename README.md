@@ -1,151 +1,35 @@
-[**[中文]**](README.md) [**[English]**](README-en.md)
+# Duydoan ImmortalWrt 25.12 & 24.10 Multi-Branch Firmware Suite
 
-# 适用于 IPQ 系列设备的 OpenWrt 源码仓库
-
-## 📖 说明
-
-该项目旨在为 Qualcomm IPQ 系列设备提供功能完善的 OpenWrt 系统。
-
-在开源社区的共同努力下，本项目解决了以往 IPQ 系列设备在使用 OpenWrt 时，需放弃部分 NSS 功能或使用老旧内核的问题。我们特别融合了 [**JiaY-shi**](https://github.com/JiaY-shi) 和 [**qosmio**](https://github.com/qosmio) 两位开发者的 NSS 支持代码，并采用 [**ImmortalWrt**](https://github.com/immortalwrt) 的 LuCI 和 Packages 作为插件支持。
-
-在此，向所有贡献者表示衷心的感谢！
-
-### 🎯 设备支持概览
-| Target | NSS 功能 | 2.4G WiFi (NSS Offload) | 5G WiFi (NSS Offload) |
-| :----: |:--------:|:-----------------------:|:---------------------:|
-| IPQ807X| ✅       | ✅                      | ✅                    |
-| IPQ60XX| ✅       | ✅                      | ✅                    |
-| IPQ50XX| ❌       | ❌                      | ❌                    |
+Hệ thống biên dịch tự động Multi-Target cho router **Qualcomm IPQ60xx / IPQ807x** và **MediaTek Filogic (MT7981 / MT7986 / MT7987 / MT7988)**, tích hợp sẵn bộ quản trị Modem 5G & Nhà Thông Minh `luci-app-doanduy-modem` v2.5.0+ (Fibocom FM350-GL, Quectel RM502Q/RM520N, Sierra EM9190, SmartHome Auto-Probe IP), LuCI Argon Tiếng Việt và tối ưu phần cứng riêng cho từng dòng SoC.
 
 ---
 
-## ✨ NSS 功能支持矩阵
+## 🗂️ Bảng Ánh Xạ Chuẩn 1-1: 6 Nhánh Mã Nguồn ↔ 8 Kịch Bản GitHub Actions
 
-| 功能 | IPQ807x | IPQ60xx | 功能 | IPQ807x | IPQ60xx |
-| :--- | :---: | :---: | :--- | :---: | :---: |
-| TUNIPIP6 | ✅ | ✅ | RMNET | 🟨¹ | ⛔² |
-| PPPOE | ✅ | ✅ | MIRROR | ✅ | ✅ |
-| L2TPV2 | ✅ | ✅ | WIFI (AP/STA) | ✅ | ✅ |
-| BRIDGE | ✅ | ✅ | WIFI (WDS) | 🟨¹ | 🟨¹ |
-| VLAN | ✅ | ✅ | WIFI (MESH) | 🟨¹ | 🟨¹ |
-| MAP_T | ✅ | ✅ | WIFI (AP VLAN) | ⚠️⁴ | ⚠️⁴ |
-| TUN6RD | ✅ | ✅ | IPSEC | ❌³ | ❌³ |
-| GRE | ✅ | ✅ | PVXLAN | ❌³ | ❌³ |
-| PPTP | ✅ | ✅ | CLMAP | ❌³ | ❌³ |
-| IGS | ✅ | ✅ | TLS | ❌³ | ❌³ |
-| VXLAN | ✅ | ✅ | CAPWAP | ❌³ | ❌³ |
-| MATCH | ✅ | ✅ | DTLS | ❌³ | ❌³ |
+Mỗi nhánh trong repo có **1 kịch bản GitHub Actions riêng biệt mang đúng tên nhánh đó**, hiển thị rõ **Nhánh nào + Dòng chip nào + Có/Không PassWall** ngay trên danh sách Actions:
 
-<br/>
-
-### **💡 图例说明**
-*   ¹ 🟨 需要 **NSS 固件 11.4 版本** (`CONFIG_NSS_FIRMWARE_VERSION_11_4=y`)
-*   ² ⛔ 在该平台上不可用
-*   ³ ❌ 在 NSS 固件 (11.4–12.5) 版本中不可用
-*   ⁴ ⚠️ 在 ath11k 驱动程序中存在故障
+| STT | Nhánh Mã Nguồn (Branches) | Nền Tảng / Kernel / Feeds | Dòng Máy Build Cụ Thể | PassWall | Tên Kịch Bản Trên GitHub Actions (Workflows) | Lịch Tự Động (Giờ VN) |
+| :-: | :--- | :--- | :--- | :--- | :--- | :--- |
+| **1** | **`master`** *(mặc định)* | ImmortalWrt Snapshot — Kernel `6.6` + Feeds `25.12` | **IPQ60xx** (12 máy) + **IPQ807x** (38 máy) + **Filogic** (65 máy) | ❌ `[Không PassWall]` | `[master] Build IPQ60xx + IPQ807x + Filogic [Không PassWall]` (`build-master.yml`) | 01:30 Thứ 2 & Thứ 5 |
+| **2** | **`master-passwall`** | ImmortalWrt Snapshot — Kernel `6.6` + Feeds `25.12` | **IPQ60xx** (12 máy) + **IPQ807x** (38 máy) + **Filogic** (65 máy) | ✅ `[Có PassWall]` (`xray`, `sing-box`, `chinadns-ng`, `haproxy`) | `[master-passwall] Build IPQ60xx + IPQ807x + Filogic [Có PassWall]` (`build-master-passwall.yml`) | 04:00 Thứ 2 & Thứ 5 |
+| **3** | **`immortalwrt-24`** | ImmortalWrt 24.10 Stable — Kernel `6.6` + Feeds `24.10` | **IPQ60xx** (12 máy) + **IPQ807x** (38 máy) + **Filogic** (65 máy) | ❌ `[Không PassWall]` | `[immortalwrt-24] Build IPQ60xx + IPQ807x + Filogic [Không PassWall]` (`build-immortalwrt-24.yml`) | 01:30 Thứ 3 & Thứ 6 |
+| **4** | **`immortalwrt-24-passwall`** | ImmortalWrt 24.10 Stable — Kernel `6.6` + Feeds `24.10` | **IPQ60xx** (12 máy) + **IPQ807x** (38 máy) + **Filogic** (65 máy) | ✅ `[Có PassWall]` (`xray`, `sing-box`, `chinadns-ng`, `haproxy`) | `[immortalwrt-24-passwall] Build IPQ60xx + IPQ807x + Filogic [Có PassWall]` (`build-immortalwrt-24-passwall.yml`) | 04:00 Thứ 3 & Thứ 6 |
+| **5** | **`qualcomm-nss-25.12`** | ImmortalWrt 25.12 (`LiBwrt`) — **Kernel `6.12`** + **Qualcomm Full-NSS 12.5** + `sqm-scripts-nss` | **Chỉ Qualcomm IPQ:** **IPQ60xx** (All) + **IPQ807x** (All) | ⚙️ Chọn `false` / `true` / `both` | `[qualcomm-nss-25.12] Build IPQ60xx + IPQ807x (Kernel 6.12 Full-NSS)` (`build-qualcomm-nss-25.12.yml`) | 01:30 Thứ 4 (Thuần) & CN (PassWall) |
+| **6** | **`filogic-wed-25.12`** | ImmortalWrt 25.12 (`chasey-dev`) — **Kernel `6.12`** + **MediaTek `mt_wifi` + HNAT/WED** | **Chỉ MediaTek Filogic:** **MT7981 AX3000** (97 máy) + **MT7986 AX6000** (25 máy) | ⚙️ Chọn `false` / `true` / `both` | `[filogic-wed-25.12] Build MediaTek MT7981 + MT7986 (Kernel 6.12 WED)` (`build-filogic-wed-25.12.yml`) | 04:00 Thứ 4 (Thuần) & CN (PassWall) |
+| **7** | *(Bảo trì hệ thống)* | Dọn dẹp thông minh | Giữ 1 Release & 1 Cache mới nhất/dòng chip; **bảo vệ tuyệt đối run đang chạy** | — | `Auto-Clean & Release Purge` (`Auto-Clean.yml`) | 00:30 Hằng ngày |
+| **8** | *(Đồng bộ mã nguồn)* | Merge `immortalwrt:openwrt-24.10` | Đồng bộ an toàn 4 nhánh Kernel `6.6` (`master*`, `immortalwrt-24*`), khóa file riêng Doanduy | — | `Sync Upstream ImmortalWrt 24.10 (4 Nhánh Kernel 6.6)` (`sync-immortalwrt.yml`) | 01:00 & 13:00 Hằng ngày |
 
 ---
 
-## 📚 Wiki & FAQ
+## ⚡ Chọn Nhanh Dòng Chip Khi Bấm "Run workflow" Thủ Công
 
-- [**什么是NSS？**](https://github.com/qosmio/openwrt-ipq/blob/qualcommax-6.x-nss-wifi/README.md#whats-nss)
-- [**OpenWrt如何“分载”流量？**](https://github.com/qosmio/openwrt-ipq/blob/qualcommax-6.x-nss-wifi/README.md#how-does-openwrt-offload-traffic)
-- [**NSS与OpenWrt的“分载”选项有何不同？**](https://github.com/qosmio/openwrt-ipq/blob/qualcommax-6.x-nss-wifi/README.md#how-is-nss-different-from-openwrts-offloading-options)
-- [**我需要NSS吗？**](https://github.com/qosmio/openwrt-ipq/blob/qualcommax-6.x-nss-wifi/README.md#do-i-need-nss)
-- [**我的设备支持NSS吗？**](https://github.com/qosmio/openwrt-ipq/blob/qualcommax-6.x-nss-wifi/README.md#ok-i-want-nss-does-my-device-support-it)
-- [**重要提示！**](https://github.com/qosmio/openwrt-ipq/blob/qualcommax-6.x-nss-wifi/README.md#important-note)
-
----
-
-## 🚀 使用方法
-
-### 云编译
-
-您可以使用以下项目进行云端编译：
-
-- [**breeze303/openwrt-ci**](https://github.com/breeze303/openwrt-ci)
-- [**ZqinKing/wrt_release**](https://github.com/ZqinKing/wrt_release)
-- [**laipeng668/openwrt-ci-roc**](https://github.com/laipeng668/openwrt-ci-roc)
-- [**VIKINGYFY/OpenWRT-CI**](https://github.com/VIKINGYFY/OpenWRT-CI)
-
-### 本地编译
-
-> #### **⚠️ 注意事项**
-> - **请勿使用 `root` 用户进行编译！**
-> - **国内用户编译前建议开启网络代理。**
-> - **编译环境要求：至少 4GB 内存和 25GB 可用磁盘空间。**
-> - **默认配置：**
->   - 登陆 IP: `192.168.1.1`
->   - 密码: `none`
-
-#### 1. 系统环境准备
-推荐使用 **Ubuntu 22.04 LTS** 或 **Debian 11** 系统。
-
-#### 2. 安装编译依赖
-```bash
-sudo apt update -y
-sudo apt full-upgrade -y
-sudo apt install -y ack antlr3 asciidoc autoconf automake autopoint binutils bison build-essential \
-bzip2 ccache cmake cpio curl device-tree-compiler fastjar flex gawk gettext gcc-multilib g++-multilib \
-git gperf haveged help2man intltool libc6-dev-i386 libelf-dev libglib2.0-dev libgmp3-dev libltdl-dev \
-libmpc-dev libmpfr-dev libncurses5-dev libncursesw5-dev libreadline-dev libfuse-dev libssl-dev libtool lrzsz \
-genisoimage msmtp nano ninja-build p7zip p7zip-full patch pkgconf python3 python3-pip libpython3-dev qemu-utils \
-rsync scons squashfs-tools subversion swig texinfo uglifyjs upx-ucl unzip vim wget xmlto xxd zlib1g-dev
-```
-
-#### 3. 下载源码与配置
-```bash
-# 克隆源码
-git clone -b 25.12-nss --depth 1 --single-branch https://github.com/LiBwrt/LibWrt.git libwrt
-cd libwrt
-
-# 更新 feeds
-./scripts/feeds update -a && ./scripts/feeds install -a
-
-# 进入菜单配置
-make menuconfig
-```
-
-#### 4. 首次编译
-```bash
-# 下载依赖库 (多线程)
-make download -j$(nproc)
-
-# 开始编译 (建议使用单线程，方便排查错误)
-make -j1 V=s
-```
-编译完成后，固件位于 `bin/targets` 目录下。
-
-#### 5. 二次编译
-```bash
-cd libwrt
-
-# 拉取最新代码
-git fetch && git reset --hard origin/25.12-nss
-
-# 更新 feeds
-./scripts/feeds update -a && ./scripts/feeds install -a
-
-# 加载默认配置并编译
-make defconfig
-make -j$(nproc) V=s 
-```
-
-#### 6. 重新配置
-如果需要修改配置，请执行以下命令：
-```bash
-# 清除旧配置
-rm -rf .config
-
-# 进入菜单配置
-make menuconfig
-
-# 开始编译
-make -j$(nproc) V=s 
-```
----
-
-### ⭐ 支持项目
-**如果您喜欢这个项目，请在 GitHub 上点个 Star 支持一下！**
-
-[![Stargazers over time](https://starchart.cc/LiBwrt-op/openwrt-6.x.svg?variant=adaptive)](https://starchart.cc/LiBwrt-op/openwrt-6.x)
+- Trên 4 nhánh **`master`**, **`master-passwall`**, **`immortalwrt-24`**, **`immortalwrt-24-passwall`**:
+  - `all`: Build trọn bộ cả **3 dòng** (`Qualcomm IPQ60xx` + `Qualcomm IPQ807x` + `MediaTek Filogic`).
+  - `qualcomm-ipq`: Build riêng **cả 2 dòng Qualcomm IPQ** (`IPQ60xx` + `IPQ807x`).
+  - `qualcomm-ipq60xx` / `qualcomm-ipq807x` / `mediatek-filogic`: Build lẻ đúng 1 dòng chip.
+- Trên nhánh **`qualcomm-nss-25.12`**:
+  - `all`: Build trọn bộ **Qualcomm IPQ60xx + IPQ807x** (Kernel 6.12 Full-NSS 12.5).
+  - Chọn kèm `passwall = false` (Thuần), `true` (Có PassWall) hoặc `both` (Cả hai).
+- Trên nhánh **`filogic-wed-25.12`**:
+  - `all`: Build trọn bộ **MediaTek MT7981 + MT7986** (Kernel 6.12 `mt_wifi` + WED).
+  - Chọn kèm `passwall = false`, `true` hoặc `both`.
