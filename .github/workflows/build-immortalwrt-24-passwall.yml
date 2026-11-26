@@ -230,11 +230,10 @@ jobs:
           CONFIG_PACKAGE_nss-firmware-ipq807x=y
           CONFIG_PACKAGE_kmod-pcie_mhi_nss=y
           CONFIG_PACKAGE_kmod-qmi_wwan_q_nss=y
-          # Ensure Qualcomm NSS & PCIe MHI/QMI 5G kernel drivers are enabled without QModem
-          echo "CONFIG_PACKAGE_kmod-qca-nss-drv=y" >> .config
-          echo "CONFIG_PACKAGE_kmod-qca-nss-ecm=y" >> .config
-          echo "# CONFIG_PACKAGE_luci-app-qmodem is not set" >> .config
-          echo "# CONFIG_PACKAGE_qmodem is not set" >> .config
+          CONFIG_PACKAGE_kmod-qca-nss-drv=y
+          CONFIG_PACKAGE_kmod-qca-nss-ecm=y
+          # CONFIG_PACKAGE_luci-app-qmodem is not set
+          # CONFIG_PACKAGE_qmodem is not set
           EOF
             else
               sed -i '/pcie_mhi_nss/d; /qmi_wwan_q_nss/d; /nss-qmi-wwan/d; /NSS_MHI_PCIe_DRIVER/d' .config
@@ -253,6 +252,7 @@ jobs:
           CONFIG_PACKAGE_kmod-nft-offload=y
           CONFIG_PACKAGE_kmod-nf-flow=y
           CONFIG_PACKAGE_kmod-tcp-bbr=y
+          # CONFIG_TARGET_ROOTFS_INITRAMFS is not set
           EOF
           fi
 

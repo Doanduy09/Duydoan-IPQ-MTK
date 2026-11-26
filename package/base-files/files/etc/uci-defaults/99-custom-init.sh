@@ -60,6 +60,25 @@ uci -q batch <<-EOF
 	commit luci
 EOF
 
+# 6b. Configure status LED for JDC AX6600 (RE-CS-02) if blue:status exists and no LED rule is set
+if [ -d /sys/class/leds/blue:status ] && ! uci -q get system.led_blue >/dev/null 2>&1; then
+	uci -q batch <<-EOF
+		set system.led_blue=led
+		set system.led_blue.name='Blue Status'
+		set system.led_blue.sysfs='blue:status'
+		set system.led_blue.trigger='netdev'
+		set system.led_blue.dev='br-lan'
+		set system.led_blue.mode='link tx rx'
+		set system.led_green=led
+		set system.led_green.name='Green Off'
+		set system.led_green.sysfs='green:status'
+		set system.led_green.trigger='none'
+		set system.led_green.default='0'
+		commit system
+	EOF
+	/etc/init.d/led restart 2>/dev/null || true
+fi
+
 # 7. Clean up conflicting legacy menu entries & services (including any leftover /etc/init.d/all)
 rm -f /etc/init.d/all \
       /usr/share/luci/menu.d/luci-app-atcommands.json \
