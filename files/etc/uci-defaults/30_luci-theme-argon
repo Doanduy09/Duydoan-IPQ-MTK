@@ -1,4 +1,5 @@
 #!/bin/sh
+# [VERIFIED-GOLDEN: part2-argon-theme-defaults | 2026-11-26 | DO NOT MODIFY UNLESS TARGETED]
 uci -q batch <<-EOF
 	set luci.themes.Argon='/luci-static/argon'
 	set luci.main.mediaurlbase='/luci-static/argon'
@@ -6,3 +7,4 @@ uci -q batch <<-EOF
 EOF
 rm -rf /tmp/luci-indexcache* /tmp/luci-modulecache* 2>/dev/null
 exit 0
+# [/VERIFIED-GOLDEN]

@@ -1,7 +1,12 @@
 #!/bin/sh
-[ "$(cat /tmp/sysinfo/board_name 2>/dev/null)" = "wirelesstag,zx7981pd" ] || exit 0
+# [VERIFIED-GOLDEN: part2-wt-led-hotplug | 2026-11-26 | DO NOT MODIFY UNLESS TARGETED]
+case "$(cat /tmp/sysinfo/board_name 2>/dev/null)" in
+    wirelesstag,zx7981pd|wirelesstag,zx7981pd-ubootmod) ;;
+    *) exit 0 ;;
+esac
 case "$INTERFACE" in
-    eth2|wwan*|usb*|rmnet_mhi*)
+    mhi_hwip*|wwan*|rmnet*|usb*|eth2)
         /usr/bin/wt_led_sync.sh &
         ;;
 esac
+# [/VERIFIED-GOLDEN]

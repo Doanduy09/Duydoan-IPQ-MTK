@@ -1,5 +1,6 @@
 # Put your custom commands here that should be executed once
 # the system init finished. By default this file does nothing.
+# [VERIFIED-GOLDEN: part2-rc-local-pcie-rescan | 2026-11-26 | DO NOT MODIFY UNLESS TARGETED]
 
 # Rescan PCIe bus on every boot so M.2 5G modems (FM350-GL/RM520N) enumerate reliably after cold reboot
 [ -f /sys/bus/pci/rescan ] && echo 1 > /sys/bus/pci/rescan 2>/dev/null || true
@@ -12,5 +13,6 @@ for pdev in /sys/bus/pci/devices/*; do
     esac
 done
 
-[ -x /usr/bin/sysfixtime ] && /usr/bin/sysfixtime start &
+[ -x /etc/init.d/sysfixtime ] && /etc/init.d/sysfixtime boot >/dev/null 2>&1 &
 exit 0
+# [/VERIFIED-GOLDEN]

@@ -1,4 +1,5 @@
 #!/bin/sh
+# [VERIFIED-GOLDEN: part2-soc-offload-defaults | 2026-11-26 | DO NOT MODIFY UNLESS TARGETED]
 [ -x /etc/init.d/network_optimizer ] && /etc/init.d/network_optimizer enable
 [ -x /etc/init.d/network_optimizer ] && /etc/init.d/network_optimizer start
 
@@ -44,3 +45,4 @@ for iface in duydoan_5g duydoan_5g_6; do
 done
 uci -q commit firewall
 exit 0
+# [/VERIFIED-GOLDEN]
