@@ -39,11 +39,26 @@ if [ -f feeds/packages/net/haproxy/Makefile ]; then
 fi
 
 # Prevent MULTI_PROFILE MediaTek image assembly failures when ubootmod devices declare preloader/fip ARTIFACTS without BL2 packages enabled
-for mk in target/linux/mediatek/image/filogic.mk target/linux/mediatek/image/filogic-ext.mk; do
-  if [ -f "$mk" ]; then
-    sed -i '/^[[:space:]]*ARTIFACTS[[:space:]]*:=[[:space:]]*.*preloader\.bin/d; /^[[:space:]]*ARTIFACT\/preloader\.bin[[:space:]]*:=/d; /^[[:space:]]*ARTIFACT\/bl31-uboot\.fip[[:space:]]*:=/d' "$mk"
-  fi
-done
+python3 - << 'PYEOF'
+import os, re
+for mk in ("target/linux/mediatek/image/filogic.mk", "target/linux/mediatek/image/filogic-ext.mk"):
+    if not os.path.isfile(mk):
+        continue
+    with open(mk, "r", encoding="utf-8") as f:
+        lines = f.readlines()
+    out = []
+    skip_cont = False
+    for ln in lines:
+        if skip_cont:
+            skip_cont = ln.rstrip("\r\n").endswith("\\")
+            continue
+        if re.match(r"^\s*(ARTIFACTS\s*:=\s*.*preloader\.bin|ARTIFACT/(preloader\.bin|bl31-uboot\.fip)\s*:=)", ln):
+            skip_cont = ln.rstrip("\r\n").endswith("\\")
+            continue
+        out.append(ln)
+    with open(mk, "w", encoding="utf-8", newline="\n") as f:
+        f.writelines(out)
+PYEOF
 
 ./scripts/feeds install -a
 
