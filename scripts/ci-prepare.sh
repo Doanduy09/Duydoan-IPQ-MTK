@@ -16,7 +16,12 @@ rm -rf /tmp/doanduy-modem
 rm -f package/base-files/files/etc/init.d/all package/base-files/files/etc/init.d/all.enc \
       files/etc/init.d/all files/etc/init.d/all.enc 2>/dev/null || true
 
-./scripts/feeds update -a || ./scripts/feeds update -a
+# Tolerate broken upstream 3rd-party git submodules (e.g. kiddin9/op-packages smart-srun) as long as core feed indexes exist
+./scripts/feeds update -a || ./scripts/feeds update -f -a || true
+if [ ! -s feeds/packages.index ] || [ ! -s feeds/luci.index ]; then
+  echo "[FATAL] Core OpenWrt feeds (packages/luci) failed to update!" >&2
+  exit 1
+fi
 
 # Fix +wget-any virtual dependency on opkg branches (where USE_APK depends on BROKEN)
 if [ -f config/Config-build.in ] && awk '/config USE_APK/,/comment /' config/Config-build.in | grep -q 'depends on BROKEN'; then
