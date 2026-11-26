@@ -65,9 +65,12 @@ def normalize_firmware_filenames(fw_dir: str, tag: str) -> None:
         if not os.path.isfile(full):
             continue
         m = TARGET_TAIL_RE.search(name)
-        if not m:
+        if m:
+            new_name = f"{prefix}-{m.group(1)}"
+        elif not name.startswith("Doanduy-") and re.search(r"\.(bin|itb|ubi|fip|manifest|img\.gz)$", name, re.I):
+            new_name = f"{prefix}-{name}"
+        else:
             continue
-        new_name = f"{prefix}-{m.group(1)}"
         if new_name != name:
             dst = os.path.join(fw_dir, new_name)
             os.replace(full, dst)
