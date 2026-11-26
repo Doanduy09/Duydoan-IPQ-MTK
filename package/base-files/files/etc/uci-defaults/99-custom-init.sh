@@ -56,6 +56,7 @@ fi
 uci -q batch <<-EOF
 	set luci.main.mediaurlbase=/luci-static/argon
 	set luci.themes.Argon=/luci-static/argon
+	set luci.main.lang=vi
 	commit luci
 EOF
 
