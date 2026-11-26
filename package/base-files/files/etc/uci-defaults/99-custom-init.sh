@@ -1,5 +1,5 @@
 #!/bin/sh
-# Custom system initialization and tuning script
+# Custom system initialization and tuning script (duydoan5g dialer authoritative — legacy /etc/init.d/all removed)
 
 # 1. TCP BBR & Kernel Performance tuning
 if [ -f /etc/sysctl.d/99-custom-tuning.conf ]; then
@@ -13,7 +13,7 @@ uci commit system 2>/dev/null
 
 # [VERIFIED-GOLDEN: offload-soc-isolation | 2026-11-26 | DO NOT MODIFY UNLESS TARGETED]
 # 3. Enable Hardware Flow Offloading only on non-NSS / non-mt_wifi+HNAT targets
-if grep -qiE "ipq807|ipq60|qualcomm" /proc/cpuinfo /sys/firmware/devicetree/base/compatible 2>/dev/null; then
+if [ -d /sys/module/qca_nss_drv ] || ls /etc/modules.d/*qca-nss* >/dev/null 2>&1; then
     uci -q set firewall.@defaults[0].flow_offloading='0'
     uci -q set firewall.@defaults[0].flow_offloading_hw='0'
 elif [ -d /sys/module/mt_wifi ] || ls /etc/modules.d/*mt_wifi* /etc/modules.d/*hnat* >/dev/null 2>&1; then
@@ -52,20 +52,16 @@ if uci -q get network.wwan0 >/dev/null 2>&1; then
     uci commit network 2>/dev/null
 fi
 
-# 6. Enable Master / all service
-if [ -f /etc/init.d/all ]; then
-    /etc/init.d/all enable 2>/dev/null
-fi
-
-# 7. Set default LuCI Theme to Argon for ALL routers
+# 6. Set default LuCI Theme to Argon for ALL routers
 uci -q batch <<-EOF
 	set luci.main.mediaurlbase=/luci-static/argon
 	set luci.themes.Argon=/luci-static/argon
 	commit luci
 EOF
 
-# 8. Clean up conflicting legacy menu entries (AT commands, SMS, Usteer, Easymesh) and redundant services
-rm -f /usr/share/luci/menu.d/luci-app-atcommands.json \
+# 7. Clean up conflicting legacy menu entries & services (including any leftover /etc/init.d/all)
+rm -f /etc/init.d/all \
+      /usr/share/luci/menu.d/luci-app-atcommands.json \
       /usr/share/luci/menu.d/luci-app-sms-tool-js.json \
       /usr/share/luci/menu.d/luci-app-usteer.json \
       /usr/share/luci/menu.d/luci-app-easymesh.json \
