@@ -604,7 +604,9 @@ ifeq ($(DUMP),)
   IMAGE_SIZE := $$(shell expr 64 + $$(CONFIG_TARGET_ROOTFS_PARTSIZE))m
 endif
 endef
+ifeq ($(KERNEL_PATCHVER),6.12)
 TARGET_DEVICES += bananapi_bpi-r4-lite
+endif
 
 define Device/bazis_ax3000wm
   DEVICE_VENDOR := Bazis
@@ -704,7 +706,9 @@ define Device/glinet_gl-mt3600be
   IMAGES := sysupgrade.itb sysupgrade.bin
   IMAGE/sysupgrade.bin := sysupgrade-tar | append-metadata
 endef
+ifeq ($(KERNEL_PATCHVER),6.12)
 TARGET_DEVICES += glinet_gl-mt3600be
+endif
 
 define Device/globitel_bt-r320
   DEVICE_VENDOR := Globitel
@@ -744,7 +748,9 @@ define Device/hiveton_h5000m
   IMAGES := sysupgrade.itb sysupgrade.bin
   IMAGE/sysupgrade.bin := sysupgrade-tar | append-metadata
 endef
+ifeq ($(KERNEL_PATCHVER),6.12)
 TARGET_DEVICES += hiveton_h5000m
+endif
 
 define Device/huasifei_wh3000-pro-emmc
   DEVICE_VENDOR := Huasifei
@@ -1070,7 +1076,9 @@ define Device/mediatek_mt7987a-rfb
 				) \
 				  gzip
 endef
+ifeq ($(KERNEL_PATCHVER),6.12)
 TARGET_DEVICES += mediatek_mt7987a-rfb
+endif
 
 define Device/mercusys_mr85x
   DEVICE_VENDOR := MERCUSYS
@@ -1342,7 +1350,9 @@ define Device/routerich_be7200
   ARTIFACT/preloader.bin := mt7987-bl2 spim-nand0
   ARTIFACT/bl31-uboot.fip := mt7987-bl31-uboot routerich_be7200
 endef
+ifeq ($(KERNEL_PATCHVER),6.12)
 TARGET_DEVICES += routerich_be7200
+endif
 
 define Device/snr_snr-cpe-ax2
   DEVICE_VENDOR := SNR
