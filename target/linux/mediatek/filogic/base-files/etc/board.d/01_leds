@@ -6,6 +6,12 @@ board=$(board_name)
 board_config_update
 
 case $board in
+wirelesstag,zx7981pd|\
+wirelesstag,zx7981pd-ubootmod)
+	ucidef_set_led_default "power" "POWER" "wt:power:blue" "1"
+	ucidef_set_led_netdev "wlan2g" "WLAN2G" "wt:wifi:blue" "phy0-ap0" "link tx rx"
+	ucidef_set_led_netdev "wlan5g" "WLAN5G" "wt:5g:blue" "phy1-ap0" "link tx rx"
+	;;
 airpi,ap3000m)
 	ucidef_set_led_netdev "wlan2g" "WLAN2G" "orange:wlan-2ghz" "phy0-ap0" "link tx rx"
 	ucidef_set_led_netdev "wlan5g" "WLAN5G" "white:wlan-5ghz" "phy1-ap0" "link tx rx"

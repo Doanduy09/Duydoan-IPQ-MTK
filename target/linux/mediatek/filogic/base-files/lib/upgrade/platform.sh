@@ -96,6 +96,7 @@ xiaomi_initial_setup()
 
 	local board=$(board_name)
 	case "$board" in
+	sdmc,mt3053|\
 	xiaomi,mi-router-ax3000t|\
 	xiaomi,mi-router-wr30u-stock)
 		fw_setenv mtdparts "nmbm0:1024k(bl2),256k(Nvram),256k(Bdata),2048k(factory),2048k(fip),256k(crash),256k(crash_log),34816k(ubi),34816k(ubi1),32768k(overlay),12288k(data),256k(KF)"
@@ -226,6 +227,8 @@ platform_do_upgrade() {
 	tplink,tl-xdr6088|\
 	tplink,tl-xtr8488|\
 	wavlink,wl-wnt100x3-ubootmod|\
+	viettel,nr3053|\
+	wirelesstag,zx7981pd-ubootmod|\
 	xiaomi,mi-router-ax3000t-ubootmod|\
 	xiaomi,redmi-router-ax6000-ubootmod|\
 	xiaomi,mi-router-wr30u-ubootmod|\
@@ -486,6 +489,8 @@ platform_check_image() {
 	tplink,tl-xdr6088|\
 	tplink,tl-xtr8488|\
 	wavlink,wl-wnt100x3-ubootmod|\
+	viettel,nr3053|\
+	wirelesstag,zx7981pd-ubootmod|\
 	xiaomi,mi-router-ax3000t-ubootmod|\
 	xiaomi,redmi-router-ax6000-ubootmod|\
 	xiaomi,mi-router-wr30u-ubootmod|\

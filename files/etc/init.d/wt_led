@@ -1,0 +1,22 @@
+#!/bin/sh /etc/rc.common
+# [VERIFIED-GOLDEN: part2-wt-led-init-seq96 | 2026-11-26 | DO NOT MODIFY UNLESS TARGETED]
+START=96
+STOP=10
+USE_PROCD=1
+
+start_service() {
+    case "$(cat /tmp/sysinfo/board_name 2>/dev/null)" in
+        wirelesstag,zx7981pd|wirelesstag,zx7981pd-ubootmod) ;;
+        *) return 0 ;;
+    esac
+
+    procd_open_instance
+    procd_set_param command /usr/bin/wt_led_sync.sh daemon
+    procd_set_param respawn 3600 5 0
+    procd_close_instance
+}
+
+stop_service() {
+    killall wt_led_sync.sh 2>/dev/null
+}
+# [/VERIFIED-GOLDEN]

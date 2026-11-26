@@ -1,0 +1,48 @@
+#!/bin/sh
+# [VERIFIED-GOLDEN: part2-soc-offload-defaults | 2026-11-26 | DO NOT MODIFY UNLESS TARGETED]
+[ -x /etc/init.d/network_optimizer ] && /etc/init.d/network_optimizer enable
+[ -x /etc/init.d/network_optimizer ] && /etc/init.d/network_optimizer start
+
+# 1. Tang toc phan cung theo kien truc (tach biet Qualcomm NSS, MediaTek mt_wifi+HNAT, va mt76 PPE/WED)
+if grep -qiE "mediatek|mt798" /proc/cpuinfo /sys/firmware/devicetree/base/compatible 2>/dev/null; then
+    if [ -d /sys/module/mt_wifi ] || ls /etc/modules.d/*mt_wifi* /etc/modules.d/*hnat* >/dev/null 2>&1; then
+        # MediaTek proprietary mt_wifi + mtk_hnat/WARP: tat fw4 flow_offloading & bridger/packet_steering de HNAT/SMP doc quyen
+        uci -q set network.globals.packet_steering='0'
+        uci -q set firewall.@defaults[0].flow_offloading='0'
+        uci -q set firewall.@defaults[0].flow_offloading_hw='0'
+        [ -x /etc/init.d/bridger ] && /etc/init.d/bridger disable >/dev/null 2>&1
+    else
+        uci -q set network.globals.packet_steering='1'
+        uci -q set firewall.@defaults[0].flow_offloading='1'
+        uci -q set firewall.@defaults[0].flow_offloading_hw='1'
+        [ -x /etc/init.d/bridger ] && /etc/init.d/bridger enable >/dev/null 2>&1
+        total_ram_kb=$(awk '/MemTotal/ {print $2}' /proc/meminfo 2>/dev/null || echo 524288)
+        if [ "${total_ram_kb:-0}" -ge 360000 ]; then
+            mkdir -p /etc/modules.d 2>/dev/null
+            touch /etc/modules.conf 2>/dev/null
+            grep -q '^options mt7915e wed_enable=' /etc/modules.conf 2>/dev/null || echo "options mt7915e wed_enable=Y" >> /etc/modules.conf
+            grep -q '^options mt7996e wed_enable=' /etc/modules.conf 2>/dev/null || echo "options mt7996e wed_enable=Y" >> /etc/modules.conf
+            [ -f /etc/modules.d/mt7915e ] && sed -i '/^mt7915e/{/wed_enable=/!s/$/ wed_enable=Y/}' /etc/modules.d/mt7915e 2>/dev/null
+            [ -f /etc/modules.d/mt7996e ] && sed -i '/^mt7996e/{/wed_enable=/!s/$/ wed_enable=Y/}' /etc/modules.d/mt7996e 2>/dev/null
+        fi
+    fi
+elif grep -qiE "ipq807|ipq60|qualcomm" /proc/cpuinfo /sys/firmware/devicetree/base/compatible 2>/dev/null; then
+    # Qualcomm IPQ NSS: BAT BUOC tat fw4 nf_flow_table & packet_steering de qca-nss-ecm doc quyen tang toc phan cung
+    uci -q set network.globals.packet_steering='0'
+    uci -q set firewall.@defaults[0].flow_offloading='0'
+    uci -q set firewall.@defaults[0].flow_offloading_hw='0'
+    [ -x /etc/init.d/qca-nss-ecm ] && /etc/init.d/qca-nss-ecm enable >/dev/null 2>&1
+else
+    uci -q set network.globals.packet_steering='1'
+    uci -q set firewall.@defaults[0].flow_offloading='1'
+fi
+uci -q commit network
+
+# DuyDoan 5G Cellular WAN Firewall Integration (IPv4 + IPv6, idempotent)
+for iface in duydoan_5g duydoan_5g_6; do
+    uci -q del_list firewall.@zone[1].network="$iface"
+    uci -q add_list firewall.@zone[1].network="$iface"
+done
+uci -q commit firewall
+exit 0
+# [/VERIFIED-GOLDEN]
