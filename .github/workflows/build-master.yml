@@ -1,42 +1,36 @@
-# [VERIFIED-GOLDEN: part2-unified-matrix-no-passwall | 2026-11-26 | DO NOT MODIFY UNLESS TARGETED]
-name: Duydoan Multi-Target Firmware Builder [Không PassWall]
+# [VERIFIED-GOLDEN: workflow-master-1to1 | 2026-11-26 | DO NOT MODIFY UNLESS TARGETED]
+name: "[master] Build IPQ60xx + IPQ807x + Filogic [Không PassWall]"
+
+run-name: "[master] Build ${{ inputs.target || 'all (IPQ60xx + IPQ807x + Filogic)' }} [Không PassWall]"
 
 on:
   push:
     branches:
       - master
-      - immortalwrt-24
     paths-ignore:
       - '**.md'
       - 'docs/**'
       - '.github/ISSUE_TEMPLATE/**'
       - '.github/workflows/Auto-Clean.yml'
       - '.github/workflows/sync-immortalwrt.yml'
-      - '.github/workflows/build-passwall-matrix.yml'
-      - '.github/workflows/build-nextgen-612.yml'
+      - '.github/workflows/build-*.yml'
+      - '!.github/workflows/build-master.yml'
   schedule:
-    # 01:30 AM Asia/Ho_Chi_Minh daily (18:30 UTC) -> Kết thúc gọn trước đợt PassWall 04:00 AM
-    - cron: '30 18 * * *'
+    # 01:30 AM Thứ 2 & Thứ 5 ICT (18:30 UTC Chủ Nhật & Thứ 4) — Bản Master Thuần Không PassWall
+    - cron: '30 18 * * 1,4'
   workflow_dispatch:
     inputs:
-      branch:
-        description: 'Nhánh Không PassWall cần build'
-        required: true
-        default: 'master'
-        type: choice
-        options:
-          - master
-          - immortalwrt-24
       target:
-        description: 'Nền tảng cần build (all = cả 3 dòng chip, hoặc chọn 1 dòng)'
+        description: 'Chọn dòng chip cần build trên nhánh master'
         required: true
         default: 'all'
         type: choice
         options:
           - all
-          - mediatek-filogic
+          - qualcomm-ipq
           - qualcomm-ipq60xx
           - qualcomm-ipq807x
+          - mediatek-filogic
       release:
         description: 'Xuất bản lên GitHub Releases'
         required: false
@@ -44,7 +38,7 @@ on:
         type: boolean
 
 concurrency:
-  group: duydoan-firmware-builder-${{ inputs.branch || (startsWith(github.ref_name, 'immortalwrt-24') && 'immortalwrt-24' || 'master') }}
+  group: duydoan-wrt-master-${{ inputs.target || 'all' }}
   cancel-in-progress: ${{ github.event_name == 'push' }}
 
 permissions:
@@ -53,96 +47,76 @@ permissions:
 
 jobs:
   plan:
-    name: Plan Target Matrix
+    name: "Plan [master] Matrix (${{ inputs.target || 'all' }})"
     runs-on: ubuntu-latest
     timeout-minutes: 15
     outputs:
       matrix: ${{ steps.set-matrix.outputs.matrix }}
-      target_ref: ${{ steps.set-matrix.outputs.target_ref }}
     steps:
-      - name: Checkout Source Branch
-        uses: actions/checkout@v5
-        with:
-          ref: ${{ inputs.branch || (startsWith(github.ref_name, 'immortalwrt-24') && 'immortalwrt-24' || 'master') }}
-
-      - name: Generate Build Matrix
+      - name: Generate Build Matrix for master
         id: set-matrix
+        env:
+          TARGET: ${{ inputs.target || 'all' }}
         run: |
-          TARGET="${{ inputs.target || 'all' }}"
-          INPUT_BRANCH="${{ inputs.branch }}"
-          REF_NAME="${{ github.ref_name }}"
-          TARGET_REF="$INPUT_BRANCH"
-          if [ -z "$TARGET_REF" ]; then
-            case "$REF_NAME" in
-              immortalwrt-24*) TARGET_REF="immortalwrt-24" ;;
-              *) TARGET_REF="master" ;;
-            esac
-          fi
-          export TARGET_REF
           python3 - << 'PYEOF' > matrix.json
           import json, os
+
           target = os.environ.get("TARGET", "all")
-          ref_name = os.environ.get("TARGET_REF", "master")
+          branch_ref = "master"
+          prefix = "Duydoan-Master"
+          badge = " [Không PassWall]"
 
-          def make_targets(branch_ref):
-              if "24" in branch_ref:
-                  prefix = "Duydoan-24.10-Passwall" if "passwall" in branch_ref else "Duydoan-24.10"
-              else:
-                  prefix = "Duydoan-Master-Passwall" if "passwall" in branch_ref else "Duydoan-Master"
-              badge = " [Có PassWall]" if "passwall" in branch_ref.lower() else " [Không PassWall]"
-              items = [
-                  {
-                      "ref": branch_ref,
-                      "id": "qualcomm-ipq60xx",
-                      "title": f"Qualcomm IPQ60xx (NSS 12.5){badge}",
-                      "config": "qualcomm_ipq60xx_all.config",
-                      "target_dir": "bin/targets/qualcommax/ipq60xx",
-                      "tag_prefix": f"{prefix}-Qualcomm-IPQ60xx-All",
-                      "release_title": f"{prefix} Qualcomm IPQ60xx{badge} Unified All-Devices Release",
-                      "copy_itb_to_bin": False
-                  },
-                  {
-                      "ref": branch_ref,
-                      "id": "qualcomm-ipq807x",
-                      "title": f"Qualcomm IPQ807x (NSS 12.5){badge}",
-                      "config": "qualcomm_ipq807x_all.config",
-                      "target_dir": "bin/targets/qualcommax/ipq807x",
-                      "tag_prefix": f"{prefix}-Qualcomm-IPQ807x-All",
-                      "release_title": f"{prefix} Qualcomm IPQ807x{badge} Unified All-Devices Release",
-                      "copy_itb_to_bin": False
-                  },
-                  {
-                      "ref": branch_ref,
-                      "id": "mediatek-filogic",
-                      "title": f"MediaTek Filogic (MT7981/7986/7988 HNAT){badge}",
-                      "config": "mediatek_filogic_all.config",
-                      "target_dir": "bin/targets/mediatek/filogic",
-                      "tag_prefix": f"{prefix}-MediaTek-Filogic-All",
-                      "release_title": f"{prefix} MediaTek Filogic{badge} Unified All-Devices Release",
-                      "copy_itb_to_bin": True
-                  }
-              ]
-              if target != "all":
-                  return [t for t in items if t["id"] == target]
-              if branch_ref.startswith("qualcomm-nss"):
-                  return [t for t in items if t["id"].startswith("qualcomm-")]
-              if branch_ref.startswith("filogic-"):
-                  return [t for t in items if t["id"] == "mediatek-filogic"]
-              return items
+          items = [
+              {
+                  "ref": branch_ref,
+                  "id": "qualcomm-ipq60xx",
+                  "title": f"Qualcomm IPQ60xx (NSS 12.5){badge}",
+                  "job_title": f"[master] Qualcomm IPQ60xx (NSS 12.5){badge}",
+                  "config": "qualcomm_ipq60xx_all.config",
+                  "target_dir": "bin/targets/qualcommax/ipq60xx",
+                  "tag_prefix": f"{prefix}-Qualcomm-IPQ60xx-All",
+                  "release_title": f"{prefix} Qualcomm IPQ60xx{badge} Unified All-Devices Release",
+                  "copy_itb_to_bin": False
+              },
+              {
+                  "ref": branch_ref,
+                  "id": "qualcomm-ipq807x",
+                  "title": f"Qualcomm IPQ807x (NSS 12.5){badge}",
+                  "job_title": f"[master] Qualcomm IPQ807x (NSS 12.5){badge}",
+                  "config": "qualcomm_ipq807x_all.config",
+                  "target_dir": "bin/targets/qualcommax/ipq807x",
+                  "tag_prefix": f"{prefix}-Qualcomm-IPQ807x-All",
+                  "release_title": f"{prefix} Qualcomm IPQ807x{badge} Unified All-Devices Release",
+                  "copy_itb_to_bin": False
+              },
+              {
+                  "ref": branch_ref,
+                  "id": "mediatek-filogic",
+                  "title": f"MediaTek Filogic (MT7981/7986/7988 HNAT){badge}",
+                  "job_title": f"[master] MediaTek Filogic (MT7981/7986/7988 HNAT){badge}",
+                  "config": "mediatek_filogic_all.config",
+                  "target_dir": "bin/targets/mediatek/filogic",
+                  "tag_prefix": f"{prefix}-MediaTek-Filogic-All",
+                  "release_title": f"{prefix} MediaTek Filogic{badge} Unified All-Devices Release",
+                  "copy_itb_to_bin": True
+              }
+          ]
 
-          selected = make_targets(ref_name)
+          if target == "all":
+              selected = items
+          elif target == "qualcomm-ipq":
+              selected = [t for t in items if t["id"].startswith("qualcomm-")]
+          else:
+              selected = [t for t in items if t["id"] == target]
 
           print(json.dumps({"include": selected}))
           PYEOF
           MATRIX=$(cat matrix.json)
           echo "matrix=$MATRIX" >> "$GITHUB_OUTPUT"
-          echo "target_ref=$TARGET_REF" >> "$GITHUB_OUTPUT"
-          echo "Selected branch=$TARGET_REF matrix=$MATRIX"
-        env:
-          TARGET: ${{ inputs.target || 'all' }}
+          echo "Selected branch=master target=$TARGET matrix=$MATRIX"
 
   build:
-    name: Build ${{ matrix.title }}
+    name: "Build ${{ matrix.job_title }}"
     needs: plan
     runs-on: ubuntu-latest
     timeout-minutes: 240
@@ -151,10 +125,10 @@ jobs:
       matrix: ${{ fromJson(needs.plan.outputs.matrix) }}
 
     steps:
-      - name: Checkout Target Branch
+      - name: Checkout Branch (master)
         uses: actions/checkout@v5
         with:
-          ref: ${{ matrix.ref }}
+          ref: master
 
       - name: Free Disk, Mount /mnt SSD & Install Build Dependencies
         env:
@@ -202,7 +176,7 @@ jobs:
           PYEOF
           df -h
 
-      - name: Restore Build Cache (${{ matrix.id }})
+      - name: Restore Build Cache (master / ${{ matrix.id }})
         id: cache-restore
         uses: actions/cache/restore@v5
         with:
@@ -210,9 +184,9 @@ jobs:
             /mnt/build_wrt/.ccache
             /mnt/build_wrt/staging_dir/host*
             /mnt/build_wrt/staging_dir/tool*
-          key: wrt-${{ matrix.ref }}-${{ matrix.id }}-${{ hashFiles('tools/**', 'toolchain/**', 'feeds.conf.default', matrix.config) }}
+          key: wrt-master-${{ matrix.id }}-${{ hashFiles('tools/**', 'toolchain/**', 'feeds.conf.default', matrix.config) }}
           restore-keys: |
-            wrt-${{ matrix.ref }}-${{ matrix.id }}-
+            wrt-master-${{ matrix.id }}-
 
       - name: Prepare Restored Build Cache
         if: steps.cache-restore.outputs.cache-matched-key != ''
@@ -224,20 +198,19 @@ jobs:
           echo "1" > tmp/.build
           echo ">> Restored build cache: ${{ steps.cache-restore.outputs.cache-matched-key }}"
 
-      - name: Prepare Feeds, Kernel 6.12 Patches & Decrypt Assets
+      - name: Prepare Feeds, Kernel Patches & Decrypt Assets
         env:
           ALL_SECRET_KEY: ${{ secrets.ALL_SECRET_KEY }}
         run: |
           chmod +x scripts/ci-prepare.sh .github/scripts/*.sh
           ./scripts/ci-prepare.sh
 
-      - name: Load Unified Multi-Device Seed Config & Host Toolchains
+      - name: Load Seed Config & Hardware Offload (master / ${{ matrix.id }})
         run: |
           cp "${{ matrix.config }}" .config
           sed -i '/wwand-datapath-rmnet_nss/d' .config
           echo "CONFIG_CCACHE=y" >> .config
-          
-          # 1. Kích hoạt tăng tốc phần cứng Qualcomm Full-NSS 12.5 (IPQ60xx / IPQ807x — tắt turboacc/nf_flow tránh xung đột ECM)
+
           if [ "${{ matrix.id }}" = "qualcomm-ipq60xx" ] || [ "${{ matrix.id }}" = "qualcomm-ipq807x" ]; then
             echo ">> [NSS 12.5 ACCELERATION] Kích hoạt Qualcomm Full-NSS & ECM Engine cho ${{ matrix.id }}..."
             sed -i '/luci-app-turboacc/d; /TURBOACC_INCLUDE_/d' .config
@@ -272,7 +245,6 @@ jobs:
             fi
           fi
 
-          # 2. Kích hoạt tăng tốc phần cứng MediaTek Open-Source PPE / WED + bridger
           if [ "${{ matrix.id }}" = "mediatek-filogic" ]; then
             echo ">> [PPE/WED ACCELERATION] Kích hoạt MediaTek MT798x PPE, WED & bridger..."
             sed -i '/kmod-mediatek_hnat/d; /luci-app-turboacc-mtk/d; /MTK_SCS_FW_OFFLOAD/d; /MTK_WHNAT_SUPPORT/d; /TURBOACC_INCLUDE_/d' .config
@@ -287,32 +259,15 @@ jobs:
           EOF
           fi
 
-          # 3. Kích hoạt Passwall Suite khi chạy trên nhánh có Passwall
-          if [[ "${{ matrix.ref }}" == *"passwall"* ]] || grep -q "CONFIG_PACKAGE_luci-app-passwall=y" "${{ matrix.config }}"; then
-            echo ">> [PASSWALL AUTO-INJECT] Kích hoạt đầy đủ Passwall Suite cho toàn bộ router..."
-            cat << 'EOF' >> .config
-          CONFIG_PACKAGE_luci-app-passwall=y
-          CONFIG_PACKAGE_luci-app-passwall_INCLUDE_Xray=y
-          CONFIG_PACKAGE_luci-app-passwall_INCLUDE_SingBox=y
-          CONFIG_PACKAGE_luci-app-passwall_INCLUDE_ChinaDNS_NG=y
-          CONFIG_PACKAGE_luci-app-passwall_INCLUDE_Haproxy=y
-          CONFIG_PACKAGE_luci-app-passwall_INCLUDE_Geosite=y
-          CONFIG_PACKAGE_luci-app-passwall_INCLUDE_Geoip=y
-          CONFIG_PACKAGE_xray-core=y
-          CONFIG_PACKAGE_sing-box=y
-          CONFIG_PACKAGE_chinadns-ng=y
-          CONFIG_PACKAGE_haproxy=y
-          EOF
-          fi
-          
-          # Đảm bảo toàn bộ router đều có DoanDuy Modem Suite & wget-ssl cho Argon Theme
+          echo ">> [NO-PASSWALL] Nhánh master giữ bản thuần sạch (Không PassWall)..."
+          sed -i '/luci-app-passwall/d' .config
+          echo "# CONFIG_PACKAGE_luci-app-passwall is not set" >> .config
+
           echo "CONFIG_PACKAGE_luci-app-doanduy-modem=y" >> .config
           echo "CONFIG_PACKAGE_curl=y" >> .config
           echo "CONFIG_PACKAGE_wget-ssl=y" >> .config
 
-          # Reuse runner Go + LLVM/BPF & skip Host Python PGO before defconfig
           bash .github/scripts/prepare-build-host.sh
-          
           make defconfig
           if ! grep -q '^CONFIG_PACKAGE_luci-app-doanduy-modem=y$' .config; then
             echo "::error::CRITICAL — luci-app-doanduy-modem=y dropped by make defconfig!" >&2
@@ -322,11 +277,10 @@ jobs:
             echo "ERROR: CONFIG_USE_LLVM_BUILD=y still active — host LLVM BPF override failed!" >&2
             exit 1
           fi
-          grep -q '^CONFIG_BPF_TOOLCHAIN_HOST=y$' .config && echo ">> [OK] Host LLVM BPF toolchain active (zero llvm-bpf source build)"
+          grep -q '^CONFIG_BPF_TOOLCHAIN_HOST=y$' .config && echo ">> [OK] Host LLVM BPF toolchain active"
           grep -q '^CONFIG_CCACHE=y$' .config && echo ">> [OK] CCACHE active"
-          # Hook prebuilt runner Rust toolchain after defconfig resolves feed metadata
           bash .github/scripts/prepare-rust.sh
-          echo ">> Active target devices count: $(grep -c '^CONFIG_TARGET_DEVICE_.*=y$' .config || echo 0)"
+          echo ">> [master] Active target devices count: $(grep -c '^CONFIG_TARGET_DEVICE_.*=y$' .config || echo 0)"
 
       - name: Download Package Sources
         run: |
@@ -334,7 +288,7 @@ jobs:
           find dl/ -size -1024c -exec ls -l {} \;
           find dl/ -size -1024c -exec rm -f {} \;
 
-      - name: Compile Unified Firmware (${{ matrix.id }})
+      - name: Compile Firmware (master / ${{ matrix.id }})
         id: compile
         env:
           CCACHE_DIR: /mnt/build_wrt/.ccache
@@ -342,16 +296,16 @@ jobs:
           CCACHE_COMPRESS: 1
           CMAKE_POLICY_VERSION_MINIMUM: "3.5"
         run: |
-          echo -e "$(nproc) thread compile for ${{ matrix.title }}"
+          echo -e "$(nproc) thread compile for [master] ${{ matrix.title }}"
           make -j$(nproc) || make -j1 V=s
           ccache -s || true
           echo "status=success" >> "$GITHUB_OUTPUT"
 
-      - name: Save Build Cache (${{ matrix.id }})
+      - name: Save Build Cache (master / ${{ matrix.id }})
         if: success() && steps.cache-restore.outputs.cache-hit != 'true'
         uses: actions/cache/save@v5
         with:
-          key: wrt-${{ matrix.ref }}-${{ matrix.id }}-${{ hashFiles('tools/**', 'toolchain/**', 'feeds.conf.default', matrix.config) }}
+          key: wrt-master-${{ matrix.id }}-${{ hashFiles('tools/**', 'toolchain/**', 'feeds.conf.default', matrix.config) }}
           path: |
             /mnt/build_wrt/.ccache
             /mnt/build_wrt/staging_dir/host*
@@ -372,8 +326,11 @@ jobs:
           echo "BUILD_DATE=$(date +'%Y.%m.%d-%H%M')" >> "$GITHUB_ENV"
           echo "status=success" >> "$GITHUB_OUTPUT"
 
-      - name: Generate Dynamic Release Notes (Verified from profiles.json)
+      - name: Generate Dynamic Release Notes (Verified from profiles.json & manifest)
         if: steps.organize.outputs.status == 'success' && (github.event_name != 'workflow_dispatch' || inputs.release != false)
+        env:
+          MATRIX_TITLE: ${{ matrix.title }}
+          MATRIX_RELEASE_TITLE: ${{ matrix.release_title }}
         run: |
           python3 - << 'PYEOF'
           import glob, json, os, re
@@ -381,7 +338,6 @@ jobs:
           fw_dir = os.environ["FIRMWARE"]
           title = os.environ["MATRIX_TITLE"]
           rel_title = os.environ.get("MATRIX_RELEASE_TITLE", title)
-          ref_name = os.environ.get("REF_NAME", "master")
           build_date = os.environ["BUILD_DATE"]
           profiles_path = os.path.join(fw_dir, "profiles.json")
           profiles = []
@@ -434,22 +390,16 @@ jobs:
               with open(gh_env, "a", encoding="utf-8") as ef:
                   ef.write(f"FINAL_RELEASE_TITLE={final_rel_title}\n")
 
-          k_label = f"Kernel {kernel_ver}" if kernel_ver else "Kernel 6.x"
-          if "24" in ref_name:
-              ver_short = "Duydoan-24.10"
-              ver_desc = f"ImmortalWrt 24.10 ({k_label})"
-          else:
-              ver_short = "Duydoan-Master"
-              ver_desc = f"ImmortalWrt Master ({k_label})"
-
-          modem_line = "✅ `luci-app-doanduy-modem` v2.0.2+ (tích hợp sẵn trong ROM)" if has_modem else "⚠️ Chưa phát hiện trong manifest"
+          k_label = f"Kernel {kernel_ver}" if kernel_ver else "Kernel 6.6"
+          modem_line = "✅ `luci-app-doanduy-modem` v2.5.0+ (tích hợp sẵn trong ROM)" if has_modem else "⚠️ Chưa phát hiện trong manifest"
           clean_title = re.sub(r"\s*\[(Có PassWall|Không PassWall|Passwall)\]", "", title).strip()
           lines = [
-              f"### 🚀 {clean_title} {actual_badge} — {ver_short} Unified Release ({build_date})",
+              f"### 🚀 [master] {clean_title} {actual_badge} — Duydoan-Master Unified Release ({build_date})",
               "",
-              f"* **Base Version**: {ver_desc}",
+              f"* **Source Branch**: `master`",
+              f"* **Base Version**: ImmortalWrt Master (Feeds 25.12) ({k_label})",
               f"* **PassWall**: {pw_line}",
-              f"* **Modem 5G Suite**: {modem_line}",
+              f"* **Modem 5G & SmartHome Suite**: {modem_line}",
               f"* **Hardware Acceleration**: {accel_line}",
               f"* **Compilation Mode**: Unified Multi-Target Matrix Build (**{len(profiles)} thiết bị được biên dịch & xác thực thực tế**)",
               f"* **Default Theme**: LuCI Argon (Tiếng Việt + Argon Config đầy đủ)",
@@ -463,10 +413,6 @@ jobs:
               out.write("\n".join(lines) + "\n")
           print(f"Generated release_notes.md ({actual_badge}) with {len(profiles)} verified profiles.")
           PYEOF
-        env:
-          MATRIX_TITLE: ${{ matrix.title }}
-          MATRIX_RELEASE_TITLE: ${{ matrix.release_title }}
-          REF_NAME: ${{ matrix.ref }}
 
       - name: Upload Firmware to Actions Artifacts
         uses: actions/upload-artifact@v6
@@ -488,7 +434,7 @@ jobs:
         run: python3 "$GITHUB_WORKSPACE/.github/scripts/publish-release.py"
 
   cache-rollover:
-    name: Roll Old Build Caches
+    name: "Roll Old [master] Caches"
     needs: [plan, build]
     if: success()
     runs-on: ubuntu-latest
@@ -496,13 +442,12 @@ jobs:
     env:
       GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
       GH_REPO: ${{ github.repository }}
-      BRANCH_NAME: ${{ needs.plan.outputs.target_ref || github.ref_name }}
     steps:
-      - name: Prune Superseded Target Caches
+      - name: Prune Superseded Caches for master
         run: |
           set -euo pipefail
           for tid in qualcomm-ipq60xx qualcomm-ipq807x mediatek-filogic; do
-            prefix="wrt-${BRANCH_NAME}-${tid}-"
+            prefix="wrt-master-${tid}-"
             kept=0
             while IFS=$'\t' read -r cid ckey; do
               [ -n "$cid" ] || continue
@@ -517,7 +462,7 @@ jobs:
           done
 
   hermes_audit:
-    name: Hermes AI Sentinel Verification & Reporting (08:00 AM)
+    name: "Hermes Sentinel Report [master] [Không PassWall]"
     needs: [plan, build]
     if: always()
     runs-on: ubuntu-latest
@@ -529,7 +474,7 @@ jobs:
           BUILD_RESULT: ${{ needs.build.result }}
           REPO: ${{ github.repository }}
           RUN_ID: ${{ github.run_id }}
-          BRANCH: ${{ needs.plan.outputs.target_ref || github.ref_name }}
+          BRANCH: "master"
           WORKFLOW_NAME: ${{ github.workflow }}
           VM_WEBHOOK_URL: ${{ secrets.VM_WEBHOOK_URL }}
           VM_WEBHOOK_SECRET: ${{ secrets.VM_WEBHOOK_SECRET }}
@@ -558,7 +503,7 @@ jobs:
                   "event": "build_completed",
                   "repo": repo,
                   "run_id": run_id,
-                  "branch": os.environ.get("BRANCH", ""),
+                  "branch": os.environ.get("BRANCH", "master"),
                   "workflow": os.environ.get("WORKFLOW_NAME", ""),
                   "result": os.environ.get("BUILD_RESULT", "unknown"),
                   "run_url": f"https://github.com/{repo}/actions/runs/{run_id}",
@@ -588,7 +533,6 @@ jobs:
         if: steps.vm_signal.outputs.delivered != 'true'
         env:
           BUILD_RESULT: ${{ needs.build.result }}
-          BRANCH: ${{ needs.plan.outputs.target_ref || github.ref_name }}
           REPO: ${{ github.repository }}
           RUN_ID: ${{ github.run_id }}
           TG_BOT_TOKEN: ${{ secrets.TG_BOT_TOKEN }}
@@ -600,29 +544,15 @@ jobs:
           tg_token = os.environ.get("TG_BOT_TOKEN", "").strip()
           tg_chat_id = os.environ.get("TG_CHAT_ID", "").strip()
           if not tg_token or not tg_chat_id:
-              print("Telegram notification skipped: TG_BOT_TOKEN or TG_CHAT_ID secret is not configured.")
               raise SystemExit(0)
           result = os.environ.get("BUILD_RESULT", "unknown")
-          branch = os.environ.get("BRANCH", "master")
           run_id = os.environ.get("RUN_ID", "")
           repo = os.environ.get("REPO", "")
-
-          if result == "success":
-              status_emoji = "✅"
-              status_text = f"<b>BUILD HOÀN THÀNH 100% ({branch}) [Fallback — VM không phản hồi]</b>"
-              desc = "• MediaTek Filogic\n• Qualcomm IPQ807x\n• Qualcomm IPQ60xx"
-          else:
-              status_emoji = "⚠️"
-              status_text = f"<b>BUILD LỖI ({branch}) [Fallback — VM không phản hồi]</b>"
-              desc = "Không gửi được tín hiệu sang Debian VM sau 3 lần thử; nhờ Anh Duy kiểm tra VM."
-
+          emoji = "✅" if result == "success" else "⚠️"
           msg = (
-              f"{status_emoji} <b>GITHUB ACTIONS AUDIT FALLBACK</b>\n\n"
-              f"{status_text}\n"
-              f"📌 <b>Run ID</b>: <a href='https://github.com/{repo}/actions/runs/{run_id}'>{run_id}</a>\n"
-              f"{desc}"
+              f"{emoji} <b>[master] BUILD {result.upper()} [Không PassWall]</b>\n"
+              f"📌 <b>Run ID</b>: <a href='https://github.com/{repo}/actions/runs/{run_id}'>{run_id}</a>"
           )
-
           try:
               req = urllib.request.Request(
                   f"https://api.telegram.org/bot{tg_token}/sendMessage",
@@ -630,7 +560,6 @@ jobs:
                   headers={"Content-Type": "application/json"}
               )
               urllib.request.urlopen(req, timeout=10)
-              print("Sent Telegram fallback notification.")
           except Exception as e:
               print(f"Telegram error: {e}")
           PYEOF
