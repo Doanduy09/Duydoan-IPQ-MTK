@@ -1,3 +1,4 @@
+# [VERIFIED-GOLDEN: part2-unified-matrix-with-passwall | 2026-11-26 | DO NOT MODIFY UNLESS TARGETED]
 name: Duydoan Multi-Target Firmware Builder [Có PassWall]
 
 on:
@@ -362,7 +363,7 @@ jobs:
           echo "status=success" >> "$GITHUB_OUTPUT"
 
       - name: Generate Dynamic Release Notes (Verified from profiles.json & manifest)
-        if: steps.organize.outputs.status == 'success' && (inputs.release != false)
+        if: steps.organize.outputs.status == 'success' && (github.event_name != 'workflow_dispatch' || inputs.release != false)
         run: |
           python3 - << 'PYEOF'
           import glob, json, os, re
@@ -459,14 +460,14 @@ jobs:
 
       - name: Upload Firmware to Actions Artifacts
         uses: actions/upload-artifact@v6
-        if: steps.organize.outputs.status == 'success' && inputs.release == false
+        if: steps.organize.outputs.status == 'success' && github.event_name == 'workflow_dispatch' && inputs.release == false
         with:
           name: ${{ matrix.tag_prefix }}_${{ env.BUILD_DATE }}
           path: ${{ env.FIRMWARE }}/*
           retention-days: 3
 
       - name: Create GitHub Release (Batched & Rate-Limit Resilient)
-        if: steps.organize.outputs.status == 'success' && (inputs.release != false)
+        if: steps.organize.outputs.status == 'success' && (github.event_name != 'workflow_dispatch' || inputs.release != false)
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           GH_REPO: ${{ github.repository }}
@@ -623,3 +624,4 @@ jobs:
           except Exception as e:
               print(f"Telegram error: {e}")
           PYEOF
+# [/VERIFIED-GOLDEN]

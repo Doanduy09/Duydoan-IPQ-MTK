@@ -1,4 +1,5 @@
 #!/bin/sh
+# [VERIFIED-GOLDEN: part2-wt-led-sync-mhi | 2026-11-26 | DO NOT MODIFY UNLESS TARGETED]
 # ==============================================================================
 # Wireless-Tag ZX7981PD (5G CPE) Smart LED Manager
 # ==============================================================================
@@ -17,7 +18,7 @@ LED_5G_Y="/sys/class/leds/wt:5g:yellow"
 
 update_leds() {
     local cell_if=""
-    for iface in eth2 wwan0 usb0 rmnet_mhi0; do
+    for iface in mhi_hwip0 wwan0 rmnet_mhi0.1 rmnet_mhi0 usb0 eth2; do
         if [ -d "/sys/class/net/$iface" ]; then
             cell_if="$iface"
             break
@@ -125,3 +126,4 @@ if [ "$1" = "daemon" ]; then
 else
     update_leds
 fi
+# [/VERIFIED-GOLDEN]

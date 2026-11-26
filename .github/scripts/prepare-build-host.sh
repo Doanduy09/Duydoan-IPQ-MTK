@@ -1,4 +1,5 @@
 #!/usr/bin/env bash
+# [VERIFIED-GOLDEN: part2-prepare-build-host | 2026-11-26 | DO NOT MODIFY UNLESS TARGETED]
 # SPDX-License-Identifier: MIT
 # Reuse GitHub runner Go, LLVM/BPF, and skip Host Python PGO to cut OpenWrt build time.
 set -euo pipefail
@@ -50,3 +51,4 @@ mkdir -p "$REPORT_DIR"
 	printf 'BPF LLVM prefix: %s\n' "$LLVM_ROOT"
 	"$LLVM_ROOT/bin/clang" --version
 } | tee "$REPORT_DIR/host-toolchains.txt"
+# [/VERIFIED-GOLDEN]
