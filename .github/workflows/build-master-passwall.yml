@@ -233,6 +233,8 @@ jobs:
           EOF
           if [ "${{ matrix.id }}" = "mediatek-filogic" ]; then
             echo "CONFIG_PACKAGE_bridger=y" >> .config
+            # Prevent initramfs-recovery.itb from exceeding 44MB GPT partition limit on BPi-R3/R4 when PassWall + Xray + SingBox are included
+            echo "# CONFIG_TARGET_ROOTFS_INITRAMFS is not set" >> .config
           fi
 
           echo ">> [PASSWALL AUTO-INJECT] Kích hoạt đầy đủ Passwall Suite cho nhánh master-passwall..."
