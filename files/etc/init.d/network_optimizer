@@ -1,32 +1,37 @@
 #!/bin/sh /etc/rc.common
+# [VERIFIED-GOLDEN: part2-network-optimizer-seq94 | 2026-11-26 | DO NOT MODIFY UNLESS TARGETED]
 
-START=99
+START=94
 USE_PROCD=1
 
 start_service() {
-    [ -f /etc/sysctl.d/99-performance.conf ] && sysctl -p /etc/sysctl.d/99-performance.conf >/dev/null 2>&1
-
-    # RAM-adaptive conntrack & socket buffers (prevent OOM on 256MB routers, unlock full BDP on 512MB/1GB+)
-    local ram_kb
-    ram_kb=$(awk '/MemTotal/ {print $2}' /proc/meminfo 2>/dev/null || echo 524288)
-    if [ "${ram_kb:-0}" -le 280000 ]; then
-        sysctl -w net.netfilter.nf_conntrack_max=16384 \
-                  net.core.rmem_max=4194304 \
-                  net.core.wmem_max=4194304 \
-                  net.ipv4.tcp_rmem="4096 87380 4194304" \
-                  net.ipv4.tcp_wmem="4096 65536 4194304" >/dev/null 2>&1
-    elif [ "${ram_kb:-0}" -le 600000 ]; then
-        sysctl -w net.netfilter.nf_conntrack_max=32768 \
-                  net.core.rmem_max=8388608 \
-                  net.core.wmem_max=8388608 \
-                  net.ipv4.tcp_rmem="4096 87380 8388608" \
-                  net.ipv4.tcp_wmem="4096 65536 8388608" >/dev/null 2>&1
+    if [ -f /etc/sysctl.d/99-doanduy-opt.conf ]; then
+        sysctl -p /etc/sysctl.d/99-doanduy-opt.conf >/dev/null 2>&1
     else
-        sysctl -w net.netfilter.nf_conntrack_max=65536 \
-                  net.core.rmem_max=16777216 \
-                  net.core.wmem_max=16777216 \
-                  net.ipv4.tcp_rmem="4096 87380 16777216" \
-                  net.ipv4.tcp_wmem="4096 65536 16777216" >/dev/null 2>&1
+        [ -f /etc/sysctl.d/99-performance.conf ] && sysctl -p /etc/sysctl.d/99-performance.conf >/dev/null 2>&1
+
+        # RAM-adaptive conntrack & socket buffers fallback when 99-doanduy-opt.conf is not yet generated
+        local ram_kb
+        ram_kb=$(awk '/MemTotal/ {print $2}' /proc/meminfo 2>/dev/null || echo 524288)
+        if [ "${ram_kb:-0}" -le 280000 ]; then
+            sysctl -w net.netfilter.nf_conntrack_max=16384 \
+                      net.core.rmem_max=4194304 \
+                      net.core.wmem_max=4194304 \
+                      net.ipv4.tcp_rmem="4096 87380 4194304" \
+                      net.ipv4.tcp_wmem="4096 65536 4194304" >/dev/null 2>&1
+        elif [ "${ram_kb:-0}" -le 600000 ]; then
+            sysctl -w net.netfilter.nf_conntrack_max=32768 \
+                      net.core.rmem_max=8388608 \
+                      net.core.wmem_max=8388608 \
+                      net.ipv4.tcp_rmem="4096 87380 8388608" \
+                      net.ipv4.tcp_wmem="4096 65536 8388608" >/dev/null 2>&1
+        else
+            sysctl -w net.netfilter.nf_conntrack_max=65536 \
+                      net.core.rmem_max=16777216 \
+                      net.core.wmem_max=16777216 \
+                      net.ipv4.tcp_rmem="4096 87380 16777216" \
+                      net.ipv4.tcp_wmem="4096 65536 16777216" >/dev/null 2>&1
+        fi
     fi
 
     # Dynamic multi-core RPS mask across LAN/Wi-Fi interfaces (skip if NSS/mtk-smp manages RPS, and skip WWAN for 30-ext-devices-rps-setting)
@@ -54,3 +59,4 @@ start_service() {
         [ -d "/sys/class/net/$iface" ] && ip link set "$iface" txqueuelen 2048 2>/dev/null
     done
 }
+# [/VERIFIED-GOLDEN]

@@ -1,8 +1,0 @@
-#!/bin/sh
-# Force default LuCI theme to Argon for ALL router models
-uci -q batch <<-UCIEOF
-	set luci.main.mediaurlbase='/luci-static/argon'
-	set luci.themes.Argon='/luci-static/argon'
-	commit luci
-UCIEOF
-exit 0

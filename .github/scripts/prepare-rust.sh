@@ -1,4 +1,5 @@
 #!/usr/bin/env bash
+# [VERIFIED-GOLDEN: part2-prepare-rust | 2026-11-26 | DO NOT MODIFY UNLESS TARGETED]
 # SPDX-License-Identifier: MIT
 # Reuse GitHub runner Rust toolchain instead of compiling Rust bootstrap from source.
 set -euo pipefail
@@ -58,3 +59,4 @@ mkdir -p "$REPORT_DIR"
 	printf 'Rust toolchain: %s\nRust target: %s\n' "$RUST_TOOLCHAIN" "$RUST_TARGET"
 	"$RUST_ROOT/bin/rustc" --version
 } | tee "$REPORT_DIR/rust-toolchain.txt"
+# [/VERIFIED-GOLDEN]
