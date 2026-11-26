@@ -52,10 +52,11 @@ if uci -q get network.wwan0 >/dev/null 2>&1; then
     uci commit network 2>/dev/null
 fi
 
-# 6. Set default LuCI Theme to Argon for ALL routers
+# 6. Set default LuCI Theme to Argon & default language to Vietnamese for ALL routers
 uci -q batch <<-EOF
 	set luci.main.mediaurlbase=/luci-static/argon
 	set luci.themes.Argon=/luci-static/argon
+	set luci.main.lang=vi
 	commit luci
 EOF
 
