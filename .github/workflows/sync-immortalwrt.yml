@@ -2,7 +2,8 @@
 # Automated Upstream Sync Workflow: Safely merges ImmortalWrt 24.10 (Kernel 6.6) into 6.6 branches while protecting all Doanduy custom hardware, DTS, ucode & CI configs
 # [VERIFIED-GOLDEN: upstream-sync-kernel-aligned | 2026-11-26 | DO NOT MODIFY UNLESS TARGETED]
 
-name: Sync Upstream ImmortalWrt (All Branches)
+name: Sync Upstream ImmortalWrt 24.10 (4 Nhánh Kernel 6.6)
+run-name: "[Hệ Thống] Sync Upstream ImmortalWrt 24.10 -> 4 Nhánh Kernel 6.6"
 
 on:
   schedule:
@@ -173,5 +174,5 @@ jobs:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
           echo ">> Kích hoạt build Unified Matrix cho cả 3 nền tảng (master)..."
-          gh workflow run "build-25-unified-matrix.yml" --repo "${{ github.repository }}" -r master -f target=all || true
+          gh workflow run "build-master.yml" --repo "${{ github.repository }}" -r master -f target=all || true
 # [/VERIFIED-GOLDEN]
