@@ -105,6 +105,7 @@ jobs:
             "target/linux/mediatek/dts/mt7988d-asus-zenwifi-bt8.dtsi"
             "target/linux/mediatek/dts/mt7988d-keenetic-kn-1812.dtsi"
             "target/linux/mediatek/dts/mt7988d-tplink-be450.dts"
+            "target/linux/mediatek/dts-ext/mt7988d-tplink-be450.dts"
             "target/linux/mediatek/dts-ext/mt7981b-cudy-wr3000-nand.dtsi"
             "target/linux/mediatek/dts-ext/mt7981b-zbtlink-zbt-z8103ax.dtsi"
             "target/linux/mediatek/dts-ext/mt7988a-smartrg-mt-stuart.dtsi"

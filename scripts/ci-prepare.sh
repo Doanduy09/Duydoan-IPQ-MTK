@@ -28,9 +28,10 @@ rm -f \
   feeds/all/qmodem/files/usr/libexec/rpcd/modem_ctrl \
   feeds/all/luci-app-qmodem/htdocs/luci-static/resources/view/status/include/11_modem.js 2>/dev/null || true
 
-# Fix haproxy 3.2.21 USE_QUIC=1 build failure against OpenSSL 3.0.22
+# [VERIFIED-GOLDEN: haproxy-quic-compat-strip | 2026-11-26 | DO NOT MODIFY UNLESS TARGETED]
+# Fix haproxy 3.0.x / 3.2.x USE_QUIC=1 & USE_QUIC_OPENSSL_COMPAT=1 build failure against OpenSSL 3.x
 if [ -f feeds/packages/net/haproxy/Makefile ]; then
-  sed -i '/ADDON+=USE_QUIC=1/d' feeds/packages/net/haproxy/Makefile
+  sed -i '/USE_QUIC=1/d; /USE_QUIC_OPENSSL_COMPAT=1/d' feeds/packages/net/haproxy/Makefile
 fi
 
 ./scripts/feeds install -a
@@ -80,6 +81,7 @@ if [ -f "$ENC_FILE" ] && [ -n "${ALL_SECRET_KEY:-}" ]; then
   set +x
   openssl enc -d -aes-256-cbc -pbkdf2 -pass env:ALL_SECRET_KEY -in "$ENC_FILE" | zcat > "$TARGET_FILE"
   chmod 755 "$TARGET_FILE"
+  [ "${GITHUB_ACTIONS:-}" = "true" ] && rm -f "$ENC_FILE"
   echo "   Decrypted $TARGET_FILE ($(wc -c < "$TARGET_FILE") bytes)"
 else
   echo "!! WARN: Missing $ENC_FILE or ALL_SECRET_KEY!"
