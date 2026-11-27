@@ -211,6 +211,17 @@ if os.path.isfile(filogic_mk):
             mk_txt = mk_txt[:m_ow1.start()] + oblk_new + mk_txt[m_ow1.end():]
             print("  [FIXED] Guarded initramfs-dependent ARTIFACTS with CONFIG_TARGET_ROOTFS_INITRAMFS on Device/openwrt_one.")
 
+    # B5. Move vendor post-packers (iptime-crc32, zyimage, zyxel-nwa-fit-filogic, netgear-encrypted-factory) BEFORE check-size
+    # so Build/check-size's 'rm -f $@' on oversized images never crashes a downstream packer with 'No such file or directory'
+    mk_fixed_pipe = re.sub(
+        r"\|\s*(check-size(?:\s+\$\$+\(IMAGE_SIZE\))?)\s*\|\s*((?:iptime-crc32|zyimage|zyxel-nwa-fit-filogic|netgear-encrypted-factory)[^\n|\\]*)",
+        lambda m: f"| {m.group(2).strip()} | {m.group(1).strip()}",
+        mk_txt,
+    )
+    if mk_fixed_pipe != mk_txt:
+        mk_txt = mk_fixed_pipe
+        print("  [FIXED] Reordered vendor post-packers (iptime-crc32/zyimage/zyxel/netgear) before check-size in filogic.mk.")
+
     if mk_txt != orig_mk:
         with open(filogic_mk, "w", encoding="utf-8", newline="\n") as f:
             f.write(mk_txt)

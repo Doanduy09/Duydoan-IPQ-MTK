@@ -83,11 +83,22 @@ def normalize_firmware_filenames(fw_dir: str, tag: str) -> None:
             with open(pp, "r", encoding="utf-8") as pf:
                 pdata = json.load(pf)
             pdata["image_prefix"] = prefix
-            for prof in (pdata.get("profiles") or {}).values():
+            clean_profiles = {}
+            for pid, prof in (pdata.get("profiles") or {}).items():
+                kept_imgs = []
                 for img in prof.get("images") or []:
                     old_n = img.get("name", "")
                     if old_n in rename_map:
                         img["name"] = rename_map[old_n]
+                    cur_path = os.path.join(fw_dir, img.get("name", ""))
+                    if os.path.isfile(cur_path) and os.path.getsize(cur_path) > 0:
+                        kept_imgs.append(img)
+                if kept_imgs:
+                    prof["images"] = kept_imgs
+                    clean_profiles[pid] = prof
+                else:
+                    print(f"  [CLEAN] Pruned ghost profile '{pid}' (no image within device flash limit).", flush=True)
+            pdata["profiles"] = clean_profiles
             with open(pp, "w", encoding="utf-8") as pf:
                 json.dump(pdata, pf, indent=2)
                 pf.write("\n")
