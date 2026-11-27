@@ -249,6 +249,7 @@ jobs:
           echo "CONFIG_PACKAGE_wget-ssl=y" >> .config
 
           bash .github/scripts/prepare-build-host.sh
+          bash .github/scripts/inject-common-kmods.sh
           make defconfig
           if ! grep -q '^CONFIG_PACKAGE_luci-app-doanduy-modem=y$' .config; then
             echo "::error::CRITICAL — luci-app-doanduy-modem=y dropped by make defconfig!" >&2
