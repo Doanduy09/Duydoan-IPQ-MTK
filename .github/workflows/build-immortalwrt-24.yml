@@ -75,7 +75,7 @@ jobs:
                   "config": "qualcomm_ipq60xx_all.config",
                   "target_dir": "bin/targets/qualcommax/ipq60xx",
                   "tag_prefix": f"{prefix}-Qualcomm-IPQ60xx-All",
-                  "release_title": f"[immortalwrt-24] Duydoan-24.10 Qualcomm IPQ60xx{badge} Unified All-Devices Release",
+                  "release_title": f"[immortalwrt-24] Duydoan-24.10 Qualcomm IPQ60xx (Full-NSS 12.5){badge} Unified All-Devices Release",
                   "copy_itb_to_bin": False
               },
               {
@@ -86,7 +86,7 @@ jobs:
                   "config": "qualcomm_ipq807x_all.config",
                   "target_dir": "bin/targets/qualcommax/ipq807x",
                   "tag_prefix": f"{prefix}-Qualcomm-IPQ807x-All",
-                  "release_title": f"[immortalwrt-24] Duydoan-24.10 Qualcomm IPQ807x{badge} Unified All-Devices Release",
+                  "release_title": f"[immortalwrt-24] Duydoan-24.10 Qualcomm IPQ807x (Full-NSS 12.5){badge} Unified All-Devices Release",
                   "copy_itb_to_bin": False
               },
               {
@@ -97,7 +97,7 @@ jobs:
                   "config": "mediatek_filogic_all.config",
                   "target_dir": "bin/targets/mediatek/filogic",
                   "tag_prefix": f"{prefix}-MediaTek-Filogic-All",
-                  "release_title": f"[immortalwrt-24] Duydoan-24.10 MediaTek Filogic{badge} Unified All-Devices Release",
+                  "release_title": f"[immortalwrt-24] Duydoan-24.10 MediaTek Filogic (HNAT/Offload){badge} Unified All-Devices Release",
                   "copy_itb_to_bin": True
               }
           ]
@@ -231,10 +231,10 @@ jobs:
           CONFIG_PACKAGE_kmod-pcie_mhi_nss=y
           CONFIG_PACKAGE_kmod-qmi_wwan_q_nss=y
           # Ensure Qualcomm NSS & PCIe MHI/QMI 5G kernel drivers are enabled without QModem
-          CONFIG_PACKAGE_kmod-qca-nss-drv=y
-          CONFIG_PACKAGE_kmod-qca-nss-ecm=y
-          # CONFIG_PACKAGE_luci-app-qmodem is not set
-          # CONFIG_PACKAGE_qmodem is not set
+          echo "CONFIG_PACKAGE_kmod-qca-nss-drv=y" >> .config
+          echo "CONFIG_PACKAGE_kmod-qca-nss-ecm=y" >> .config
+          echo "# CONFIG_PACKAGE_luci-app-qmodem is not set" >> .config
+          echo "# CONFIG_PACKAGE_qmodem is not set" >> .config
           EOF
             else
               sed -i '/pcie_mhi_nss/d; /qmi_wwan_q_nss/d; /nss-qmi-wwan/d; /NSS_MHI_PCIe_DRIVER/d' .config
