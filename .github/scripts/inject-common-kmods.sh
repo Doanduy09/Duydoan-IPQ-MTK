@@ -59,12 +59,14 @@ CONFIG_PACKAGE_kmod-ppp=y
 CONFIG_PACKAGE_kmod-pppoe=y
 CONFIG_PACKAGE_kmod-mppe=y
 
-# --- Common 5G Dialer Userspace & Vietnamese LuCI ---
+# --- Common 5G Dialer Userspace & Vietnamese LuCI & Doanduy Firmware Naming ---
 CONFIG_PACKAGE_umbim=y
 CONFIG_PACKAGE_uqmi=y
 CONFIG_PACKAGE_sms-tool=y
 CONFIG_PACKAGE_luci-i18n-base-vi=y
 CONFIG_PACKAGE_luci-i18n-firewall-vi=y
+CONFIG_VERSIONOPT=y
+CONFIG_VERSION_DIST="Doanduy"
 EOF
 
 # PassWall extra TProxy/Socket kmods (only when PassWall is enabled)
