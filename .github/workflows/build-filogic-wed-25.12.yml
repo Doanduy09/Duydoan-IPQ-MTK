@@ -1,7 +1,7 @@
 # [VERIFIED-GOLDEN: workflow-filogic-wed-25.12-1to1 | 2026-11-26 | DO NOT MODIFY UNLESS TARGETED]
-name: "[filogic-wed-25.12] Build MediaTek MT7981 + MT7986 (Kernel 6.12 WED)"
+name: "[filogic-wed-25.12] Build MediaTek MT7981 + MT7986 (Kernel 6.12 | mt_wifi + HNAT/WED)"
 
-run-name: "[filogic-wed-25.12] Build ${{ inputs.target || 'all (MT7981 + MT7986)' }} (Kernel 6.12 | PassWall=${{ inputs.passwall || 'auto' }})"
+run-name: "[filogic-wed-25.12] Build ${{ inputs.target || 'all (MT7981 + MT7986)' }} (Kernel 6.12 | mt_wifi + HNAT/WED | PassWall=${{ inputs.passwall || 'auto' }})"
 
 on:
   push:
