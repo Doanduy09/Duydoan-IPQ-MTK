@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# [VERIFIED-GOLDEN: ci-prepare-v3-full-modem-and-mt3053-guard | 2026-11-27 | DO NOT MODIFY UNLESS TARGETED]
+# [VERIFIED-GOLDEN: ci-prepare-v4-passwall2-lean-vi-and-mt3053-guard | 2026-11-27 | DO NOT MODIFY UNLESS TARGETED]
 # Unified Pre-Build Preparation, 5G Binary Embedding & NAND Partition Gate (Duydoan-IPQ-MTK)
 set -euo pipefail
 
@@ -290,6 +290,64 @@ rm -f \
 
 if [ -f feeds/packages/net/haproxy/Makefile ]; then
   sed -i '/USE_QUIC=1/d; /USE_QUIC_OPENSSL_COMPAT=1/d' feeds/packages/net/haproxy/Makefile
+fi
+
+# Configure PassWall 2 (Lean Single-Core Sing-Box + Pure Nftables + 100% Vietnamese UI) before feed indexing
+if [ -d feeds/passwall2/luci-app-passwall2 ]; then
+  echo ">> [PassWall 2] Injecting 100% Vietnamese translation (luci-i18n-passwall2-vi) & Sing-Box lean defaults..."
+  if [ -f .github/assets/passwall2.vi.po ]; then
+    mkdir -p feeds/passwall2/luci-app-passwall2/po/vi
+    cp -f .github/assets/passwall2.vi.po feeds/passwall2/luci-app-passwall2/po/vi/passwall2.po
+  fi
+  python3 - << 'PW2_EOF'
+import os, re
+
+base = "feeds/passwall2/luci-app-passwall2"
+
+# 1. Lock Kconfig defaults to Sing-Box only & disable redundant cores/plugins by default
+mk = os.path.join(base, "Makefile")
+if os.path.isfile(mk):
+    with open(mk, "r", encoding="utf-8") as f:
+        s = f.read()
+    s = re.sub(r"default PACKAGE_\$\(PKG_NAME\)_Basic_Core_All[^\n]*", "default PACKAGE_$(PKG_NAME)_Basic_Core_SingBox", s)
+    s = s.replace("default PACKAGE_$(PKG_NAME)_Basic_Core_Xray", "default PACKAGE_$(PKG_NAME)_Basic_Core_SingBox")
+    for opt in ("INCLUDE_Haproxy", "INCLUDE_Shadowsocks_Rust_Client", "INCLUDE_ShadowsocksR_Libev_Client", "INCLUDE_Simple_Obfs", "INCLUDE_V2ray_Plugin"):
+        s = re.sub(rf"(config PACKAGE_\$\(PKG_NAME\)_{opt}\n(?:[^\n]*\n)*?\t)default y[^\n]*", r"\1default n", s)
+    with open(mk, "w", encoding="utf-8", newline="\n") as f:
+        f.write(s)
+
+# 2. Switch default examplenode & rulenode from 'Xray' to 'sing-box' so Sing-Box-only builds work out of the box
+def_cfg = os.path.join(base, "root/usr/share/passwall2/0_default_config")
+if os.path.isfile(def_cfg):
+    with open(def_cfg, "r", encoding="utf-8") as f:
+        s = f.read()
+    s = s.replace("\toption type 'Xray'", "\toption type 'sing-box'")
+    s = s.replace("\toption transport 'raw'", "\toption transport 'tcp'")
+    with open(def_cfg, "w", encoding="utf-8", newline="\n") as f:
+        f.write(s)
+
+# 3. Use global Cloudflare DoH (1.1.1.1) instead of China AliDNS (223.5.5.5) for Sing-Box ECH lookups
+sb_lua = os.path.join(base, "luasrc/passwall2/util_sing-box.lua")
+if os.path.isfile(sb_lua):
+    with open(sb_lua, "r", encoding="utf-8") as f:
+        s = f.read()
+    s = s.replace('server = "223.5.5.5"', 'server = "1.1.1.1"')
+    with open(sb_lua, "w", encoding="utf-8", newline="\n") as f:
+        f.write(s)
+
+# 4. Fix APK 0-byte .list false warning for built-in/kmod nftables dependencies on ImmortalWrt 25.12 & SNAPSHOT
+app_sh = os.path.join(base, "root/usr/share/passwall2/app.sh")
+if os.path.isfile(app_sh):
+    with open(app_sh, "r", encoding="utf-8") as f:
+        s = f.read()
+    s = s.replace(
+        'if [ ! -s "${file_path}/${pkg}${file_ext}" ]; then',
+        'if [ ! -e "${file_path}/${pkg}${file_ext}" ] && ! grep -qx "P:${pkg}" /lib/apk/db/installed 2>/dev/null; then',
+    )
+    with open(app_sh, "w", encoding="utf-8", newline="\n") as f:
+        f.write(s)
+PW2_EOF
+  ./scripts/feeds update -i passwall2
 fi
 
 # Prevent MULTI_PROFILE MediaTek image assembly failures when ubootmod devices declare preloader/fip ARTIFACTS without BL2 packages enabled
