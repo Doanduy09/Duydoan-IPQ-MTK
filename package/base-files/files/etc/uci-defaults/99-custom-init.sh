@@ -21,7 +21,11 @@ elif [ -d /sys/module/mt_wifi ] || ls /etc/modules.d/*mt_wifi* /etc/modules.d/*h
     uci -q set firewall.@defaults[0].flow_offloading_hw='0'
 else
     uci -q set firewall.@defaults[0].flow_offloading='1'
-    uci -q set firewall.@defaults[0].flow_offloading_hw='1'
+    if grep -qiE "mediatek|mt798" /proc/cpuinfo /sys/firmware/devicetree/base/compatible 2>/dev/null; then
+        uci -q set firewall.@defaults[0].flow_offloading_hw='1'
+    else
+        uci -q set firewall.@defaults[0].flow_offloading_hw='0'
+    fi
 fi
 uci commit firewall 2>/dev/null
 # [/VERIFIED-GOLDEN]

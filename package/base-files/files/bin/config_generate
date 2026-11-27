@@ -318,9 +318,9 @@ generate_static_system() {
 	uci -q batch <<-EOF
 		delete system.@system[0]
 		add system system
-		set system.@system[-1].hostname='ImmortalWrt'
-		set system.@system[-1].timezone='GMT0'
-		set system.@system[-1].zonename='UTC'
+		set system.@system[-1].hostname='DOANDUY'
+		set system.@system[-1].timezone='<+07>-7'
+		set system.@system[-1].zonename='Asia/Ho_Chi_Minh'
 		set system.@system[-1].ttylogin='0'
 		set system.@system[-1].log_size='128'
 		set system.@system[-1].urandom_seed='0'

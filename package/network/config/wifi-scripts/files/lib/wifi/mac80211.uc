@@ -134,7 +134,7 @@ set ${si}=wifi-iface
 set ${si}.device='${name}'
 set ${si}.network='lan'
 set ${si}.mode='ap'
-set ${si}.ssid='${defaults?.ssid || "ImmortalWrt"}'
+set ${si}.ssid='${band_name == "2g" ? "DOANDUY_2.4G" : (band_name == "5g" ? "DOANDUY_5G" : (band_name == "6g" ? "DOANDUY_6G" : "DOANDUY"))}'
 set ${si}.encryption='${defaults?.encryption || encryption}'
 set ${si}.key='${defaults?.key || ""}'
 set ${si}.disabled='0'

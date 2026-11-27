@@ -82,3 +82,59 @@ fi
 if grep -q '^CONFIG_TARGET_mediatek_filogic=y$' "$CFG"; then
   echo "CONFIG_PACKAGE_kmod-usb-serial-xr_usb_serial_common=y" >> "$CFG"
 fi
+
+# --- Build-time Source Branding Guard (guarantees DOANDUY SSID/Hostname/Dist even after upstream sync) ---
+python3 - << 'PYEOF'
+import os, re
+
+# 1. mac80211.uc default SSID (OpenWrt / ImmortalWrt / LibWrt)
+mac_uc = "package/network/config/wifi-scripts/files/lib/wifi/mac80211.uc"
+if os.path.isfile(mac_uc):
+    with open(mac_uc, "r", encoding="utf-8") as f:
+        s = f.read()
+    target_line = """set ${si}.ssid='${band_name == "2g" ? "DOANDUY_2.4G" : (band_name == "5g" ? "DOANDUY_5G" : (band_name == "6g" ? "DOANDUY_6G" : "DOANDUY"))}'"""
+    s2 = re.sub(r"set \$\{si\}\.ssid='[^']*'", lambda _: target_line, s)
+    if s2 != s:
+        with open(mac_uc, "w", encoding="utf-8") as f:
+            f.write(s2)
+
+# 2. MediaTek proprietary mtwifi.uc default SSID (keep country='CN' untouched)
+mt_uc = "package/mtk/applications/mtwifi-cfg-ucode/files/lib/wifi/mtwifi.uc"
+if os.path.isfile(mt_uc):
+    with open(mt_uc, "r", encoding="utf-8") as f:
+        s = f.read()
+    s2 = (
+        s.replace('ssid: "ImmortalWrt-2.4G"', 'ssid: "DOANDUY_2.4G"')
+         .replace('ssid: "ImmortalWrt-5G"', 'ssid: "DOANDUY_5G"')
+         .replace('ssid: "ImmortalWrt-6G"', 'ssid: "DOANDUY_6G"')
+    )
+    if s2 != s:
+        with open(mt_uc, "w", encoding="utf-8") as f:
+            f.write(s2)
+
+# 3. config_generate default hostname & timezone
+cg = "package/base-files/files/bin/config_generate"
+if os.path.isfile(cg):
+    with open(cg, "r", encoding="utf-8") as f:
+        s = f.read()
+    s2 = re.sub(r"set system\.@system\[-1\]\.hostname='[^']*'", "set system.@system[-1].hostname='DOANDUY'", s)
+    s2 = re.sub(r"set system\.@system\[-1\]\.timezone='GMT0'", "set system.@system[-1].timezone='<+07>-7'", s2)
+    s2 = re.sub(r"set system\.@system\[-1\]\.zonename='UTC'", "set system.@system[-1].zonename='Asia/Ho_Chi_Minh'", s2)
+    if s2 != s:
+        with open(cg, "w", encoding="utf-8") as f:
+            f.write(s2)
+
+# 4. include/version.mk fallback VERSION_DIST -> Doanduy
+vmk = "include/version.mk"
+if os.path.isfile(vmk):
+    with open(vmk, "r", encoding="utf-8") as f:
+        s = f.read()
+    s2 = re.sub(
+        r"VERSION_DIST:=\$\(if \$\(VERSION_DIST\),\$\(VERSION_DIST\),[^)]+\)",
+        "VERSION_DIST:=$(if $(VERSION_DIST),$(VERSION_DIST),Doanduy)",
+        s,
+    )
+    if s2 != s:
+        with open(vmk, "w", encoding="utf-8") as f:
+            f.write(s2)
+PYEOF
