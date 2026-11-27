@@ -156,6 +156,12 @@ jobs:
             rm -rf "$GITHUB_WORKSPACE/$d"
             ln -sfn "/mnt/build_wrt/$d" "$GITHUB_WORKSPACE/$d"
           done
+          df -h / /mnt/build_wrt && free -h
+          AVAIL_GB=$(df -BG --output=avail /mnt/build_wrt | tail -n1 | tr -dc '0-9')
+          if [ "${AVAIL_GB:-0}" -lt 15 ]; then
+            echo "::error::Insufficient disk space on /mnt/build_wrt (${AVAIL_GB}GB < 15GB)"
+            exit 1
+          fi
 
           python3 - << 'PYEOF'
           import json, os, re
