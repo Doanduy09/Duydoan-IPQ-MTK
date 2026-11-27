@@ -377,7 +377,7 @@ jobs:
                   ef.write(f"FINAL_RELEASE_TITLE={final_rel_title}\n")
 
           k_label = f"Kernel {kernel_ver}" if kernel_ver else "SNAPSHOT Kernel 6.18"
-          modem_line = "✅ `luci-app-doanduy-modem` v2.5.0+ (tích hợp sẵn trong ROM, không dùng file `all` cũ)" if has_modem else "⚠️ Chưa phát hiện trong manifest"
+          modem_line = "✅ `luci-app-doanduy-modem` v2.6.4+ & `quectel-cm` + `atinout` + Auto-Mesh Đa Chip (tích hợp sẵn trong ROM)" if has_modem else "⚠️ Chưa phát hiện trong manifest"
           clean_title = re.sub(r"\s*\[(Có PassWall|Không PassWall|Passwall)\]", "", title).strip()
           lines = [
               f"### 🚀 [master] {clean_title} {actual_badge} — Duydoan-SNAPSHOT-K6.18 ({build_date})",
@@ -397,6 +397,7 @@ jobs:
           lines.extend([
               "",
               "#### ⚠️ Lưu Ý Flash An Toàn:",
+              "- **Viettel / SDMC NR3053 (MT3053 U-Boot gốc `ubi_kernel` + `ubi`)**: Khi nạp từ màn hình cứu hộ **U-Boot (`192.168.1.1`)**, bắt buộc chọn file **`*-sdmc_mt3053-factory.ubi`**; sau khi máy khởi động vào LuCI, nạp tiếp **`*-sdmc_mt3053-squashfs-sysupgrade.bin`** để lưu vĩnh viễn vào NAND. (Chỉ dùng `viettel_nr3053` cho máy đã thay bootloader `ubootmod`).",
               "- **Không giữ cấu hình cũ (`Keep settings`)** khi chuyển từ bản **Full-NSS** sang **Không NSS** hoặc đổi giữa các nhánh Kernel khác nhau.",
               "- Đối chiếu mã kiểm tra trong tệp `sha256sums` đi kèm trước khi nạp firmware.",
           ])

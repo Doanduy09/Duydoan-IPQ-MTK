@@ -113,6 +113,55 @@ def normalize_firmware_filenames(fw_dir: str, tag: str) -> None:
     print(f">> Normalized {len(rename_map)} firmware file(s) to prefix '{prefix}-*'.", flush=True)
 
 
+def verify_rom_release_gate(fw_dir: str, tag: str) -> None:
+    """Hard gate: block publishing incomplete ROMs missing core 5G/Mesh packages or sdmc_mt3053 factory.ubi."""
+    mf_pkgs = set()
+    for name in os.listdir(fw_dir):
+        if name.endswith(".manifest"):
+            with open(os.path.join(fw_dir, name), "r", encoding="utf-8", errors="replace") as f:
+                for ln in f:
+                    pkg, _, _ = ln.partition(" - ")
+                    if pkg.strip():
+                        mf_pkgs.add(pkg.strip())
+    required_pkgs = (
+        "luci-app-doanduy-modem",
+        "quectel-cm-5g",
+        "atinout",
+        "usbutils",
+        "usb-modeswitch",
+        "coreutils-timeout",
+        "flock",
+        "zoneinfo-asia",
+        "uqmi",
+        "umbim",
+    )
+    if mf_pkgs:
+        missing = [p for p in required_pkgs if p not in mf_pkgs]
+        if missing:
+            raise RuntimeError(f"[FATAL ROM GATE] Manifest missing required core package(s): {', '.join(missing)}")
+        print(f">> [ROM GATE PASS] Manifest verified ({len(mf_pkgs)} common packages, all {len(required_pkgs)} core 5G/Mesh tools present).", flush=True)
+
+    # Verify sdmc_mt3053 factory.ubi & sysupgrade.bin when sdmc_mt3053 profile is in this build
+    pp = os.path.join(fw_dir, "profiles.json")
+    if os.path.isfile(pp):
+        with open(pp, "r", encoding="utf-8") as pf:
+            profs = (json.load(pf).get("profiles") or {})
+        if "sdmc_mt3053" in profs:
+            files = os.listdir(fw_dir)
+            sysup = [n for n in files if "sdmc_mt3053-squashfs-sysupgrade.bin" in n]
+            if not sysup:
+                raise RuntimeError("[FATAL ROM GATE] Missing sdmc_mt3053-squashfs-sysupgrade.bin!")
+            has_pw = "luci-app-passwall" in mf_pkgs or "luci-app-passwall2" in mf_pkgs
+            if not has_pw:
+                f_ubi = [n for n in files if "sdmc_mt3053-factory.ubi" in n]
+                if not f_ubi:
+                    raise RuntimeError("[FATAL ROM GATE] Missing sdmc_mt3053-factory.ubi for U-Boot Web Recovery!")
+                ubi_sz = os.path.getsize(os.path.join(fw_dir, f_ubi[0])) / (1024 * 1024)
+                if ubi_sz < 14.0 or ubi_sz > 33.5:
+                    raise RuntimeError(f"[FATAL ROM GATE] sdmc_mt3053-factory.ubi size {ubi_sz:.2f} MB out of safe 34MB mtd7 bounds!")
+                print(f">> [ROM GATE PASS] Verified {f_ubi[0]} ({ubi_sz:.2f} MB) + {sysup[0]} ready for U-Boot & LuCI!", flush=True)
+
+
 def run_gh(args, timeout=300):
     return subprocess.run(
         ["gh", *args],
@@ -281,6 +330,7 @@ def main() -> int:
             notes_file = cand
 
     normalize_firmware_filenames(fw_dir, tag)
+    verify_rom_release_gate(fw_dir, tag)
     assets = collect_assets(fw_dir)
     if not assets:
         print(f"[ERR] No uploadable firmware files found in {fw_dir}", file=sys.stderr)

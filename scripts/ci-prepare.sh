@@ -1,22 +1,191 @@
 #!/usr/bin/env bash
-# [VERIFIED-GOLDEN: ci-prepare-no-all-enc-v2 | 2026-11-26 | DO NOT MODIFY UNLESS TARGETED]
-# Unified Pre-Build Preparation & Security/Syntax Gate (Duydoan-IPQ-MTK)
+# [VERIFIED-GOLDEN: ci-prepare-v3-full-modem-and-mt3053-guard | 2026-11-27 | DO NOT MODIFY UNLESS TARGETED]
+# Unified Pre-Build Preparation, 5G Binary Embedding & NAND Partition Gate (Duydoan-IPQ-MTK)
 set -euo pipefail
 
 echo "=========================================================="
-echo ">> [1/3] Updating & Installing OpenWrt Feeds..."
+echo ">> [1/4] Embedding DoanDuy Modem Suite, atinout & quectel-cm-5g..."
 echo "=========================================================="
-# Embed DoanDuy Modem & SmartHome Suite (v2.5.0+) directly into package/
+# 1. Embed DoanDuy Modem, Auto-Mesh & SmartHome Suite (v2.6.4+) directly into package/
 rm -rf package/luci-app-doanduy-modem /tmp/doanduy-modem
 git clone --depth 1 https://github.com/Doanduy09/luci-app-doanduy-modem.git /tmp/doanduy-modem
 cp -r /tmp/doanduy-modem/luci-app-doanduy-modem package/
 rm -rf /tmp/doanduy-modem
 
-# Purge any legacy /etc/init.d/all or all.enc (replaced 100% by duydoan5g dialer)
+# 2. Ensure atinout exists in package/utils/atinout across all branches (master & 25.12)
+if [ ! -f package/utils/atinout/Makefile ]; then
+  mkdir -p package/utils/atinout
+  cat << 'AT_EOF' > package/utils/atinout/Makefile
+include $(TOPDIR)/rules.mk
+
+PKG_NAME:=atinout
+PKG_VERSION:=0.9.1
+PKG_RELEASE:=1
+PKG_LICENSE:=GPLv2
+PKG_SOURCE_PROTO:=git
+PKG_SOURCE_URL:=https://github.com/beralt/atinout.git
+PKG_SOURCE_VERSION:=4013e8db4cd140c1df24bb90f929efeb9b61b238
+PKG_MIRROR_HASH:=skip
+PKG_SOURCE_SUBDIR:=$(PKG_NAME)
+PKG_SOURCE:=$(PKG_NAME)-$(PKG_VERSION).tar.gz
+PKG_BUILD_DIR:=$(BUILD_DIR)/$(PKG_SOURCE_SUBDIR)
+
+include $(INCLUDE_DIR)/package.mk
+
+define Package/$(PKG_NAME)
+	SECTION:=net
+	CATEGORY:=Network
+	SUBMENU:=Telephony
+	TITLE:=Send AT commands to a modem
+endef
+
+CONFIGURE_VARS += \
+  CC="$(TARGET_CC)" \
+  CFLAGS="$(TARGET_CFLAGS) -Wall -DVERSION=\"\\\"$(PKG_VERSION)\\\"\"" \
+  LDFLAGS="$(TARGET_LDFLAGS)"
+
+define Build/Configure
+	true
+endef
+
+define Build/Compile
+	$(CONFIGURE_VARS) $(MAKE) -C $(PKG_BUILD_DIR) all
+endef
+
+define Package/$(PKG_NAME)/install
+	$(INSTALL_DIR) $(1)/usr/bin
+	$(INSTALL_BIN) $(PKG_BUILD_DIR)/$(PKG_NAME) $(1)/usr/bin/$(PKG_NAME)
+endef
+
+$(eval $(call BuildPackage,$(PKG_NAME)))
+AT_EOF
+fi
+
+# 3. Embed standalone quectel-cm-5g (from FUjr/QModem) so /usr/bin/quectel-cm & /usr/bin/quectel-CM-M are built into every ROM
+rm -rf package/utils/quectel-cm-5g /tmp/qmodem-cm
+git clone --depth 1 https://github.com/FUjr/QModem.git /tmp/qmodem-cm
+if [ -d /tmp/qmodem-cm/application/quectel_CM_5G_M/src ]; then
+  mkdir -p package/utils/quectel-cm-5g
+  cp -r /tmp/qmodem-cm/application/quectel_CM_5G_M/src package/utils/quectel-cm-5g/
+  [ -d /tmp/qmodem-cm/application/quectel_CM_5G_M/files ] && cp -r /tmp/qmodem-cm/application/quectel_CM_5G_M/files package/utils/quectel-cm-5g/
+  # Strip -Werror for GCC 13/14 Kernel 6.18 compatibility
+  sed -i 's/-Werror //g; s/-Werror$//g' package/utils/quectel-cm-5g/src/Makefile
+  cat << 'QCM_EOF' > package/utils/quectel-cm-5g/Makefile
+include $(TOPDIR)/rules.mk
+
+PKG_NAME:=quectel-cm-5g
+PKG_VERSION:=1.6.8
+PKG_RELEASE:=1
+PKG_LICENSE:=GPL-2.0
+
+include $(INCLUDE_DIR)/package.mk
+
+define Package/quectel-cm-5g
+  SECTION:=net
+  CATEGORY:=Network
+  SUBMENU:=WWAN
+  TITLE:=High-speed QMI/MBIM 5G Connection Manager (quectel-cm & quectel-CM-M)
+  DEPENDS:=+libjson-c +libpthread
+endef
+
+define Build/Prepare
+	mkdir -p $(PKG_BUILD_DIR)
+	$(CP) ./src/* $(PKG_BUILD_DIR)/
+endef
+
+define Build/Compile
+	$(MAKE) -C $(PKG_BUILD_DIR) \
+		$(TARGET_CONFIGURE_OPTS) \
+		CC="$(TARGET_CC)" \
+		CFLAGS="$(TARGET_CFLAGS) -Wno-error"
+endef
+
+define Package/quectel-cm-5g/install
+	$(INSTALL_DIR) $(1)/usr/bin $(1)/usr/share/qmodem
+	$(INSTALL_BIN) $(PKG_BUILD_DIR)/quectel-CM $(1)/usr/bin/quectel-cm
+	ln -sf quectel-cm $(1)/usr/bin/quectel-CM-M
+	[ -f $(PKG_BUILD_DIR)/quectel-qmi-proxy ] && $(INSTALL_BIN) $(PKG_BUILD_DIR)/quectel-qmi-proxy $(1)/usr/bin/quectel-qmi-proxy || true
+	[ -f $(PKG_BUILD_DIR)/quectel-mbim-proxy ] && $(INSTALL_BIN) $(PKG_BUILD_DIR)/quectel-mbim-proxy $(1)/usr/bin/quectel-mbim-proxy || true
+	[ -f ./files/apns.json ] && $(INSTALL_DATA) ./files/apns.json $(1)/usr/share/qmodem/apns.json || true
+endef
+
+$(eval $(call BuildPackage,quectel-cm-5g))
+QCM_EOF
+fi
+rm -rf /tmp/qmodem-cm
+
+# Purge any legacy /etc/init.d/all or all.enc (replaced 100% by duydoan5g dialer + auto_mesh)
 rm -f package/base-files/files/etc/init.d/all package/base-files/files/etc/init.d/all.enc \
       files/etc/init.d/all files/etc/init.d/all.enc 2>/dev/null || true
 
-# Tolerate broken upstream 3rd-party git submodules (e.g. kiddin9/op-packages smart-srun) as long as core feed indexes exist
+echo "=========================================================="
+echo ">> [2/4] Enforcing MediaTek sdmc_mt3053 NAND Partition & factory.ubi Guard..."
+echo "=========================================================="
+python3 - << 'PYEOF'
+import os, re, sys
+
+# A. Enforce sdmc,mt3053 in platform_do_upgrade (ubi_kernel + ubi) and platform_pre_upgrade (xiaomi_initial_setup)
+plat_sh = "target/linux/mediatek/filogic/base-files/lib/upgrade/platform.sh"
+if os.path.isfile(plat_sh):
+    with open(plat_sh, "r", encoding="utf-8") as f:
+        s = f.read()
+    orig = s
+    # Check if sdmc,mt3053 is wired to CI_KERN_UBIPART
+    m_upg = re.search(r"([ \t]*xiaomi,mi-router-ax3000t\|\\\n(?:.*\n){0,4}?[ \t]*CI_KERN_UBIPART=)", s)
+    if m_upg:
+        window_start = max(0, m_upg.start() - 120)
+        if "sdmc,mt3053" not in s[window_start:m_upg.end()]:
+            s = s[:m_upg.start()] + "\tsdmc,mt3053|\\\n" + s[m_upg.start():]
+            print("  [FIXED] Restored sdmc,mt3053 -> CI_KERN_UBIPART=ubi_kernel in platform.sh")
+    # Check if sdmc,mt3053 is wired to xiaomi_initial_setup
+    m_pre = re.search(r"([ \t]*xiaomi,mi-router-ax3000t\|\\\n(?:.*\n){0,4}?[ \t]*xiaomi_initial_setup)", s)
+    if m_pre:
+        window_start = max(0, m_pre.start() - 120)
+        if "sdmc,mt3053" not in s[window_start:m_pre.end()]:
+            s = s[:m_pre.start()] + "\tsdmc,mt3053|\\\n" + s[m_pre.start():]
+            print("  [FIXED] Restored sdmc,mt3053 -> xiaomi_initial_setup in platform.sh")
+    if s != orig:
+        with open(plat_sh, "w", encoding="utf-8", newline="\n") as f:
+            f.write(s)
+    if s.count("sdmc,mt3053") < 3:
+        print(f"[FATAL] sdmc,mt3053 appears only {s.count('sdmc,mt3053')} time(s) in {plat_sh} (expected >= 3)!", file=sys.stderr)
+        sys.exit(1)
+    print(f"  [PASS] {plat_sh}: sdmc,mt3053 verified in all 3 NAND upgrade hooks.")
+
+# B. Enforce guarded factory.ubi on Device/sdmc_mt3053 in filogic.mk
+filogic_mk = "target/linux/mediatek/image/filogic.mk"
+if os.path.isfile(filogic_mk):
+    with open(filogic_mk, "r", encoding="utf-8") as f:
+        mk_txt = f.read()
+    m_dev = re.search(r"(define Device/sdmc_mt3053\b.*?\nendef)", mk_txt, re.S)
+    if m_dev:
+        blk = m_dev.group(1)
+        new_blk = blk
+        ubi_snippet = (
+            "ifneq ($(CONFIG_TARGET_ROOTFS_INITRAMFS),)\n"
+            "  ARTIFACTS := factory.ubi\n"
+            "  ARTIFACT/factory.ubi := append-image-stage initramfs-kernel.bin | ubinize-kernel\n"
+            "endif\n"
+        )
+        if "ARTIFACT/factory.ubi" not in blk:
+            new_blk = blk.replace("endef", ubi_snippet + "endef")
+        elif "CONFIG_TARGET_ROOTFS_INITRAMFS" not in blk:
+            new_blk = re.sub(
+                r"[ \t]*ARTIFACTS\s*:=\s*factory\.ubi\s*\n[ \t]*ARTIFACT/factory\.ubi\s*:=\s*[^\n]+\n",
+                ubi_snippet,
+                blk,
+            )
+        if new_blk != blk:
+            mk_txt = mk_txt[:m_dev.start()] + new_blk + mk_txt[m_dev.end():]
+            with open(filogic_mk, "w", encoding="utf-8", newline="\n") as f:
+                f.write(mk_txt)
+            print("  [FIXED] Enforced guarded factory.ubi recipe in Device/sdmc_mt3053.")
+        print("  [PASS] Device/sdmc_mt3053 factory.ubi recipe verified.")
+PYEOF
+
+echo "=========================================================="
+echo ">> [3/4] Updating & Installing OpenWrt Feeds..."
+echo "=========================================================="
 ./scripts/feeds update -a || ./scripts/feeds update -f -a || true
 if [ ! -s feeds/packages.index ] || [ ! -s feeds/luci.index ]; then
   echo "[FATAL] Core OpenWrt feeds (packages/luci) failed to update!" >&2
@@ -30,7 +199,7 @@ if [ -f config/Config-build.in ] && awk '/config USE_APK/,/comment /' config/Con
   done
 fi
 
-# Prioritize luci-app-doanduy-modem ownership of modem_ctrl & 11_modem.js (prevent apk/opkg clash with qmodem)
+# Prioritize luci-app-doanduy-modem ownership of modem_ctrl & 11_modem.js
 rm -f \
   feeds/qmodem/application/qmodem/files/usr/libexec/rpcd/modem_ctrl \
   feeds/qmodem/luci/luci-app-qmodem/htdocs/luci-static/resources/view/status/include/11_modem.js \
@@ -38,7 +207,6 @@ rm -f \
   feeds/all/qmodem/files/usr/libexec/rpcd/modem_ctrl \
   feeds/all/luci-app-qmodem/htdocs/luci-static/resources/view/status/include/11_modem.js 2>/dev/null || true
 
-# Fix haproxy 3.0.x / 3.2.x USE_QUIC=1 & USE_QUIC_OPENSSL_COMPAT=1 build failure against OpenSSL 3.x
 if [ -f feeds/packages/net/haproxy/Makefile ]; then
   sed -i '/USE_QUIC=1/d; /USE_QUIC_OPENSSL_COMPAT=1/d' feeds/packages/net/haproxy/Makefile
 fi
@@ -67,9 +235,6 @@ PYEOF
 
 ./scripts/feeds install -a
 
-echo "=========================================================="
-echo ">> [2/3] Applying Out-of-Tree Driver Compatibility Patches..."
-echo "=========================================================="
 for f in \
   feeds/all/fibocom_QMI_WWAN/src/qmi_wwan_f.c \
   feeds/qmodem/driver/fibocom_QMI_WWAN/src/qmi_wwan_f.c; do
@@ -99,10 +264,11 @@ for f in \
 done
 
 echo "=========================================================="
-echo ">> [3/3] Pre-flight Shell Syntax Gate (Fail-Fast)..."
+echo ">> [4/4] Pre-flight Shell Syntax Gate (Fail-Fast)..."
 echo "=========================================================="
 for d in files/etc/init.d files/etc/uci-defaults files/usr/bin files/etc/hotplug.d \
-         package/base-files/files/etc/uci-defaults package/base-files/files/usr/bin; do
+         package/base-files/files/etc/uci-defaults package/base-files/files/usr/bin \
+         target/linux/mediatek/filogic/base-files/lib/upgrade; do
   [ -d "$d" ] || continue
   find "$d" -type f -exec chmod +x {} + 2>/dev/null || true
   for sf in "$d"/*; do
@@ -110,10 +276,10 @@ for d in files/etc/init.d files/etc/uci-defaults files/usr/bin files/etc/hotplug
     case "$sf" in *.enc|*.json|*.conf) continue ;; esac
     if head -n 1 "$sf" | grep -qE '^#!/(usr/)?bin/(ba)?sh'; then
       sh -n "$sf"
-    elif [ "${d%uci-defaults}" != "$d" ]; then
+    elif [ "${d%uci-defaults}" != "$d" ] || [ "${sf%platform.sh}" != "$sf" ]; then
       sh -n "$sf"
     fi
   done
 done
-echo "   [PASS] All uci-defaults & custom shell scripts passed sh -n gate"
+echo "   [PASS] All uci-defaults, upgrade platform.sh & custom shell scripts passed sh -n gate"
 # [/VERIFIED-GOLDEN]
