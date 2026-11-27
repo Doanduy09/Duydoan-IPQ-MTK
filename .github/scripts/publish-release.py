@@ -134,6 +134,15 @@ def verify_rom_release_gate(fw_dir: str, tag: str) -> None:
         "zoneinfo-asia",
         "uqmi",
         "umbim",
+        "kmod-wwan",
+        "kmod-mhi-bus",
+        "kmod-mhi-pci-generic",
+        "kmod-mhi-net",
+        "kmod-mhi-wwan-ctrl",
+        "kmod-mhi-wwan-mbim",
+        "kmod-usb-net-qmi-wwan",
+        "kmod-usb-net-cdc-mbim",
+        "kmod-usb-serial-option",
     )
     if mf_pkgs:
         missing = [p for p in required_pkgs if p not in mf_pkgs]
