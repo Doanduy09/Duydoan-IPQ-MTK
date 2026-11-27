@@ -19,7 +19,21 @@ CONFIG_PACKAGE_kmod-usb-roles=y
 CONFIG_PACKAGE_usb-modeswitch=y
 CONFIG_PACKAGE_usbutils=y
 
-# --- 2. USB Modem 4G/5G, USB-to-LAN & iPhone Tethering ---
+# --- 1b. PCIe 5G Modem (MHI Bus/Net/AT-QMI-Ctrl/MBIM, MediaTek T7xx, Qualcomm QRTR & RMNET) ---
+CONFIG_PACKAGE_kmod-wwan=y
+CONFIG_PACKAGE_kmod-mhi-bus=y
+CONFIG_PACKAGE_kmod-mhi-pci-generic=y
+CONFIG_PACKAGE_kmod-mhi-net=y
+CONFIG_PACKAGE_kmod-mhi-wwan-ctrl=y
+CONFIG_PACKAGE_kmod-mhi-wwan-mbim=y
+CONFIG_PACKAGE_kmod-mtk-t7xx=y
+CONFIG_PACKAGE_kmod-qrtr=y
+CONFIG_PACKAGE_kmod-qrtr-mhi=y
+CONFIG_PACKAGE_kmod-qrtr-tun=y
+CONFIG_PACKAGE_kmod-rmnet=y
+CONFIG_PACKAGE_pciutils=y
+
+# --- 2. USB Modem 4G/5G, USB-to-LAN & iPhone/Android Tethering ---
 CONFIG_PACKAGE_kmod-usb-net-qmi-wwan=y
 CONFIG_PACKAGE_kmod-usb-net-qmi-wwan-fibocom=y
 CONFIG_PACKAGE_kmod-usb-net-qmi-wwan-quectel=y
@@ -40,7 +54,14 @@ CONFIG_PACKAGE_kmod-usb-net-asix=y
 CONFIG_PACKAGE_kmod-usb-net-asix-ax88179=y
 CONFIG_PACKAGE_kmod-usb-net-aqc111=y
 CONFIG_PACKAGE_kmod-usb-net-lan78xx=y
+CONFIG_PACKAGE_kmod-usb-net-smsc75xx=y
 CONFIG_PACKAGE_kmod-usb-net-smsc95xx=y
+CONFIG_PACKAGE_kmod-usb-net-dm9601-ether=y
+CONFIG_PACKAGE_kmod-usb-net-sr9700=y
+CONFIG_PACKAGE_kmod-usb-net-mcs7830=y
+CONFIG_PACKAGE_kmod-usb-net-pegasus=y
+CONFIG_PACKAGE_kmod-usb-net-kaweth=y
+CONFIG_PACKAGE_kmod-phy-aquantia=y
 
 # --- 3. USB Serial / AT / Debug ---
 CONFIG_PACKAGE_kmod-usb-serial-option=y
@@ -95,11 +116,20 @@ CONFIG_PACKAGE_kmod-crypto-sha512=y
 CONFIG_PACKAGE_kmod-crypto-user=y
 CONFIG_PACKAGE_kmod-tcp-bbr=y
 CONFIG_PACKAGE_kmod-nf-conntrack6=y
+CONFIG_PACKAGE_kmod-nf-nathelper=y
+CONFIG_PACKAGE_kmod-nf-nathelper-extra=y
 CONFIG_PACKAGE_kmod-nft-fullcone=y
 CONFIG_PACKAGE_kmod-nft-socket=y
 CONFIG_PACKAGE_kmod-nft-tproxy=y
+CONFIG_PACKAGE_kmod-ipt-ipopt=y
+CONFIG_PACKAGE_iptables-nft=y
+CONFIG_PACKAGE_ip6tables-nft=y
+CONFIG_PACKAGE_iptables-mod-ipopt=y
+CONFIG_PACKAGE_kmod-sched-cake=y
 CONFIG_PACKAGE_kmod-wireguard=y
 CONFIG_PACKAGE_kmod-tun=y
+CONFIG_PACKAGE_kmod-veth=y
+CONFIG_PACKAGE_kmod-bonding=y
 CONFIG_PACKAGE_kmod-macvlan=y
 CONFIG_PACKAGE_kmod-usb-ledtrig-usbport=y
 CONFIG_PACKAGE_kmod-ppp=y
@@ -124,7 +154,19 @@ CONFIG_PACKAGE_iw=y
 CONFIG_PACKAGE_iwinfo=y
 CONFIG_PACKAGE_wireless-regdb=y
 CONFIG_PACKAGE_coreutils-timeout=y
+CONFIG_PACKAGE_coreutils-base64=y
+CONFIG_PACKAGE_coreutils-nohup=y
+CONFIG_PACKAGE_coreutils-sort=y
+CONFIG_PACKAGE_coreutils-stat=y
 CONFIG_PACKAGE_flock=y
+CONFIG_PACKAGE_curl=y
+CONFIG_PACKAGE_wget-ssl=y
+CONFIG_PACKAGE_jq=y
+CONFIG_PACKAGE_xxd=y
+CONFIG_PACKAGE_socat=y
+CONFIG_PACKAGE_etherwake=y
+CONFIG_PACKAGE_adb=y
+CONFIG_PACKAGE_adb-enablemodem=y
 CONFIG_PACKAGE_zoneinfo-core=y
 CONFIG_PACKAGE_zoneinfo-asia=y
 CONFIG_PACKAGE_autocore=y
@@ -152,11 +194,21 @@ if grep -q '^CONFIG_PACKAGE_luci-app-passwall=y$' "$CFG"; then
   echo "CONFIG_PACKAGE_kmod-ipt-tproxy=y" >> "$CFG"
 fi
 
-# MediaTek Filogic hardware EIP-97 crypto engine & Exar USB-serial driver
+# Qualcomm IPQ60xx / IPQ807x SMD IPC Router & DWC3-QCOM USB3 Glue
+if grep -q '^CONFIG_TARGET_qualcommax=y$' "$CFG"; then
+  cat << 'EOF' >> "$CFG"
+CONFIG_PACKAGE_kmod-qrtr-smd=y
+CONFIG_PACKAGE_kmod-usb-dwc3-qcom=y
+EOF
+fi
+
+# MediaTek Filogic hardware EIP-97 crypto engine, xHCI USB3 & Exar USB-serial driver
 if grep -q '^CONFIG_TARGET_mediatek_filogic=y$' "$CFG"; then
   cat << 'EOF' >> "$CFG"
 CONFIG_PACKAGE_eip197-mini-firmware=y
 CONFIG_PACKAGE_kmod-crypto-hw-safexcel=y
+CONFIG_PACKAGE_kmod-usb-xhci-hcd=y
+CONFIG_PACKAGE_kmod-usb-xhci-mtk=y
 CONFIG_PACKAGE_kmod-usb-serial-xr_usb_serial_common=y
 EOF
 fi
