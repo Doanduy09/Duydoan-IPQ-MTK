@@ -86,6 +86,7 @@ jobs:
             "target/linux/mediatek/dts/mt7981b-wirelesstag-zx7981pd-ubootmod.dts"
             "target/linux/mediatek/dts/mt7981b-viettel-nr3053.dts"
             "target/linux/mediatek/dts/mt7981b-sdmc-mt3053.dts"
+            ".github/assets"
             ".github/workflows"
             ".github/scripts"
             "files"
