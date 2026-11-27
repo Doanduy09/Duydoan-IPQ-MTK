@@ -374,6 +374,22 @@ def main() -> int:
         timeout=120,
     )
     print(f">> Successfully published {tag} ({len(assets)} assets)!", flush=True)
+
+    # Auto-prune older superseded releases sharing the exact same tag_prefix so /releases stays 100% clean
+    m_pref = re.match(r"^(.+)-\d{4}\.\d{2}\.\d{2}-\d{4}$", tag)
+    if m_pref:
+        prefix = m_pref.group(1)
+        list_res = run_gh(["api", f"repos/{repo}/releases?per_page=100"], timeout=60)
+        if list_res.returncode == 0 and list_res.stdout.strip():
+            try:
+                for rel in json.loads(list_res.stdout):
+                    old_tag = rel.get("tag_name") or ""
+                    if old_tag and old_tag != tag and re.match(rf"^{re.escape(prefix)}-\d{{4}}\.\d{{2}}\.\d{{2}}-\d{{4}}$", old_tag):
+                        print(f">> Auto-pruning superseded release: {old_tag}", flush=True)
+                        run_gh(["release", "delete", old_tag, "--repo", repo, "-y", "--cleanup-tag"], timeout=60)
+            except Exception as pe:
+                print(f"[WARN] Auto-prune skipped: {pe}", flush=True)
+
     return 0
 
 
