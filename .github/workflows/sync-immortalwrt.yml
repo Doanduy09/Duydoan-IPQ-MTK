@@ -80,6 +80,7 @@ jobs:
             "package/base-files/files/usr/bin/ati"
             "package/base-files/files/bin/ati"
             "package/luci-app-athena-led"
+            "package/utils/atinout"
             "target/linux/mediatek/dts/mt7981b-wirelesstag-zx7981pd.dts"
             "target/linux/mediatek/dts/mt7981b-wirelesstag-zx7981pd-ubootmod.dts"
             "target/linux/mediatek/dts/mt7981b-viettel-nr3053.dts"

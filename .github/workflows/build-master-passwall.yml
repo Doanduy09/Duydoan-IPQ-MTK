@@ -240,6 +240,7 @@ jobs:
           if [ "${{ matrix.id }}" = "mediatek-filogic" ]; then
             echo "CONFIG_PACKAGE_bridger=y" >> .config
             # Prevent initramfs-recovery.itb from exceeding 44MB GPT partition limit on BPi-R3/R4 when PassWall + Xray + SingBox are included
+            sed -i '/CONFIG_TARGET_ROOTFS_INITRAMFS/d' .config
             echo "# CONFIG_TARGET_ROOTFS_INITRAMFS is not set" >> .config
           fi
 
@@ -390,7 +391,7 @@ jobs:
                   ef.write(f"FINAL_RELEASE_TITLE={final_rel_title}\n")
 
           k_label = f"Kernel {kernel_ver}" if kernel_ver else "SNAPSHOT Kernel 6.18"
-          modem_line = "✅ `luci-app-doanduy-modem` v2.5.0+ (tích hợp sẵn trong ROM, không dùng file `all` cũ)" if has_modem else "⚠️ Chưa phát hiện trong manifest"
+          modem_line = "✅ `luci-app-doanduy-modem` v2.6.4+ & `quectel-cm` + `atinout` + Auto-Mesh Đa Chip (tích hợp sẵn trong ROM)" if has_modem else "⚠️ Chưa phát hiện trong manifest"
           clean_title = re.sub(r"\s*\[(Có PassWall|Không PassWall|Passwall)\]", "", title).strip()
           lines = [
               f"### 🚀 [master-passwall] {clean_title} {actual_badge} — Duydoan-SNAPSHOT-K6.18-Passwall ({build_date})",
@@ -410,6 +411,7 @@ jobs:
           lines.extend([
               "",
               "#### ⚠️ Lưu Ý Flash An Toàn:",
+              "- **Viettel / SDMC NR3053 (MT3053 U-Boot gốc)**: Nếu đang ở U-Boot cứu hộ, nạp **`*-sdmc_mt3053-factory.ubi`** (từ bản Không PassWall) để vào LuCI trước, sau đó nạp **`*-sdmc_mt3053-squashfs-sysupgrade.bin`** của bản Có PassWall này ngay trong LuCI.",
               "- **Không giữ cấu hình cũ (`Keep settings`)** khi chuyển từ bản **Full-NSS** sang **Không NSS** hoặc đổi giữa các nhánh Kernel khác nhau.",
               "- Đối chiếu mã kiểm tra trong tệp `sha256sums` đi kèm trước khi nạp firmware.",
           ])
