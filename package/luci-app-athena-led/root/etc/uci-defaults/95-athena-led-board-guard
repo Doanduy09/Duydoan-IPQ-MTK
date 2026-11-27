@@ -1,0 +1,21 @@
+#!/bin/sh
+# [VERIFIED-GOLDEN: athena-led-board-guard | 2026-11-27 | DO NOT MODIFY UNLESS TARGETED]
+# Auto-enable Athena LED only on JDCloud RE-CS-02; safely disable on all other routers in All-Devices ROMs.
+
+BOARD_NAME="$(cat /tmp/sysinfo/board_name 2>/dev/null)"
+case "$BOARD_NAME" in
+	*re-cs-02*)
+		uci -q set athena_led.config.enable='1'
+		uci -q commit athena_led
+		[ -x /etc/init.d/athena_led ] && /etc/init.d/athena_led enable >/dev/null 2>&1 || true
+		;;
+	*)
+		uci -q set athena_led.config.enable='0'
+		uci -q commit athena_led
+		[ -x /etc/init.d/athena_led ] && /etc/init.d/athena_led stop >/dev/null 2>&1 || true
+		[ -x /etc/init.d/athena_led ] && /etc/init.d/athena_led disable >/dev/null 2>&1 || true
+		;;
+esac
+
+exit 0
+# [/VERIFIED-GOLDEN]

@@ -1,6 +1,6 @@
 {
 	"admin/system/athena_led": {
-		"title": "Athena LED Ctrl",
+		"title": "Màn Hình LED Athena",
 		"order": 80,
 		"action": {
 			"type": "view",

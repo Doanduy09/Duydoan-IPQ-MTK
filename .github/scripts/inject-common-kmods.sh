@@ -266,6 +266,14 @@ CONFIG_PACKAGE_cpufreq=y
 CONFIG_PACKAGE_luci-app-cpufreq=y
 EOF
 
+  # JDCloud RE-CS-02 (Athena AX6600) pure-C Matrix & RGB LED controller (IPQ60xx only; auto-guards board_name at runtime)
+  if grep -q '^CONFIG_TARGET_qualcommax_ipq60xx=y$' "$CFG"; then
+    cat << 'EOF' >> "$CFG"
+CONFIG_PACKAGE_athena-led=y
+CONFIG_PACKAGE_luci-app-athena-led=y
+EOF
+  fi
+
   # Full-NSS 12.5 Hardware Offload Suite (qualcomm-nss-25.12)
   if grep -q '^CONFIG_ATH11K_NSS_SUPPORT=y$' "$CFG"; then
     cat << 'EOF' >> "$CFG"
