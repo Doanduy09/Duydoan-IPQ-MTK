@@ -1,7 +1,7 @@
 # [VERIFIED-GOLDEN: workflow-qualcomm-nss-25.12-1to1 | 2026-11-26 | DO NOT MODIFY UNLESS TARGETED]
-name: "[qualcomm-nss-25.12] Build IPQ60xx + IPQ807x (Kernel 6.12 Full-NSS)"
+name: "[qualcomm-nss-25.12] Build Qualcomm IPQ60xx + IPQ807x (Kernel 6.12 | Full-NSS 12.5)"
 
-run-name: "[qualcomm-nss-25.12] Build ${{ inputs.target || 'all (IPQ60xx + IPQ807x)' }} (Kernel 6.12 | PassWall=${{ inputs.passwall || 'auto' }})"
+run-name: "[qualcomm-nss-25.12] Build ${{ inputs.target || 'all (IPQ60xx + IPQ807x)' }} (Kernel 6.12 | Full-NSS 12.5 | PassWall=${{ inputs.passwall || 'auto' }})"
 
 on:
   push:
