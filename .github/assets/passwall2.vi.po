@@ -1,0 +1,2636 @@
+msgid ""
+msgstr ""
+"Project-Id-Version: luci-app-passwall2\n"
+"PO-Revision-Date: 2026-11-27 23:45+0700\n"
+"Last-Translator: DOANDUY <doanduy09@gmail.com>\n"
+"Language-Team: Vietnamese <vi@li.org>\n"
+"Language: vi\n"
+"MIME-Version: 1.0\n"
+"Content-Type: text/plain; charset=UTF-8\n"
+"Content-Transfer-Encoding: 8bit\n"
+"Plural-Forms: nplurals=1; plural=0;\n"
+
+msgid "Auto"
+msgstr "Tự động"
+
+msgid "RUNNING"
+msgstr "ĐANG CHẠY"
+
+msgid "NOT RUNNING"
+msgstr "DỪNG HOẠT ĐỘNG"
+
+msgid "Working..."
+msgstr "Đang xử lý..."
+
+msgid "Problem detected!"
+msgstr "Phát hiện sự cố!"
+
+msgid "Touch Check"
+msgstr "Kiểm tra thủ công"
+
+msgid "Global"
+msgstr "Toàn cục"
+
+msgid "Kernel Unsupported"
+msgstr "Kernel không được hỗ trợ"
+
+msgid "Basic Settings"
+msgstr "Cài đặt cơ bản"
+
+msgid "Node List"
+msgstr "Danh sách Node"
+
+msgid "Other Settings"
+msgstr "Cài đặt khác"
+
+msgid "Load Balancing"
+msgstr "Cân bằng tải"
+
+msgid "Enter interface"
+msgstr "Vào giao diện"
+
+msgid "Rule Manage"
+msgstr "Quản lý quy tắc"
+
+msgid "Rule List"
+msgstr "Danh sách quy tắc"
+
+msgid "Access control"
+msgstr "Kiểm soát truy cập"
+
+msgid "Runtime Logs"
+msgstr "Nhật ký thời gian thực"
+
+msgid "Node Config"
+msgstr "Cấu hình Node"
+
+msgid "Running Status"
+msgstr "Trạng thái hoạt động"
+
+msgid "Baidu Connection"
+msgstr "Kết nối Baidu"
+
+msgid "Google Connection"
+msgstr "Kết nối Google"
+
+msgid "GitHub Connection"
+msgstr "Kết nối GitHub"
+
+msgid "Instagram Connection"
+msgstr "Kết nối Instagram"
+
+msgid "Node Check"
+msgstr "Kiểm tra Node"
+
+msgid "Check..."
+msgstr "Đang kiểm tra..."
+
+msgid "Clear"
+msgstr "Xóa"
+
+msgid "Main switch"
+msgstr "Công tắc chính"
+
+msgid "Node"
+msgstr "Node"
+
+msgid "Edit Current Node"
+msgstr "Chỉnh sửa Node hiện tại"
+
+msgid "Localhost Proxy"
+msgstr "Proxy localhost"
+
+msgid "When selected, localhost can transparent proxy."
+msgstr "Khi được chọn, localhost có thể chạy proxy trong suốt."
+
+msgid "Client Proxy"
+msgstr "Proxy khách"
+
+msgid "When selected, devices in LAN can transparent proxy. Otherwise, it will not be proxy. But you can still use access control to allow the designated device to proxy."
+msgstr "Khi được chọn, các thiết bị trong mạng LAN có thể chạy proxy trong suốt. Nếu không, chúng sẽ không đi qua proxy. Nhưng bạn vẫn có thể sử dụng kiểm soát truy cập để cho phép thiết bị chỉ định đi qua proxy."
+
+msgid "Missing components, transparent proxy is unavailable."
+msgstr "Thiếu thành phần, proxy trong suốt không khả dụng."
+
+msgid "Socks Config"
+msgstr "Cấu hình Socks"
+
+msgid "Socks Node"
+msgstr "Node Socks"
+
+msgid "Current Node"
+msgstr "Node hiện tại"
+
+msgid "Port Status"
+msgstr "Trạng thái cổng"
+
+msgid "Listen Port"
+msgstr "Cổng lắng nghe"
+
+msgid "0 is not use"
+msgstr "0 là không sử dụng"
+
+msgid "Current node: %s"
+msgstr "Node hiện tại: %s"
+
+msgid "IP:Port mode acceptable, multi value split with english comma."
+msgstr "Chấp nhận chế độ IP:Cổng, nhiều giá trị phân tách bằng dấu phẩy tiếng Anh."
+
+msgid "Direct DNS Protocol"
+msgstr "Giao thức DNS trực tiếp"
+
+msgid "Direct DNS"
+msgstr "DNS trực tiếp"
+
+msgid "Direct DNS DoH"
+msgstr "DNS DoH trực tiếp"
+
+msgid "Direct DNS EDNS Client Subnet"
+msgstr "EDNS Client Subnet của DNS trực tiếp"
+
+msgid "Remote DNS Protocol"
+msgstr "Giao thức DNS từ xa"
+
+msgid "Remote DNS"
+msgstr "DNS từ xa"
+
+msgid "Remote DNS DoH"
+msgstr "DNS DoH từ xa"
+
+msgid "Remote DNS EDNS Client Subnet"
+msgstr "EDNS Client Subnet của DNS từ xa"
+
+msgid "Notify the DNS server when the DNS query is notified, the location of the client (cannot be a private IP address)."
+msgstr "Thông báo cho máy chủ DNS khi truy vấn DNS được gửi đi, vị trí của máy khách (không thể là địa chỉ IP riêng tư)."
+
+msgid "This feature requires the DNS server to support the Edns Client Subnet (RFC7871)."
+msgstr "Tính năng này yêu cầu máy chủ DNS hỗ trợ Edns Client Subnet (RFC7871)."
+
+msgid "Remote DNS Outbound"
+msgstr "Outbound DNS từ xa"
+
+msgid "Remote"
+msgstr "Từ xa"
+
+msgid "Direct"
+msgstr "Trực tiếp"
+
+msgid "Direct Query Strategy"
+msgstr "Chiến lược truy vấn trực tiếp"
+
+msgid "Remote Query Strategy"
+msgstr "Chiến lược truy vấn từ xa"
+
+msgid "Use FakeDNS work in the domain that proxy."
+msgstr "Sử dụng FakeDNS hoạt động trên tên miền được proxy."
+
+msgid "Suitable scenarios for let the node servers get the target domain names."
+msgstr "Kịch bản phù hợp để các máy chủ node nhận được tên miền đích."
+
+msgid "Such as: DNS unlocking of streaming media, reducing DNS query latency, etc."
+msgstr "Chẳng hạn như: Mở khóa DNS của phương tiện phát trực tuyến, giảm độ trễ truy vấn DNS, v.v."
+
+msgid "Domain Override"
+msgstr "Ghi đè tên miền"
+
+msgid "Direct DNS result write to IPSet"
+msgstr "Kết quả DNS trực tiếp ghi vào IPSet"
+
+msgid "Perform the matching direct domain name rules into IP to IPSet/NFTSet, and then connect directly (not entering the core)."
+msgstr "Thực hiện khớp các quy tắc tên miền trực tiếp thành IP vào IPSet/NFTSet, sau đó kết nối trực tiếp (không đi qua core)."
+
+msgid "Maybe conflict with some special circumstances."
+msgstr "Có thể xung đột trong một số trường hợp đặc biệt."
+
+msgid "DNS Redirect"
+msgstr "Chuyển hướng DNS"
+
+msgid "Force special DNS server to need proxy devices."
+msgstr "Buộc máy chủ DNS đặc biệt cho các thiết bị cần proxy."
+
+msgid "Clear IPSET"
+msgstr "Xóa IPSET"
+
+msgid "Clear NFTSET"
+msgstr "Xóa NFTSET"
+
+msgid "Try this feature if the rule modification does not take effect."
+msgstr "Hãy thử tính năng này nếu việc sửa đổi quy tắc không có hiệu lực."
+
+msgid "About DNS issues:"
+msgstr "Về các vấn đề DNS:"
+
+msgid "Some browsers may have built-in DNS, be sure to close. Example: Chrome. Settings - Security and Privacy - Security - Use secure DNS disabled."
+msgstr "Một số trình duyệt có thể tích hợp sẵn DNS, hãy nhớ tắt đi. Ví dụ: Chrome. Cài đặt - Quyền privacy và bảo mật - Bảo mật - Sử dụng DNS bảo mật được tắt."
+
+msgid "Sometimes after restart, you can not internet. At this time, close all browsers (important), Windows Client, please `ipconfig /flushdns`. Please close the WiFi on the phone, cut the flight mode and then cut back."
+msgstr "Đôi khi sau khi khởi động lại, bạn không thể truy cập internet. Lúc này, hãy đóng tất cả các trình duyệt (quan trọng), với Máy khách Windows, vui lòng chạy `ipconfig /flushdns`. Vui lòng tắt WiFi trên điện thoại, bật chế độ máy bay rồi tắt lại."
+
+msgid "The client DNS and the default gateway must point to this router."
+msgstr "DNS của máy khách và gateway mặc định phải trỏ đến bộ định tuyến này."
+
+msgid "If you have a wrong DNS process, the consequences are at your own risk!"
+msgstr "Nếu bạn cấu hình sai tiến trình DNS, bạn tự chịu mọi hậu quả!"
+
+msgid "Hide menu method, input example in the address bar:"
+msgstr "Phương pháp ẩn menu, nhập ví dụ vào thanh địa chỉ:"
+
+msgid "After the hidden to the display, input example in the address bar:"
+msgstr "Sau khi ẩn muốn hiển thị lại, nhập ví dụ vào thanh địa chỉ:"
+
+msgid "Are you sure to hide?"
+msgstr "Bạn có chắc chắn muốn ẩn không?"
+
+msgid "DNS related issues:"
+msgstr "Các vấn đề liên quan đến DNS:"
+
+msgid "Certain browsers such as Chrome have built-in DNS service, which may affect DNS resolution settings. You can go to 'Settings -> Privacy and security -> Use secure DNS' menu to turn it off."
+msgstr "Một số trình duyệt như Chrome có tích hợp sẵn dịch vụ DNS, có thể ảnh hưởng đến cài đặt phân giải DNS. Bạn có thể vào menu 'Cài đặt -> Quyền riêng tư và bảo mật -> Sử dụng DNS bảo mật' để tắt nó đi."
+
+msgid "If you are unable to access the internet after reboot, please try clearing the cache of your terminal devices (make sure to close all open browser application windows first, this step is especially important):"
+msgstr "Nếu bạn không thể truy cập internet sau khi khởi động lại, vui lòng thử xóa bộ nhớ đệm của các thiết bị đầu cuối của bạn (hãy đảm bảo đóng tất cả các cửa sổ ứng dụng trình duyệt đang mở trước, bước này cực kỳ quan trọng):"
+
+msgid "For Windows systems, open Command Prompt and run the command 'ipconfig /flushdns'."
+msgstr "Đối với hệ thống Windows, hãy mở Command Prompt và chạy lệnh 'ipconfig /flushdns'."
+
+msgid "For Mac systems, open Terminal and run the command 'sudo killall -HUP mDNSResponder'."
+msgstr "Đối với hệ thống Mac, hãy mở Terminal và chạy lệnh 'sudo killall -HUP mDNSResponder'."
+
+msgid "For mobile devices, you can clear it by reconnecting to the network, such as toggling Airplane Mode and reconnecting to WiFi."
+msgstr "Đối với thiết bị di động, bạn có thể xóa bằng cách kết nối lại mạng, chẳng hạn như bật/tắt Chế độ máy bay và kết nối lại WiFi."
+
+msgid "Please make sure your device's network settings point both the DNS server and default gateway to this router, to ensure DNS queries are properly routed."
+msgstr "Vui lòng đảm bảo cài đặt mạng của thiết bị trỏ cả máy chủ DNS và gateway mặc định về bộ định tuyến này, để đảm bảo các truy vấn DNS được định tuyến đúng cách."
+
+msgid "Browser access:"
+msgstr "Truy cập trình duyệt:"
+
+msgid "Hide in main menu:"
+msgstr "Ẩn trong menu chính:"
+
+msgid "Show in main menu:"
+msgstr "Hiển thị trong menu chính:"
+
+msgid "DNS Export Of Multi WAN"
+msgstr "Xuất DNS của Multi WAN"
+
+msgid "Node Export Of Multi WAN"
+msgstr "Xuất Node của Multi WAN"
+
+msgid "Only support Multi Wan."
+msgstr "Chỉ hỗ trợ Multi Wan."
+
+msgid "Not Specify"
+msgstr "Không chỉ định"
+
+msgid "custom"
+msgstr "tùy chỉnh"
+
+msgid "If not available, try clearing the cache."
+msgstr "Nếu không khả dụng, hãy thử xóa bộ nhớ đệm."
+
+msgid "Operation"
+msgstr "Thao tác"
+
+msgid "Add Node"
+msgstr "Thêm Node"
+
+msgid "Add the node via the link"
+msgstr "Thêm node thông qua liên kết"
+
+msgid "Enter share links, one per line. Subscription links are not supported!"
+msgstr "Nhập liên kết chia sẻ, mỗi liên kết một dòng. Không hỗ trợ liên kết đăng ký Sub!"
+
+msgid "Please enter the correct link."
+msgstr "Vui lòng nhập liên kết hợp lệ."
+
+msgid "Clear all nodes"
+msgstr "Xóa tất cả các node"
+
+msgid "Are you sure to clear all nodes?"
+msgstr "Bạn có chắc chắn muốn xóa tất cả các node không?"
+
+msgid "Success"
+msgstr "Thành công"
+
+msgid "Error"
+msgstr "Lỗi"
+
+msgid "Delete select nodes"
+msgstr "Xóa các node đã chọn"
+
+msgid "To Top"
+msgstr "Lên đầu"
+
+msgid "Select"
+msgstr "Chọn"
+
+msgid "Selected:"
+msgstr "Đã chọn:"
+
+msgid "DeSelect"
+msgstr "Bỏ chọn"
+
+msgid "Select all"
+msgstr "Chọn tất cả"
+
+msgid "DeSelect all"
+msgstr "Bỏ chọn tất cả"
+
+msgid "Are you sure to delete select nodes?"
+msgstr "Bạn có chắc chắn muốn xóa các node đã chọn không?"
+
+msgid "You no select nodes !"
+msgstr "Bạn chưa chọn node nào!"
+
+msgid "Are you sure set this node?"
+msgstr "Bạn có chắc chắn thiết lập node này không?"
+
+msgid "the server?"
+msgstr "máy chủ?"
+
+msgid "You choose node is:"
+msgstr "Node bạn đã chọn là:"
+
+msgid "Timeout"
+msgstr "Hết thời gian"
+
+msgid "Node Remarks"
+msgstr "Ghi chú Node"
+
+msgid "Add Mode"
+msgstr "Thêm chế độ"
+
+msgid "Save Order"
+msgstr "Lưu thứ tự"
+
+msgid "Saved current page order successfully."
+msgstr "Đã lưu thứ tự trang hiện tại thành công."
+
+msgid "Drag to reorder"
+msgstr "Kéo để sắp xếp lại"
+
+msgid "Type"
+msgstr "Loại"
+
+msgid "_balancing"
+msgstr "_cân bằng_tải"
+
+msgid "_shunt"
+msgstr "_phân_luồng"
+
+msgid "Balancing"
+msgstr "Cân bằng tải"
+
+msgid "Node Addition Method"
+msgstr "Phương thức thêm Node"
+
+msgid "Backup Node Addition Method"
+msgstr "Phương thức thêm Node dự phòng"
+
+msgid "Manual"
+msgstr "Thủ công"
+
+msgid "Batch"
+msgstr "Hàng loạt"
+
+msgid "Select Group"
+msgstr "Chọn nhóm"
+
+msgid "Node Matching Rules"
+msgstr "Quy tắc khớp Node"
+
+msgid "Example: <code>^A && B && !C && D$</code><br>This means the node remark must start with A (^), include B, exclude C (!), and end with D ($).<br>Conditions are joined by <code>&&</code> (AND), and their order does not affect the result.<br>Multiple groups can be separated by <code>||</code> (OR), matching succeeds if any group matches.<br>Example: <code>A && B || C && D</code> means (A AND B) OR (C AND D)."
+msgstr "Ví dụ: <code>^A && B && !C && D$</code><br>Điều này có nghĩa là ghi chú node phải bắt đầu bằng A (^), bao gồm B, loại trừ C (!), và kết thúc bằng D ($).<br>Các điều kiện được nối bằng <code>&&</code> (VÀ), và thứ tự của chúng không ảnh hưởng đến kết quả.<br>Nhiều nhóm có thể được phân tách bằng <code>||</code> (HOẶC), việc khớp sẽ thành công nếu bất kỳ nhóm nào khớp.<br>Ví dụ: <code>A && B || C && D</code> có nghĩa là (A VÀ B) HOẶC (C VÀ D)."
+
+msgid "Balancing Strategy"
+msgstr "Chiến lược cân bằng tải"
+
+msgid "Fallback Node"
+msgstr "Node dự phòng (Fallback)"
+
+msgid "Use Custom Probe URL"
+msgstr "Sử dụng URL kiểm tra tùy chỉnh"
+
+msgid "By default the built-in probe URL will be used, enable this option to use a custom probe URL."
+msgstr "Theo mặc định, URL kiểm tra tích hợp sẽ được sử dụng, hãy bật tùy chọn này để sử dụng URL kiểm tra tùy chỉnh."
+
+msgid "Probe URL"
+msgstr "URL kiểm tra"
+
+msgid "The URL used to detect the connection status."
+msgstr "URL được sử dụng để phát hiện trạng thái kết nối."
+
+msgid "Probe Interval"
+msgstr "Khoảng thời gian kiểm tra"
+
+msgid "The interval between initiating probes."
+msgstr "Khoảng thời gian giữa các lần khởi tạo kiểm tra."
+
+msgid "The time format is numbers + units, such as '10s', '2h45m', and the supported time units are <code>s</code>, <code>m</code>, <code>h</code>, which correspond to seconds, minutes, and hours, respectively."
+msgstr "Định dạng thời gian là số + đơn vị, chẳng hạn như '10s', '2h45m' và các đơn vị thời gian được hỗ trợ là <code>s</code>, <code>m</code>, <code>h</code>, tương ứng với giây, phút và giờ."
+
+msgid "When the unit is not filled in, it defaults to seconds."
+msgstr "Khi không điền đơn vị, mặc định là giây."
+
+msgid "Preferred Node Count"
+msgstr "Số lượng node ưu tiên"
+
+msgid "The load balancer selects the optimal number of nodes, and traffic is randomly distributed among them."
+msgstr "Bộ cân bằng tải chọn số lượng node tối ưu và lưu lượng truy cập được phân phối ngẫu nhiên giữa chúng."
+
+msgid "Failure Tolerance (%)"
+msgstr "Dung sai lỗi (%)"
+
+msgid "The maximum acceptable speed test failure rate. For example, 1 means allowing a 1% failure rate."
+msgstr "Tỷ lệ thất bại kiểm tra tốc độ tối đa có thể chấp nhận được. Ví dụ, 1 có nghĩa là cho phép tỷ lệ thất bại 1%."
+
+msgid "Shunt"
+msgstr "Phân luồng"
+
+msgid "Preproxy"
+msgstr "Tiền proxy (Preproxy)"
+
+msgid "Preproxy Node"
+msgstr "Node tiền proxy"
+
+msgid "Set the node to be used as a pre-proxy."
+msgstr "Đặt node được sử dụng làm tiền proxy."
+
+msgid "Each rule has a separate switch that controls whether this rule uses the pre-proxy or not."
+msgstr "Mỗi quy tắc có một công tắc riêng kiểm soát xem quy tắc này có sử dụng tiền proxy hay không."
+
+msgid "Close (Not use)"
+msgstr "Đóng (Không sử dụng)"
+
+msgid "Use default node"
+msgstr "Sử dụng node mặc định"
+
+msgid "Direct Connection"
+msgstr "Kết nối trực tiếp"
+
+msgid "Blackhole (Block)"
+msgstr "Blackhole (Chặn)"
+
+msgid "There are no available nodes, please add or subscribe nodes first."
+msgstr "Không có node khả dụng, vui lòng thêm hoặc đăng ký sub node trước."
+
+msgid "No shunt rules? Click me to go to add."
+msgstr "Không có quy tắc phân luồng? Bấm vào đây để thêm."
+
+msgid "When using, localhost will connect this node first and then use this node to connect the default node."
+msgstr "Khi sử dụng, localhost sẽ kết nối node này trước rồi mới sử dụng node này để kết nối node mặc định."
+
+msgid "Domain Strategy"
+msgstr "Chiến lược tên miền"
+
+msgid "Domain matcher"
+msgstr "Bộ khớp tên miền"
+
+msgid "'AsIs': Only use domain for routing. Default value."
+msgstr "'AsIs': Chỉ sử dụng tên miền để định tuyến. Giá trị mặc định."
+
+msgid "'IPIfNonMatch': When no rule matches current domain, resolves it into IP addresses (A or AAAA records) and try all rules again."
+msgstr "'IPIfNonMatch': Khi không có quy tắc nào khớp với tên miền hiện tại, phân giải nó thành địa chỉ IP (bản ghi A hoặc AAAA) và thử lại tất cả các quy tắc."
+
+msgid "'IPOnDemand': As long as there is a IP-based rule, resolves the domain into IP immediately."
+msgstr "'IPOnDemand': Miễn là có quy tắc dựa trên IP, hãy phân giải tên miền thành IP ngay lập tức."
+
+msgid "Load balancing node list"
+msgstr "Danh sách node cân bằng tải"
+
+msgid "Load balancing node list, <a target='_blank' href='https://xtls.github.io/config/routing.html#balancerobject'>document</a>"
+msgstr "Danh sách node cân bằng tải, <a target='_blank' href='https://xtls.github.io/config/routing.html#balancerobject'>tài liệu</a>"
+
+msgid "From Share URL"
+msgstr "Từ URL chia sẻ"
+
+msgid "Build Share URL"
+msgstr "Tạo URL chia sẻ"
+
+msgid "Generate QRCode"
+msgstr "Tạo mã QR"
+
+msgid "Share URL is too long to generate a QR code."
+msgstr "URL chia sẻ quá dài không thể tạo mã QR."
+
+msgid "Export Config File"
+msgstr "Xuất tệp cấu hình"
+
+msgid "Import Finished"
+msgstr "Nhập hoàn tất"
+
+msgid "Not a supported scheme:"
+msgstr "Không phải lược đồ được hỗ trợ:"
+
+msgid "Invalid Share URL Format"
+msgstr "Định dạng URL chia sẻ không hợp lệ"
+
+msgid "Paste Share URL Here"
+msgstr "Dán URL chia sẻ vào đây"
+
+msgid "Share URL to clipboard unable."
+msgstr "Không thể sao chép URL chia sẻ vào khay nhớ tạm."
+
+msgid "Share URL to clipboard successfully."
+msgstr "Đã sao chép URL chia sẻ vào khay nhớ tạm thành công."
+
+msgid "Faltal on get option, please help in debug:"
+msgstr "Lỗi nghiêm trọng khi lấy tùy chọn, vui lòng hỗ trợ gỡ lỗi:"
+
+msgid "Faltal on set option, please help in debug:"
+msgstr "Lỗi nghiêm trọng khi đặt tùy chọn, vui lòng hỗ trợ gỡ lỗi:"
+
+msgid "Address"
+msgstr "Địa chỉ"
+
+msgid "Address (Support Domain Name)"
+msgstr "Địa chỉ (Hỗ trợ tên miền)"
+
+msgid "Trojan Verify Cert"
+msgstr "Xác thực chứng chỉ Trojan"
+
+msgid "Trojan Cert Path"
+msgstr "Đường dẫn chứng chỉ Trojan"
+
+msgid "Finger Print"
+msgstr "Vân tay (Fingerprint)"
+
+msgid "Avoid using randomized, unless you have to."
+msgstr "Tránh sử dụng ngẫu nhiên, trừ khi bắt buộc."
+
+msgid "Original"
+msgstr "Bản gốc"
+
+msgid "Transport Plugin"
+msgstr "Plugin truyền tải"
+
+msgid "Obfs Type"
+msgstr "Loại Obfs"
+
+msgid "Obfs Password"
+msgstr "Mật khẩu Obfs"
+
+msgid "Auth Type"
+msgstr "Loại xác thực"
+
+msgid "Auth Password"
+msgstr "Mật khẩu xác thực"
+
+msgid "Client BBR Flow Control"
+msgstr "Kiểm soát luồng BBR của máy khách"
+
+msgid "Commands the client to use the BBR flow control algorithm"
+msgstr "Ra lệnh cho máy khách sử dụng thuật toán kiểm soát luồng BBR"
+
+msgid "PinSHA256"
+msgstr "PinSHA256"
+
+msgid "Certificate fingerprint"
+msgstr "Vân tay chứng chỉ"
+
+msgid "Max upload Mbps"
+msgstr "Tải lên tối đa Mbps"
+
+msgid "Max download Mbps"
+msgstr "Tải xuống tối đa Mbps"
+
+msgid "QUIC stream receive window"
+msgstr "Cửa sổ nhận luồng QUIC"
+
+msgid "QUIC connection receive window"
+msgstr "Cửa sổ nhận kết nối QUIC"
+
+msgid "QUIC concurrent bidirectional streams"
+msgstr "Luồng song thời gian thực QUIC"
+
+msgid "Keep Alive"
+msgstr "Giữ kết nối (Keep Alive)"
+
+msgid "QUIC KeepAlive interval"
+msgstr "Khoảng thời gian KeepAlive của QUIC"
+
+msgid "Disable MTU detection"
+msgstr "Tắt phát hiện MTU"
+
+msgid "ignoreClientBandwidth"
+msgstr "Bỏ qua băng thông máy khách"
+
+msgid "Lazy Start"
+msgstr "Khởi động chậm (Lazy Start)"
+
+msgid "Encrypt Method"
+msgstr "Phương thức mã hóa"
+
+msgid "Encrypt Key"
+msgstr "Khóa mã hóa"
+
+msgid "Latency"
+msgstr "Độ trễ"
+
+msgid "Automatic detection delay"
+msgstr "Độ trễ phát hiện tự động"
+
+msgid "Show server address and port"
+msgstr "Hiển thị địa chỉ và cổng máy chủ"
+
+msgid "URL Test Address"
+msgstr "URL kiểm tra độ trễ"
+
+msgid "URL Test"
+msgstr "Kiểm tra URL"
+
+msgid "Test"
+msgstr "Kiểm tra"
+
+msgid "Node num"
+msgstr "Số lượng node"
+
+msgid "Self add"
+msgstr "Tự thêm"
+
+msgid "Apply"
+msgstr "Áp dụng"
+
+msgid "Use"
+msgstr "Sử dụng"
+
+msgid "Copy"
+msgstr "Sao chép"
+
+msgid "Delay Settings"
+msgstr "Cài đặt độ trễ"
+
+msgid "Open and close Daemon"
+msgstr "Bật và tắt Daemon"
+
+msgid "Delay Start"
+msgstr "Trì hoãn khởi động"
+
+msgid "Units:seconds"
+msgstr "Đơn vị: giây"
+
+msgid "Units:minutes"
+msgstr "Đơn vị: phút"
+
+msgid "stop automatically mode"
+msgstr "chế độ dừng tự động"
+
+msgid "stop Time"
+msgstr "Thời gian dừng"
+
+msgid "stop Interval(Hour)"
+msgstr "Khoảng thời gian dừng (Giờ)"
+
+msgid "start automatically mode"
+msgstr "chế độ khởi động tự động"
+
+msgid "start Time"
+msgstr "Thời gian bắt đầu"
+
+msgid "start Interval(Hour)"
+msgstr "Khoảng thời gian bắt đầu (Giờ)"
+
+msgid "restart automatically mode"
+msgstr "Chế độ tự động khởi động lại"
+
+msgid "restart Time"
+msgstr "Thời gian khởi động lại"
+
+msgid "restart Interval(Hour)"
+msgstr "Khoảng thời gian khởi động lại (Giờ)"
+
+msgid "Forwarding Settings"
+msgstr "Cài đặt chuyển tiếp"
+
+msgid "TCP No Redir Ports"
+msgstr "Cổng TCP không chuyển hướng"
+
+msgid "UDP No Redir Ports"
+msgstr "Cổng UDP không chuyển hướng"
+
+msgid "Fill in the ports you don't want to be forwarded by the agent, with the highest priority."
+msgstr "Nhập các cổng bạn không muốn chuyển tiếp qua proxy, có độ ưu tiên cao nhất."
+
+msgid "If you don't want to let the device in the list to go proxy, please choose all."
+msgstr "Nếu bạn không muốn thiết bị trong danh sách đi qua proxy, vui lòng chọn tất cả."
+
+msgid "The port settings support single ports and ranges.<br>Separate multiple ports with commas (,).<br>Example: 21,80,443,1000:2000."
+msgstr "Cài đặt cổng hỗ trợ cổng đơn và dải cổng.<br>Phân tách nhiều cổng bằng dấu phẩy (,).<br>Ví dụ: 21,80,443,1000:2000."
+
+msgid "TCP Proxy Drop Ports"
+msgstr "Cổng TCP Proxy bị loại bỏ"
+
+msgid "UDP Proxy Drop Ports"
+msgstr "Cổng UDP Proxy bị loại bỏ"
+
+msgid "TCP Redir Ports"
+msgstr "Cổng chuyển hướng TCP"
+
+msgid "UDP Redir Ports"
+msgstr "Cổng chuyển hướng UDP"
+
+msgid "No patterns are used"
+msgstr "Không sử dụng mẫu nào"
+
+msgid "All"
+msgstr "Tất cả"
+
+msgid "Common Use"
+msgstr "Sử dụng phổ thông"
+
+msgid "Only Web"
+msgstr "Chỉ Web"
+
+msgid "or more"
+msgstr "hoặc nhiều hơn"
+
+msgid "or less"
+msgstr "hoặc ít hơn"
+
+msgid "Default"
+msgstr "Mặc định"
+
+msgid "Close"
+msgstr "Đóng"
+
+msgid "Hijacking ICMP (PING)"
+msgstr "Chặn ICMP (PING)"
+
+msgid "Hijacking ICMPv6 (IPv6 PING)"
+msgstr "Chặn ICMPv6 (IPv6 PING)"
+
+msgid "Direct IP List"
+msgstr "Danh sách IP Trực tiếp"
+
+msgid "These had been joined ip addresses will connect directly (not entering the core)."
+msgstr "Các địa chỉ IP đã thêm này sẽ kết nối trực tiếp (không đi qua lõi)."
+
+msgid "Sniffing"
+msgstr "Bắt gói tin (Sniffing)"
+
+msgid "TCP Proxy Way"
+msgstr "Phương thức TCP Proxy"
+
+msgid "Auto Switch"
+msgstr "Tự động chuyển đổi"
+
+msgid "When there is no server, an automatic reconnect scheme is used"
+msgstr "Khi không có server, cơ chế kết nối lại tự động sẽ được sử dụng"
+
+msgid "How often to test"
+msgstr "Tần suất kiểm tra"
+
+msgid "Timeout seconds"
+msgstr "Thời gian chờ (giây)"
+
+msgid "Timeout retry num"
+msgstr "Số lần thử lại khi hết thời gian chờ"
+
+msgid "Automatic switching cannot be used when this option is checked"
+msgstr "Không thể sử dụng tính năng tự động chuyển đổi khi bật tùy chọn này"
+
+msgid "Main node"
+msgstr "Node chính"
+
+msgid "List of backup nodes"
+msgstr "Danh sách node dự phòng"
+
+msgid "Restore Switch"
+msgstr "Khôi phục chuyển đổi"
+
+msgid "When detects main node is available, switch back to the main node."
+msgstr "Khi phát hiện node chính khả dụng, chuyển đổi trở lại node chính."
+
+msgid "Add nodes to the standby node list by keywords"
+msgstr "Thêm node vào danh sách node dự phòng theo từ khóa"
+
+msgid "Delete nodes in the standby node list by keywords"
+msgstr "Xóa node trong danh sách node dự phòng theo từ khóa"
+
+msgid "Please enter the node keyword, pay attention to distinguish between spaces, uppercase and lowercase."
+msgstr "Vui lòng nhập từ khóa node, lưu ý phân biệt khoảng trắng, chữ hoa và chữ thường."
+
+msgid "Enable Load Balancing"
+msgstr "Bật Cân bằng tải"
+
+msgid "Console Login Auth"
+msgstr "Xác thực đăng nhập bảng điều khiển"
+
+msgid "Console Username"
+msgstr "Tên người dùng bảng điều khiển"
+
+msgid "Console Password"
+msgstr "Mật khẩu bảng điều khiển"
+
+msgid "Console Port"
+msgstr "Cổng bảng điều khiển"
+
+msgid "In the browser input routing IP plus port access, such as:192.168.1.1:1188"
+msgstr "Nhập IP định tuyến cộng với cổng truy cập trên trình duyệt, ví dụ: 192.168.1.1:1188"
+
+msgid "Haproxy Port"
+msgstr "Cổng Haproxy"
+
+msgid "Health Check Type"
+msgstr "Loại kiểm tra sức khỏe"
+
+msgid "Inner implement"
+msgstr "Thực thi bên trong"
+
+msgid "Health Check Inter"
+msgstr "Khoảng thời gian kiểm tra sức khỏe"
+
+msgid "When the URL test is used, the load balancing node will be converted into a Socks node. when node list set customizing, must be a Socks node, otherwise the health check will be invalid."
+msgstr "Khi sử dụng kiểm tra URL, node cân bằng tải sẽ được chuyển đổi thành node Socks. Khi tập hợp node được thiết lập tùy chỉnh, bắt buộc phải là node Socks, nếu không kiểm tra sức khỏe sẽ không hợp lệ."
+
+msgid "Add a node, Export Of Multi WAN Only support Multi Wan. Load specific gravity range 1-256. Multiple primary servers can be load balanced, standby will only be enabled when the primary server is offline! Multiple groups can be set, Haproxy port same one for each group."
+msgstr "Thêm một node, Xuất ra Đa WAN chỉ hỗ trợ Đa WAN. Khoảng trọng số tải 1-256. Có thể cân bằng tải nhiều server chính, dự phòng sẽ chỉ được bật khi server chính ngoại tuyến! Có thể thiết lập nhiều nhóm, cổng Haproxy giống nhau cho mỗi nhóm."
+
+msgid "Note that the node configuration parameters for load balancing must be consistent when use TCP health check type, otherwise it cannot be used normally!"
+msgstr "Lưu ý rằng các tham số cấu hình node để cân bằng tải phải đồng nhất khi sử dụng loại kiểm tra sức khỏe TCP, nếu không sẽ không thể hoạt động bình thường!"
+
+msgid "Node Address"
+msgstr "Địa chỉ Node"
+
+msgid "Node address cannot be empty."
+msgstr "Địa chỉ node không được để trống."
+
+msgid "Node Port"
+msgstr "Cổng Node"
+
+msgid "Node Weight"
+msgstr "Trọng số Node"
+
+msgid "Export Of Multi WAN"
+msgstr "Xuất ra Đa WAN"
+
+msgid "Main"
+msgstr "Chính"
+
+msgid "Mode"
+msgstr "Chế độ"
+
+msgid "Primary"
+msgstr "Sơ cấp"
+
+msgid "Standby"
+msgstr "Dự phòng"
+
+msgid "Check update"
+msgstr "Kiểm tra cập nhật"
+
+msgid "Force update"
+msgstr "Buộc cập nhật"
+
+msgid "The latest version: %s, currently does not support automatic update, if you need to update, please compile or download the ipk and then manually install."
+msgstr "Phiên bản mới nhất: %s, hiện không hỗ trợ tự động cập nhật, nếu bạn cần cập nhật, vui lòng biên dịch hoặc tải xuống file ipk rồi cài đặt thủ công."
+
+msgid "Enable custom URL"
+msgstr "Bật URL tùy chỉnh"
+
+msgid "Rule status"
+msgstr "Trạng thái quy tắc"
+
+msgid "Manually update"
+msgstr "Cập nhật thủ công"
+
+msgid "Rollback"
+msgstr "Hoàn tác (Rollback)"
+
+msgid "Rollbacking..."
+msgstr "Đang hoàn tác..."
+
+msgid "Update Time"
+msgstr "Thời gian cập nhật"
+
+msgid "Update Interval(hour)"
+msgstr "Khoảng thời gian cập nhật (giờ)"
+
+msgid "Auto Update Mode"
+msgstr "Chế độ tự động cập nhật"
+
+msgid "Loop Mode"
+msgstr "Chế độ lặp"
+
+msgid "Every day"
+msgstr "Mỗi ngày"
+
+msgid "Every Monday"
+msgstr "Thứ Hai hàng tuần"
+
+msgid "Every Tuesday"
+msgstr "Thứ Ba hàng tuần"
+
+msgid "Every Wednesday"
+msgstr "Thứ Tư hàng tuần"
+
+msgid "Every Thursday"
+msgstr "Thứ Năm hàng tuần"
+
+msgid "Every Friday"
+msgstr "Thứ Sáu hàng tuần"
+
+msgid "Every Saturday"
+msgstr "Thứ Bảy hàng tuần"
+
+msgid "Every Sunday"
+msgstr "Chủ Nhật hàng tuần"
+
+msgid "hour"
+msgstr "giờ"
+
+msgid "Hour"
+msgstr "Giờ"
+
+msgid "GeoIP Update URL"
+msgstr "URL cập nhật GeoIP"
+
+msgid "Geosite Update URL"
+msgstr "URL cập nhật Geosite"
+
+msgid "Location of Geo rule files"
+msgstr "Vị trí của các file quy tắc Geo"
+
+msgid "This variable specifies a directory where geoip.dat and geosite.dat files are."
+msgstr "Biến này chỉ định một thư mục chứa các file geoip.dat và geosite.dat."
+
+msgid "Enable GeoIP Data Parsing"
+msgstr "Bật phân tích dữ liệu GeoIP"
+
+msgid "Analyzes and preloads GeoIP data to enhance the shunt performance."
+msgstr "Phân tích và tải trước dữ liệu GeoIP để cải thiện hiệu suất phân luồng."
+
+msgid "Note: Increases resource usage."
+msgstr "Lưu ý: Tăng mức sử dụng tài nguyên."
+
+msgid "Shunt Rule"
+msgstr "Quy tắc phân luồng"
+
+msgid "Shunt Rule Group"
+msgstr "Nhóm quy tắc phân luồng"
+
+msgid "Please note attention to the priority, the higher the order, the higher the priority."
+msgstr "Xin lưu ý về độ ưu tiên, thứ tự càng cao thì độ ưu tiên càng lớn."
+
+msgid "This ID already exists."
+msgstr "ID này đã tồn tại."
+
+msgid "Update..."
+msgstr "Đang cập nhật..."
+
+msgid "It is the latest version"
+msgstr "Đây là phiên bản mới nhất"
+
+msgid "Update successful"
+msgstr "Cập nhật thành công"
+
+msgid "Click to update"
+msgstr "Nhấn để cập nhật"
+
+msgid "Updating..."
+msgstr "Đang cập nhật..."
+
+msgid "Retry"
+msgstr "Thử lại"
+
+msgid "Unexpected error"
+msgstr "Lỗi không xác định"
+
+msgid "Updating, are you sure to close?"
+msgstr "Đang cập nhật, bạn có chắc chắn muốn đóng không?"
+
+msgid "Downloading..."
+msgstr "Đang tải xuống..."
+
+msgid "Unpacking..."
+msgstr "Đang giải nén..."
+
+msgid "Moving..."
+msgstr "Đang di chuyển..."
+
+msgid "App Update"
+msgstr "Cập nhật ứng dụng"
+
+msgid "GitHub Proxy"
+msgstr "GitHub Proxy"
+
+msgid "Use GitHub instead of proxy nodes for component updates."
+msgstr "Sử dụng GitHub thay vì các node proxy để cập nhật thành phần."
+
+msgid "Close(Not use)"
+msgstr "Đóng (Không sử dụng)"
+
+msgid "if you want to run from memory, change the path, /tmp beginning then save the application and update it manually."
+msgstr "nếu bạn muốn chạy từ bộ nhớ RAM, hãy thay đổi đường dẫn bắt đầu bằng /tmp sau đó lưu ứng dụng và cập nhật thủ công."
+
+msgid "Make sure there is enough space to install %s"
+msgstr "Đảm bảo có đủ dung lượng để cài đặt %s"
+
+msgid "App Path"
+msgstr "Đường dẫn ứng dụng"
+
+msgid "%s App Path"
+msgstr "Đường dẫn ứng dụng %s"
+
+msgid "%s Client App Path"
+msgstr "Đường dẫn ứng dụng khách %s"
+
+msgid "Node Subscribe"
+msgstr "Đăng ký Sub Node"
+
+msgid "Subscribe Remark"
+msgstr "Ghi chú đăng ký Sub"
+
+msgid "Subscribe Info"
+msgstr "Thông tin đăng ký Sub"
+
+msgid "Subscribe URL"
+msgstr "URL đăng ký Sub"
+
+msgid "Subscribe URL Access Method"
+msgstr "Phương thức truy cập URL đăng ký Sub"
+
+msgid "When adding a new subscription, please save and apply before manually subscribing. If you only change the subscription URL, you can subscribe manually, and the system will save it automatically."
+msgstr "Khi thêm đăng ký Sub mới, vui lòng lưu và áp dụng trước khi đăng ký thủ công. Nếu bạn chỉ thay đổi URL đăng ký Sub, bạn có thể đăng ký thủ công và hệ thống sẽ tự động lưu lại."
+
+msgid "Please save and apply before manually subscribing."
+msgstr "Vui lòng lưu và áp dụng trước khi đăng ký thủ công."
+
+msgid "Subscribe URL cannot be empty."
+msgstr "URL đăng ký Sub không được để trống."
+
+msgid "Subscribe via proxy"
+msgstr "Đăng ký Sub qua proxy"
+
+msgid "Update Once on Boot"
+msgstr "Cập nhật một lần khi khởi động"
+
+msgid "Updates the subscription the first time runs automatically after each system boot."
+msgstr "Tự động cập nhật đăng ký Sub vào lần chạy đầu tiên sau mỗi lần khởi động hệ thống."
+
+msgid "Enable auto update subscribe"
+msgstr "Bật tự động cập nhật đăng ký Sub"
+
+msgid "Manual subscription"
+msgstr "Đăng ký Sub thủ công"
+
+msgid "Delete All Subscribe Node"
+msgstr "Xóa tất cả Node đăng ký Sub"
+
+msgid "Delete the subscribed node"
+msgstr "Xóa node đã đăng ký Sub"
+
+msgid "Are you sure you want to delete all subscribed nodes?"
+msgstr "Bạn có chắc chắn muốn xóa tất cả các node đã đăng ký Sub không?"
+
+msgid "Manual subscription All"
+msgstr "Đăng ký Sub thủ công tất cả"
+
+msgid "This remark already exists, please change a new remark."
+msgstr "Ghi chú này đã tồn tại, vui lòng thay đổi ghi chú khác."
+
+msgid "Remark cannot be empty."
+msgstr "Ghi chú không được để trống."
+
+msgid "URL cannot be empty."
+msgstr "URL không được để trống."
+
+msgid "Filter keyword Mode"
+msgstr "Chế độ lọc từ khóa"
+
+msgid "Discard List"
+msgstr "Danh sách loại bỏ"
+
+msgid "Keep List"
+msgstr "Danh sách giữ lại"
+
+msgid "Discard List,But Keep List First"
+msgstr "Danh sách loại bỏ, nhưng ưu tiên giữ lại trước"
+
+msgid "Keep List,But Discard List First"
+msgstr "Danh sách giữ lại, nhưng ưu tiên loại bỏ trước"
+
+msgid "Use global config"
+msgstr "Sử dụng cấu hình toàn cục"
+
+msgid "User-Agent"
+msgstr "User-Agent"
+
+msgid "Add"
+msgstr "Thêm"
+
+msgid "ACLs"
+msgstr "ACL"
+
+msgid "ACLs is a tools which used to designate specific IP proxy mode."
+msgstr "ACL là công cụ được sử dụng để chỉ định chế độ proxy cho các IP cụ thể."
+
+msgid "Example:"
+msgstr "Ví dụ:"
+
+msgid "IP range"
+msgstr "Dải IP"
+
+msgid "Source Interface"
+msgstr "Giao diện nguồn"
+
+msgid "Bridge"
+msgstr "Bridge"
+
+msgid "Wireless Adapter"
+msgstr "Bộ điều hợp không dây"
+
+msgid "Ethernet Adapter"
+msgstr "Bộ điều hợp Ethernet"
+
+msgid "Tunnel Interface"
+msgstr "Giao diện đường hầm (Tunnel)"
+
+msgid "Invalid interface name"
+msgstr "Tên giao diện không hợp lệ"
+
+msgid "Use Interface With ACLs"
+msgstr "Sử dụng giao diện với ACL"
+
+msgid "Remarks"
+msgstr "Ghi chú"
+
+msgid "Direct List"
+msgstr "Danh sách Trực tiếp"
+
+msgid "Proxy List"
+msgstr "Danh sách Proxy"
+
+msgid "Block List"
+msgstr "Danh sách Chặn"
+
+msgid "Lan IP List"
+msgstr "Danh sách IP mạng nội bộ (LAN)"
+
+msgid "Route Hosts"
+msgstr "Định tuyến Hosts"
+
+msgid "Join the direct hosts list of domain names will not proxy."
+msgstr "Thêm các tên miền vào danh sách kết nối trực tiếp sẽ không qua proxy."
+
+msgid "These had been joined ip addresses will not proxy. Please input the ip address or ip address segment,every line can input only one ip address. For example: 192.168.0.0/24 or 223.5.5.5."
+msgstr "Các địa chỉ IP đã thêm này sẽ không qua proxy. Vui lòng nhập địa chỉ IP hoặc dải IP, mỗi dòng chỉ nhập một địa chỉ IP. Ví dụ: 192.168.0.0/24 hoặc 223.5.5.5."
+
+msgid "These had been joined websites will use proxy. Please input the domain names of websites, every line can input only one website domain. For example: google.com."
+msgstr "Các trang web đã thêm này sẽ sử dụng proxy. Vui lòng nhập tên miền của trang web, mỗi dòng chỉ nhập một tên miền. Ví dụ: google.com."
+
+msgid "These had been joined ip addresses will use proxy. Please input the ip address or ip address segment, every line can input only one ip address. For example: 35.24.0.0/24 or 8.8.4.4."
+msgstr "Các địa chỉ IP đã thêm này sẽ sử dụng proxy. Vui lòng nhập địa chỉ IP hoặc dải IP, mỗi dòng chỉ nhập một địa chỉ IP. Ví dụ: 35.24.0.0/24 hoặc 8.8.4.4."
+
+msgid "These had been joined websites will be block. Please input the domain names of websites, every line can input only one website domain. For example: twitter.com."
+msgstr "Các trang web đã thêm này sẽ bị chặn. Vui lòng nhập tên miền của trang web, mỗi dòng chỉ nhập một tên miền. Ví dụ: twitter.com."
+
+msgid "The list is the IPv4 LAN IP list, which represents the direct connection IP of the LAN. If you need the LAN IP in the proxy list, please clear it from the list. Do not modify this list by default."
+msgstr "Đây là danh sách IP LAN IPv4, đại diện cho các IP kết nối trực tiếp của mạng nội bộ. Nếu bạn cần IP LAN nằm trong danh sách proxy, vui lòng xóa nó khỏi danh sách này. Không sửa đổi danh sách này theo mặc định."
+
+msgid "The list is the IPv6 LAN IP list, which represents the direct connection IP of the LAN. If you need the LAN IP in the proxy list, please clear it from the list. Do not modify this list by default."
+msgstr "Đây là danh sách IP LAN IPv6, đại diện cho các IP kết nối trực tiếp của mạng nội bộ. Nếu bạn cần IP LAN nằm trong danh sách proxy, vui lòng xóa nó khỏi danh sách này. Không sửa đổi danh sách này theo mặc định."
+
+msgid "Configure routing etc/hosts file, if you don't know what you are doing, please don't change the content."
+msgstr "Cấu hình file định tuyến etc/hosts, nếu bạn không rõ mình đang làm gì, xin vui lòng không thay đổi nội dung."
+
+msgid "These had been joined ip addresses will be block. Please input the ip address or ip address segment, every line can input only one ip address."
+msgstr "Các địa chỉ IP đã thêm này sẽ bị chặn. Vui lòng nhập địa chỉ IP hoặc dải IP, mỗi dòng chỉ nhập một địa chỉ IP."
+
+msgid "Inbound Tag"
+msgstr "Thẻ đầu vào (Inbound Tag)"
+
+msgid "Transparent proxy"
+msgstr "Proxy trong suốt"
+
+msgid "Not valid domain name, please re-enter!"
+msgstr "Tên miền không hợp lệ, vui lòng nhập lại!"
+
+msgid "Not valid IP format, please re-enter!"
+msgstr "Định dạng IP không hợp lệ, vui lòng nhập lại!"
+
+msgid "Not valid IPv4 format, please re-enter!"
+msgstr "Định dạng IPv4 không hợp lệ, vui lòng nhập lại!"
+
+msgid "Not valid IPv6 format, please re-enter!"
+msgstr "Định dạng IPv6 không hợp lệ, vui lòng nhập lại!"
+
+msgid "Not true format, please re-enter!"
+msgstr "Định dạng không chính xác, vui lòng nhập lại!"
+
+msgid "Plaintext: If this string matches any part of the targeting domain, this rule takes effect. Example: rule 'sina.com' matches targeting domain 'sina.com', 'sina.com.cn' and 'www.sina.com', but not 'sina.cn'."
+msgstr "Văn bản thuần túy: Nếu chuỗi này khớp với bất kỳ phần nào của tên miền đích, quy tắc này sẽ có hiệu lực. Ví dụ: quy tắc 'sina.com' khớp với tên miền đích 'sina.com', 'sina.com.cn' và 'www.sina.com', nhưng không khớp với 'sina.cn'."
+
+msgid "Regular expression: Beginning with 'regexp:', the rest is a regular expression. When the regexp matches targeting domain, this rule takes effect. Example: rule 'regexp:\\.goo.*\\.com$' matches 'www.google.com' and 'fonts.googleapis.com', but not 'google.com'."
+msgstr "Biểu thức chính quy: Bắt đầu bằng 'regexp:', phần còn lại là biểu thức chính quy. Khi biểu thức chính quy khớp với tên miền đích, quy tắc này có hiệu lực. Ví dụ: quy tắc 'regexp:\\.goo.*\\.com$' khớp với 'www.google.com' và 'fonts.googleapis.com', nhưng không khớp với 'google.com'."
+
+msgid "Subdomain (recommended): Beginning with 'domain:' and the rest is a domain. When the targeting domain is exactly the value, or is a subdomain of the value, this rule takes effect. Example: rule 'domain:v2ray.com' matches 'www.v2ray.com', 'v2ray.com', but not 'xv2ray.com'."
+msgstr "Tên miền phụ (khuyên dùng): Bắt đầu bằng 'domain:' và phần còn lại là tên miền. Khi tên miền đích trùng khớp chính xác với giá trị này, hoặc là tên miền phụ của giá trị này, quy tắc sẽ có hiệu lực. Ví dụ: quy tắc 'domain:v2ray.com' khớp với 'www.v2ray.com', 'v2ray.com', nhưng không khớp với 'xv2ray.com'."
+
+msgid "Full domain: Beginning with 'full:' and the rest is a domain. When the targeting domain is exactly the value, the rule takes effect. Example: rule 'full:v2ray.com' matches 'v2ray.com', but not 'www.v2ray.com'."
+msgstr "Tên miền đầy đủ: Bắt đầu bằng 'full:' và phần còn lại là tên miền. Khi tên miền đích trùng khớp chính xác với giá trị này, quy tắc có hiệu lực. Ví dụ: quy tắc 'full:v2ray.com' khớp với 'v2ray.com', nhưng không khớp với 'www.v2ray.com'."
+
+msgid "Sing-Box rule-set: Beginning with 'rule-set:remote:' or 'rule-set:local:'"
+msgstr "Bộ quy tắc Sing-Box: Bắt đầu bằng 'rule-set:remote:' hoặc 'rule-set:local:'"
+
+msgid "Such as:"
+msgstr "Chẳng hạn như:"
+
+msgid "Pre-defined domain list: Beginning with 'geosite:' and the rest is a name, such as geosite:google or geosite:cn."
+msgstr "Danh sách tên miền xác định trước: Bắt đầu bằng 'geosite:' và phần còn lại là tên, chẳng hạn như geosite:google hoặc geosite:cn."
+
+msgid "Annotation: Beginning with #"
+msgstr "Chú thích: Bắt đầu bằng #"
+
+msgid "Invert match result."
+msgstr "Đảo ngược kết quả khớp."
+
+msgid "Only support Sing-Box."
+msgstr "Chỉ hỗ trợ Sing-Box."
+
+msgid "IP: such as '127.0.0.1'."
+msgstr "IP: chẳng hạn như '127.0.0.1'."
+
+msgid "CIDR: such as '127.0.0.0/8'."
+msgstr "CIDR: chẳng hạn như '127.0.0.0/8'."
+
+msgid "GeoIP: such as 'geoip:cn'. It begins with geoip: (lower case) and followed by two letter of country code."
+msgstr "GeoIP: chẳng hạn như 'geoip:cn'. Bắt đầu bằng geoip: (chữ thường) và theo sau là mã quốc gia gồm hai chữ cái."
+
+msgid "Clear logs"
+msgstr "Xóa nhật ký"
+
+msgid "Password"
+msgstr "Mật khẩu"
+
+msgid "UDP over TCP"
+msgstr "UDP over TCP"
+
+msgid "Connection Timeout"
+msgstr "Thời gian chờ kết nối"
+
+msgid "Local Port"
+msgstr "Cổng nội bộ"
+
+msgid "Fast Open"
+msgstr "Fast Open"
+
+msgid "plugin"
+msgstr "Plugin"
+
+msgid "Supports custom SIP003 plugins, Make sure the plugin is installed."
+msgstr "Hỗ trợ các plugin SIP003 tùy chỉnh, hãy đảm bảo plugin đã được cài đặt."
+
+msgid "opts"
+msgstr "Tùy chọn (opts)"
+
+msgid "Protocol"
+msgstr "Giao thức"
+
+msgid "Protocol_param"
+msgstr "Tham số giao thức"
+
+msgid "Obfs"
+msgstr "Ngụy trang (Obfs)"
+
+msgid "Obfs_param"
+msgstr "Tham số ngụy trang"
+
+msgid "Plugin Name"
+msgstr "Tên Plugin"
+
+msgid "Plugin Arguments"
+msgstr "Tham số Plugin"
+
+msgid "User Level"
+msgstr "Cấp độ người dùng"
+
+msgid "Transport"
+msgstr "Giao thức truyền dẫn"
+
+msgid "Public Key"
+msgstr "Khóa công khai (Public Key)"
+
+msgid "Private Key"
+msgstr "Khóa riêng tư (Private Key)"
+
+msgid "Pre shared key"
+msgstr "Khóa chia sẻ trước (PSK)"
+
+msgid "Allowed IPs"
+msgstr "IP được phép"
+
+msgid "Generate key"
+msgstr "Tạo khóa"
+
+msgid "Local Address"
+msgstr "Địa chỉ cục bộ"
+
+msgid "System interface"
+msgstr "Giao diện hệ thống"
+
+msgid "System interface name"
+msgstr "Tên giao diện hệ thống"
+
+msgid "Decimal numbers separated by \",\" or Base64-encoded strings."
+msgstr "Các số thập phân ngăn cách bằng dấu \",\" hoặc chuỗi mã hóa Base64."
+
+msgid "Camouflage Domain"
+msgstr "Miền ngụy trang"
+
+msgid "Camouflage Type"
+msgstr "Loại ngụy trang"
+
+msgid "Transport Layer Encryption"
+msgstr "Mã hóa tầng truyền dẫn"
+
+msgid "Whether or not transport layer encryption is enabled, \"none\" for unencrypted, \"tls\" for using TLS, \"xtls\" for using XTLS."
+msgstr "Bật hay không bật mã hóa tầng truyền dẫn, \"none\" để không mã hóa, \"tls\" để dùng TLS, \"xtls\" để dùng XTLS."
+
+msgid "Original Trojan only supported 'tls', please choose 'tls'."
+msgstr "Trojan gốc chỉ hỗ trợ 'tls', vui lòng chọn 'tls'."
+
+msgid "Transfer mode"
+msgstr "Chế độ truyền tải"
+
+msgid "Do not send server name in ClientHello."
+msgstr "Không gửi tên máy chủ trong ClientHello."
+
+msgid "Domain"
+msgstr "Tên miền"
+
+msgid "allowInsecure"
+msgstr "cho phép không an toàn"
+
+msgid "Whether unsafe connections are allowed. When checked, Certificate validation will be skipped."
+msgstr "Cho phép kết nối không an toàn. Khi được chọn, việc xác thực chứng chỉ sẽ bị bỏ qua."
+
+msgid "Used when the node link does not include this parameter."
+msgstr "Được sử dụng khi liên kết node không bao gồm tham số này."
+
+msgid "%s Node Use Type"
+msgstr "Loại sử dụng Node %s"
+
+msgid "Other"
+msgstr "Khác"
+
+msgid "UDP relay mode"
+msgstr "Chế độ chuyển tiếp UDP"
+
+msgid "Concurrent Tunnels"
+msgstr "Đường hầm đồng thời"
+
+msgid "Congestion control algorithm"
+msgstr "Thuật toán kiểm soát tắc nghẽn"
+
+msgid "Heartbeat interval(second)"
+msgstr "Khoảng thời gian nhịp tim (giây)"
+
+msgid "Disable SNI"
+msgstr "Vô hiệu hóa SNI"
+
+msgid "Enable 0-RTT QUIC handshake"
+msgstr "Bật bắt tay QUIC 0-RTT"
+
+msgid "<br />none: default, no masquerade, data sent is packets with no characteristics.<br />srtp: disguised as an SRTP packet, it will be recognized as video call data (such as FaceTime).<br />utp: packets disguised as uTP will be recognized as bittorrent downloaded data.<br />wechat-video: packets disguised as WeChat video calls.<br />dtls: disguised as DTLS 1.2 packet.<br />wireguard: disguised as a WireGuard packet. (not really WireGuard protocol)<br />dns: Disguising traffic as DNS requests."
+msgstr "<br />none: mặc định, không ngụy trang, dữ liệu gửi đi là các gói tin không có đặc điểm.<br />srtp: ngụy trang thành gói tin SRTP, sẽ được nhận diện là dữ liệu gọi video (như FaceTime).<br />utp: các gói tin ngụy trang thành uTP sẽ được nhận diện là dữ liệu tải xuống bittorrent.<br />wechat-video: gói tin ngụy trang thành cuộc gọi video WeChat.<br />dtls: ngụy trang thành gói tin DTLS 1.2.<br />wireguard: ngụy trang thành gói tin WireGuard. (không phải giao thức WireGuard thực sự)<br />dns: Ngụy trang lưu lượng truy cập thành các yêu cầu DNS."
+
+msgid "Use it together with the DNS disguised type. You can fill in any domain."
+msgstr "Sử dụng kết hợp với loại ngụy trang DNS. Bạn có thể điền bất kỳ tên miền nào."
+
+msgid "Prefer firewall tools"
+msgstr "Ưu tiên công cụ tường lửa"
+
+msgid "IPv6 TProxy"
+msgstr "IPv6 TProxy"
+
+msgid "Experimental feature. Make sure that your node supports IPv6."
+msgstr "Tính năng thử nghiệm. Đảm bảo rằng node của bạn hỗ trợ IPv6."
+
+msgid "Destination protocol"
+msgstr "Giao thức đích"
+
+msgid "Destination address"
+msgstr "Địa chỉ đích"
+
+msgid "Destination port"
+msgstr "Cổng đích"
+
+msgid "Whether to receive PROXY protocol, when this node want to be fallback or forwarded by proxy, it must be enable, otherwise it cannot be used."
+msgstr "Có nhận giao thức PROXY hay không, khi node này muốn được dự phòng hoặc chuyển tiếp bởi proxy, nó phải được bật, nếu không sẽ không thể sử dụng."
+
+msgid "outbound node"
+msgstr "node đi ra (outbound)"
+
+msgid "Custom Socks"
+msgstr "Socks tùy chỉnh"
+
+msgid "Custom HTTP"
+msgstr "HTTP tùy chỉnh"
+
+msgid "Custom Interface"
+msgstr "Giao diện tùy chỉnh"
+
+msgid "Interface"
+msgstr "Giao diện"
+
+msgid "Bind Local"
+msgstr "Liên kết cục bộ"
+
+msgid "When selected, it can only be accessed localhost."
+msgstr "Khi được chọn, chỉ có thể truy cập localhost."
+
+msgid "Firewall Allow"
+msgstr "Cho phép tường lửa"
+
+msgid "Source zone"
+msgstr "Vùng nguồn"
+
+msgid "Accept LAN Access"
+msgstr "Chấp nhận truy cập LAN"
+
+msgid "When selected, it can accessed lan , this will not be safe!"
+msgstr "Khi được chọn, có thể truy cập lan, điều này sẽ không an toàn!"
+
+msgid "Enable Remote"
+msgstr "Bật từ xa"
+
+msgid "You can forward to Nginx/Caddy/V2ray/Xray WebSocket and more."
+msgstr "Bạn có thể chuyển tiếp đến Nginx/Caddy/V2ray/Xray WebSocket và nhiều hơn nữa."
+
+msgid "Remote Address"
+msgstr "Địa chỉ từ xa"
+
+msgid "Remote Port"
+msgstr "Cổng từ xa"
+
+msgid "as:"
+msgstr "như:"
+
+msgid "Path to the certificate file"
+msgstr "Đường dẫn đến tệp chứng chỉ"
+
+msgid "Path to the private key file"
+msgstr "Đường dẫn đến tệp khóa riêng"
+
+msgid "Can't find this file!"
+msgstr "Không thể tìm thấy tệp này!"
+
+msgid "Certificate and Private key path can not be empty!"
+msgstr "Đường dẫn Chứng chỉ và Khóa riêng không thể để trống!"
+
+msgid "Certificate and Private key PEM can not be empty!"
+msgstr "Nội dung PEM của Chứng chỉ và Khóa riêng không thể để trống!"
+
+msgid "Use PEM"
+msgstr "Sử dụng PEM"
+
+msgid "Use certificate and private key PEM content."
+msgstr "Sử dụng nội dung PEM của chứng chỉ và khóa riêng."
+
+msgid "Server-Side"
+msgstr "Phía máy chủ"
+
+msgid "Server Config"
+msgstr "Cấu hình máy chủ"
+
+msgid "Servers Manager"
+msgstr "Trình quản lý máy chủ"
+
+msgid "Users Manager"
+msgstr "Trình quản lý người dùng"
+
+msgid "User Config"
+msgstr "Cấu hình người dùng"
+
+msgid "Logs"
+msgstr "Nhật ký"
+
+msgid "Log"
+msgstr "Nhật ký"
+
+msgid "Enable Node Log"
+msgstr "Bật nhật ký Node"
+
+msgid "Log Level"
+msgstr "Mức độ nhật ký"
+
+msgid "Log File"
+msgstr "Tệp nhật ký"
+
+msgid "View Log"
+msgstr "Xem nhật ký"
+
+msgid "Not enabled log"
+msgstr "Chưa bật nhật ký"
+
+msgid "UDP Forward"
+msgstr "Chuyển tiếp UDP"
+
+msgid "DNS Settings"
+msgstr "Cài đặt DNS"
+
+msgid "Null"
+msgstr "Trống"
+
+msgid "You did not fill in the %s path. Please save and apply then update manually."
+msgstr "Bạn chưa điền đường dẫn %s. Vุณ lòng lưu và áp dụng sau đó cập nhật thủ công."
+
+msgid "Not installed %s, Can't unzip!"
+msgstr "Chưa cài đặt %s, Không thể giải nén!"
+
+msgid "Can't determine ARCH, or ARCH not supported."
+msgstr "Không thể xác định ARCH, hoặc ARCH không được hỗ trợ."
+
+msgid "Get remote version info failed."
+msgstr "Lấy thông tin phiên bản từ xa thất bại."
+
+msgid "New version found, but failed to get new version download url."
+msgstr "Đã tìm thấy phiên bản mới, nhưng không thể lấy URL tải xuống phiên bản mới."
+
+msgid "Download url is required."
+msgstr "Yêu cầu URL tải xuống."
+
+msgid "File download failed or timed out: %s"
+msgstr "Tải tệp thất bại hoặc hết thời gian: %s"
+
+msgid "File verification failed."
+msgstr "Xác minh tệp thất bại."
+
+msgid "File path required."
+msgstr "Yêu cầu đường dẫn tệp."
+
+msgid "%s not enough space."
+msgstr "%s không đủ dung lượng."
+
+msgid "Can't find client in file: %s"
+msgstr "Không thể tìm thấy client trong tệp: %s"
+
+msgid "Client file is required."
+msgstr "Yêu cầu tệp client."
+
+msgid "The client file is not suitable for current device."
+msgstr "Tệp client không phù hợp với thiết bị hiện tại."
+
+msgid "Can't move new file to path: %s"
+msgstr "Không thể di chuyển tệp mới đến đường dẫn: %s"
+
+msgid "An XHttpObject in JSON format, used for sharing."
+msgstr "Một XHttpObject ở định dạng JSON, được sử dụng để chia sẻ."
+
+msgid "Enable Mux.Cool"
+msgstr "Bật Mux.Cool"
+
+msgid "Mux concurrency"
+msgstr "Độ đồng thời Mux"
+
+msgid "XUDP Mux concurrency"
+msgstr "Độ đồng thời XUDP Mux"
+
+msgid "Padding"
+msgstr "Phần đệm (Padding)"
+
+msgid "Early data header name"
+msgstr "Tên tiêu đề dữ liệu sớm (Early data)"
+
+msgid "Recommended value: Sec-WebSocket-Protocol"
+msgstr "Giá trị khuyên dùng: Sec-WebSocket-Protocol"
+
+msgid "Health check"
+msgstr "Kiểm tra sức khỏe"
+
+msgid "Health check timeout"
+msgstr "Thời gian chờ kiểm tra sức khỏe"
+
+msgid "Permit without stream"
+msgstr "Cho phép không có luồng"
+
+msgid "Initial Windows Size"
+msgstr "Kích thước cửa sổ ban đầu (Initial Window Size)"
+
+msgid "Excluded Domains"
+msgstr "Các tên miền bị loại trừ"
+
+msgid "If the traffic sniffing result is in this list, the destination address will not be overridden."
+msgstr "Nếu kết quả phân tích lưu lượng nằm trong danh sách này, địa chỉ đích sẽ không bị ghi đè."
+
+msgid "Buffer Size"
+msgstr "Kích thước bộ đệm"
+
+msgid "Buffer size for every connection (kB)"
+msgstr "Kích thước bộ đệm cho mỗi kết nối (kB)"
+
+msgid "Idle Timeout"
+msgstr "Thời gian chờ khi rảnh (Idle Timeout)"
+
+msgid "Hop Interval(second)"
+msgstr "Khoảng thời gian nhảy (giây)"
+
+msgid "Supports a fixed value or a random range (e.g., 30, 5-30), minimum 5."
+msgstr "Hỗ trợ giá trị cố định hoặc một khoảng ngẫu nhiên (ví dụ: 30, 5-30), tối thiểu là 5."
+
+msgid "HeartbeatPeriod(second)"
+msgstr "Chu kỳ nhịp tim (giây)"
+
+msgid "Override the connection destination address"
+msgstr "Ghi đè địa chỉ đích kết nối"
+
+msgid "Override the connection destination address with the sniffed domain.<br />Otherwise use sniffed domain for routing only.<br />If using shunt nodes, configure the domain shunt rules correctly."
+msgstr "Ghi đè địa chỉ đích kết nối bằng tên miền đã phân tích.<br />Nếu không, chỉ sử dụng tên miền đã phân tích để định tuyến.<br />Nếu sử dụng các node phân luồng, hãy cấu hình đúng các quy tắc phân luồng tên miền."
+
+msgid "Handshake Server"
+msgstr "Máy chủ bắt tay"
+
+msgid "Handshake Server Port"
+msgstr "Cổng máy chủ bắt tay"
+
+msgid "Protocol parameter. Will waste traffic randomly if enabled."
+msgstr "Tham số giao thức. Sẽ lãng phí lưu lượng một cách ngẫu nhiên nếu được bật."
+
+msgid "Protocol parameter. Enable length block encryption."
+msgstr "Tham số giao thức. Bật mã hóa khối độ dài."
+
+msgid "TLS Chain Fingerprint (SHA256)"
+msgstr "Vân tay chuỗi TLS (SHA256)"
+
+msgid "Once set, connects only when the server’s chain fingerprint matches."
+msgstr "Một khi được thiết lập, chỉ kết nối khi vân tay chuỗi của máy chủ khớp."
+
+msgid "TLS Certificate Name (CertName)"
+msgstr "Tên chứng chỉ TLS (CertName)"
+
+msgid "TLS is used to verify the leaf certificate name."
+msgstr "TLS được sử dụng để xác minh tên chứng chỉ lá."
+
+msgid "TLS Certificate (PEM)"
+msgstr "Chứng chỉ TLS (PEM)"
+
+msgid "Full certificate (chain), PEM format."
+msgstr "Chứng chỉ đầy đủ (chuỗi), định dạng PEM."
+
+msgid "TLS Private Key (PEM)"
+msgstr "Khóa riêng TLS (PEM)"
+
+msgid "Private key in PEM format."
+msgstr "Khóa riêng ở định dạng PEM."
+
+msgid "Fetch Manually"
+msgstr "Lấy thủ công"
+
+msgid "Fetch Failed"
+msgstr "Lấy thất bại"
+
+msgid "ECH Config"
+msgstr "Cấu hình ECH"
+
+msgid "ECH Key"
+msgstr "Khóa ECH"
+
+msgid "ECH Query Domain"
+msgstr "Tên miền truy vấn ECH"
+
+msgid "Overrides the domain name used for ECH HTTPS record queries."
+msgstr "Ghi đè tên miền được sử dụng cho các truy vấn bản ghi HTTPS ECH."
+
+msgid "Enable Multipath TCP, need to be enabled in both server and client configuration."
+msgstr "Bật Multipath TCP, cần được bật ở cả cấu hình máy chủ và máy khách."
+
+msgid "An FinalMaskObject in JSON format, used for sharing."
+msgstr "Một FinalMaskObject ở định dạng JSON, được sử dụng để chia sẻ."
+
+msgid "Custom finalmask overrides mkcp, hysteria2, fragment, noise, and related settings."
+msgstr "FinalMask tùy chỉnh ghi đè lên mkcp, hysteria2, fragment, noise và các cài đặt liên quan."
+
+msgid "Fragment"
+msgstr "Phân mảnh (Fragment)"
+
+msgid "TCP fragments, which can deceive the censorship system in some cases, such as bypassing SNI blacklists."
+msgstr "Phân mảnh TCP, có thể đánh lừa hệ thống kiểm duyệt trong một số trường hợp, chẳng hạn như bỏ qua danh sách đen SNI."
+
+msgid "Fragment Packets"
+msgstr "Gói tin phân mảnh"
+
+msgid " \"1-3\" is for segmentation at TCP layer, applying to the beginning 1 to 3 data writes by the client. \"tlshello\" is for TLS client hello packet fragmentation."
+msgstr " \"1-3\" dùng để phân đoạn ở tầng TCP, áp dụng cho 1 đến 3 lần ghi dữ liệu đầu tiên bởi máy khách. \"tlshello\" dùng để phân mảnh gói tin TLS client hello."
+
+msgid "Fragment Length"
+msgstr "Độ dài phân mảnh"
+
+msgid "Fragmented packet length (byte)"
+msgstr "Độ dài gói tin phân mảnh (byte)"
+
+msgid "Fragment Delay"
+msgstr "Độ trễ phân mảnh"
+
+msgid "Fragmentation interval (ms)"
+msgstr "Khoảng thời gian phân mảnh (ms)"
+
+msgid "Max Split"
+msgstr "Số lần chia tối đa"
+
+msgid "Limit the maximum number of splits."
+msgstr "Giới hạn số lần chia tối đa."
+
+msgid "Split handshake data into multiple TLS records for better censorship evasion. Low overhead. Recommended to enable first."
+msgstr "Chia dữ liệu bắt tay thành nhiều bản ghi TLS để né tránh kiểm duyệt tốt hơn. Chi phí thấp. Khuyên dùng bật trước."
+
+msgid "Split handshake into multiple TCP segments. Enhances obfuscation. May increase delay. Use only if needed."
+msgstr "Chia quá trình bắt tay thành nhiều phân đoạn TCP. Tăng cường ngụy trang. Có thể làm tăng độ trễ. Chỉ sử dụng khi cần thiết."
+
+msgid "Noise"
+msgstr "Nhiễu (Noise)"
+
+msgid "UDP noise, Under some circumstances it can bypass some UDP based protocol restrictions."
+msgstr "Nhiễu UDP, trong một số trường hợp có thể vượt qua một số giới hạn giao thức dựa trên UDP."
+
+msgid "To send noise packets, select \"Noise\" in Xray Settings."
+msgstr "Để gửi các gói nhiễu, hãy chọn \"Noise\" trong Cài đặt Xray."
+
+msgid "Xray Noise Packets"
+msgstr "Gói nhiễu Xray"
+
+msgid "Packet | Rand Length"
+msgstr "Gói tin | Độ dài ngẫu nhiên"
+
+msgid "Delay (ms)"
+msgstr "Độ trễ (ms)"
+
+msgid "If is domain name, The requested domain name will be resolved to IP before connect."
+msgstr "Nếu là tên miền, tên miền được yêu cầu sẽ được phân giải thành IP trước khi kết nối."
+
+msgid "Domain DNS Resolve"
+msgstr "Phân giải DNS tên miền"
+
+msgid "If the node address is a domain name, this DNS will be used for resolution."
+msgstr "Nếu địa chỉ node là tên miền, DNS này sẽ được sử dụng để phân giải."
+
+msgid "Enable Happy Eyeballs"
+msgstr "Bật Happy Eyeballs"
+
+msgid "Attempts IPv4 and IPv6 simultaneously; automatically uses the faster connection."
+msgstr "Thử đồng thời IPv4 và IPv6; tự động sử dụng kết nối nhanh hơn."
+
+msgid "Supports only Xray or Sing-box node types."
+msgstr "Chỉ hỗ trợ loại node Xray hoặc Sing-box."
+
+msgid "Chain Proxy"
+msgstr "Proxy chuỗi"
+
+msgid "Outbound Interface"
+msgstr "Giao diện đi ra (Outbound Interface)"
+
+msgid "Landing Node"
+msgstr "Node đích (Landing Node)"
+
+msgid "Only support a layer of proxy."
+msgstr "Chỉ hỗ trợ một lớp proxy."
+
+msgid "Send HWID"
+msgstr "Gửi HWID"
+
+msgid "Some subscription providers may require a hardware identifier (HWID) for authentication."
+msgstr "Một số nhà cung cấp đăng ký sub có thể yêu cầu định danh phần cứng (HWID) để xác thực."
+
+msgid "Enabling this option will send a hashed HWID when updating subscriptions."
+msgstr "Bật tùy chọn này sẽ gửi HWID đã băm khi cập nhật đăng ký sub."
+
+msgid "This may reveal limited hardware information. Enable only if you trust your provider."
+msgstr "Điều này có thể tiết lộ thông tin phần cứng hạn chế. Chỉ bật nếu bạn tin tưởng nhà cung cấp của mình."
+
+msgid "Chained proxy works only with Xray or Sing-box nodes.<br>You can only use manual or imported nodes as chained nodes."
+msgstr "Proxy chuỗi chỉ hoạt động với các node Xray hoặc Sing-box.<br>Bạn chỉ có thể sử dụng các node thủ công hoặc đã nhập làm node chuỗi."
+
+msgid "Prefer IPv4"
+msgstr "Ưu tiên IPv4"
+
+msgid "Prefer IPv6"
+msgstr "Ưu tiên IPv6"
+
+msgid "IPv4 Only"
+msgstr "Chỉ IPv4"
+
+msgid "IPv6 Only"
+msgstr "Chỉ IPv6"
+
+msgid "Maintain"
+msgstr "Duy trì"
+
+msgid "Backup and Restore"
+msgstr "Sao lưu và Khôi phục"
+
+msgid "Backup or Restore Client and Server Configurations."
+msgstr "Sao lưu hoặc Khôi phục Cấu hình Máy khách và Máy chủ."
+
+msgid "Note: Restoring configurations across different versions may cause compatibility issues."
+msgstr "Lưu ý: Khôi phục cấu hình giữa các phiên bản khác nhau có thể gây ra vấn đề tương thích."
+
+msgid "Create Backup File"
+msgstr "Tạo tệp sao lưu"
+
+msgid "Restore Backup File"
+msgstr "Khôi phục tệp sao lưu"
+
+msgid "DL Backup"
+msgstr "Tải sao lưu (DL Backup)"
+
+msgid "RST Backup"
+msgstr "Đặt lại sao lưu (RST Backup)"
+
+msgid "Backup failed!"
+msgstr "Sao lưu thất bại!"
+
+msgid "UL Restore"
+msgstr "Tải lên khôi phục (UL Restore)"
+
+msgid "CLOSE WIN"
+msgstr "ĐÓNG CỬA SỔ"
+
+msgid "Restore to default configuration"
+msgstr "Khôi phục về cấu hình mặc định"
+
+msgid "Do Reset"
+msgstr "Tiến hành đặt lại"
+
+msgid "Please select a file first."
+msgstr "Vui lòng chọn một tệp trước."
+
+msgid "Invalid file type. Please upload a .tar.gz file."
+msgstr "Loại tệp không hợp lệ. Vui lòng tải lên tệp .tar.gz."
+
+msgid "File size exceeds 10MB limit."
+msgstr "Kích thước tệp vượt quá giới hạn 10MB."
+
+msgid "Do you want to restore the client to default settings?"
+msgstr "Bạn có muốn khôi phục máy khách về cài đặt mặc định không?"
+
+msgid "Are you sure you want to restore the client to default settings?"
+msgstr "Bạn có chắc chắn muốn khôi phục máy khách về cài đặt mặc định không?"
+
+msgid "Configuration file uploaded successfully…"
+msgstr "Tệp cấu hình đã được tải lên thành công…"
+
+msgid "Configuration restored successfully…"
+msgstr "Đã khôi phục cấu hình thành công…"
+
+msgid "Service restarting…"
+msgstr "Đang khởi động lại dịch vụ…"
+
+msgid "Configuration file decompression failed, please try again!"
+msgstr "Giải nén tệp cấu hình thất bại, vui lòng thử lại!"
+
+msgid "_urltest"
+msgstr "_urltest"
+
+msgid "URLTest node list"
+msgstr "Danh sách node URLTest"
+
+msgid "List of nodes to test, <a target='_blank' href='https://sing-box.sagernet.org/configuration/outbound/urltest'>document</a>"
+msgstr "Danh sách các node cần kiểm tra, <a target='_blank' href='https://sing-box.sagernet.org/configuration/outbound/urltest'>tài liệu</a>"
+
+msgid "Test interval"
+msgstr "Khoảng thời gian kiểm tra"
+
+msgid "Test interval must be less or equal than idle timeout."
+msgstr "Khoảng thời gian kiểm tra phải nhỏ hơn hoặc bằng thời gian chờ khi rảnh."
+
+msgid "Test tolerance"
+msgstr "Sai số kiểm tra (Tolerance)"
+
+msgid "The test tolerance in milliseconds."
+msgstr "Sai số kiểm tra tính bằng mili-giây."
+
+msgid "Idle timeout"
+msgstr "Thời gian chờ khi rảnh"
+
+msgid "The idle timeout."
+msgstr "Thời gian chờ khi rảnh."
+
+msgid "Interrupt existing connections"
+msgstr "Ngắt các kết nối hiện có"
+
+msgid "Interrupt existing connections when the selected outbound has changed."
+msgstr "Ngắt các kết nối hiện có khi outbound được chọn thay đổi."
+
+msgid "Port hopping range"
+msgstr "Phạm vi nhảy cổng"
+
+msgid "Format as 1000:2000 or 1000-2000 Multiple groups are separated by commas (,)."
+msgstr "Định dạng là 1000:2000 hoặc 1000-2000. Nhiều nhóm được phân tách bằng dấu phẩy (,)."
+
+msgid "Use Custom Config"
+msgstr "Sử dụng cấu hình tùy chỉnh"
+
+msgid "Custom Config"
+msgstr "Cấu hình tùy chỉnh"
+
+msgid "Must be Base64 text!"
+msgstr "Phải là văn bản Base64!"
+
+msgid "Must be JSON text!"
+msgstr "Phải là văn bản JSON!"
+
+msgid "Must be UUID format!"
+msgstr "Phải là định dạng UUID!"
+
+msgid "Geo View"
+msgstr "Xem Geo"
+
+msgid "Query"
+msgstr "Truy vấn"
+
+msgid "Querying"
+msgstr "Đang truy vấn"
+
+msgid "Please enter query content!"
+msgstr "Vui lòng nhập nội dung truy vấn!"
+
+msgid "No results were found!"
+msgstr "Không tìm thấy kết quả nào!"
+
+msgid "Rules containing this value:"
+msgstr "Các quy tắc chứa giá trị này:"
+
+msgid "Domain/IP Query"
+msgstr "Truy vấn Tên miền/IP"
+
+msgid "GeoIP/Geosite Query"
+msgstr "Truy vấn GeoIP/Geosite"
+
+msgid "Enter a domain or IP to query the Geo rule list they belong to."
+msgstr "Nhập tên miền hoặc IP để truy vấn danh sách quy tắc Geo mà chúng thuộc về."
+
+msgid "Enter a GeoIP or Geosite to extract the domains/IPs they contain. Format: geoip:cn or geosite:gfw"
+msgstr "Nhập GeoIP hoặc Geosite để trích xuất các tên miền/IP mà chúng chứa. Định dạng: geoip:cn hoặc geosite:gfw"
+
+msgid "Tips:"
+msgstr "Mẹo:"
+
+msgid "By entering a domain or IP, you can query the Geo rule list they belong to."
+msgstr "Bằng cách nhập tên miền hoặc IP, bạn có thể truy vấn danh sách quy tắc Geo mà chúng thuộc về."
+
+msgid "By entering a GeoIP or Geosite, you can extract the domains/IPs they contain."
+msgstr "Bằng cách nhập GeoIP hoặc Geosite, bạn có thể trích xuất các tên miền/IP mà chúng chứa."
+
+msgid "Use the GeoIP/Geosite query function to verify if the entered Geo rules are correct."
+msgstr "Sử dụng chức năng truy vấn GeoIP/Geosite để xác minh xem các quy tắc Geo đã nhập có chính xác hay không."
+
+msgid "Private Key Passphrase"
+msgstr "Cụm mật khẩu khóa riêng"
+
+msgid "Host Key"
+msgstr "Khóa máy chủ (Host Key)"
+
+msgid "Accept any if empty."
+msgstr "Chấp nhận bất kỳ cái nào nếu để trống."
+
+msgid "Host Key Algorithms"
+msgstr "Thuật toán khóa máy chủ"
+
+msgid "Client Version"
+msgstr "Phiên bản máy khách"
+
+msgid "Random version will be used if empty."
+msgstr "Phiên bản ngẫu nhiên sẽ được sử dụng nếu để trống."
+
+msgid "The configured type also applies to the core specified when manually importing nodes."
+msgstr "Loại đã cấu hình cũng áp dụng cho core được chỉ định khi nhập node thủ công."
+
+msgid "Group Name"
+msgstr "Tên nhóm"
+
+msgid "Reassign Group"
+msgstr "Gán lại nhóm"
+
+msgid "Reassign Node Group"
+msgstr "Gán lại nhóm Node"
+
+msgid "Search nodes..."
+msgstr "Tìm kiếm node..."
+
+msgid "Using..."
+msgstr "Đang sử dụng..."
+
+msgid "Generate configuration file and run"
+msgstr "Tạo tệp cấu hình và chạy"
+
+msgid "Start after a delay of %s seconds!"
+msgstr "Bắt đầu sau thời gian chờ %s giây!"
+
+msgid "The script is already running, do not run it again. Exit."
+msgstr "Script đang chạy, không chạy lại. Thoát."
+
+msgid "Stop the script and wait for a timeout, then exit without repeating the process."
+msgstr "Dừng script và chờ hết thời gian, sau đó thoát mà không lặp lại quá trình."
+
+msgid "Warning: The %s application environment is incomplete. Switch to %s. (%s)"
+msgstr "Cảnh báo: Môi trường ứng dụng %s chưa hoàn chỉnh. Chuyển sang %s. (%s)"
+
+msgid "Note: Dnsmasq (%s) is below 2.90. Upgrading is recommended to improve stability."
+msgstr "Lưu ý: Dnsmasq (%s) dưới 2.90. Khuyên dùng nâng cấp để cải thiện độ ổn định."
+
+msgid "Warning: %s transparent proxy is missing basic dependency %s!"
+msgstr "Cảnh báo: Proxy trong suốt %s bị thiếu phần phụ thuộc cơ bản %s!"
+
+msgid "Warning: Not compatible with any transparent proxy system environment."
+msgstr "Cảnh báo: Không tương thích với bất kỳ môi trường hệ thống proxy trong suốt nào."
+
+msgid "%s does not have execute permissions and cannot be started: %s %s"
+msgstr "%s không có quyền thực thi và không thể khởi động: %s %s"
+
+msgid "%s not found, unable to start..."
+msgstr "Không tìm thấy %s, không thể khởi động..."
+
+msgid "Socks node: [%s]%s is an invalid server address and cannot be started!"
+msgstr "Node Socks: [%s]%s là địa chỉ máy chủ không hợp lệ và không thể khởi động!"
+
+msgid "For some reason, the configuration for this Socks service has been lost, and its startup has been aborted!"
+msgstr "Vì lý do nào đó, cấu hình cho dịch vụ Socks này đã bị mất và tiến trình khởi động đã bị hủy!"
+
+msgid "Socks node: [%s]%s, start failed %s:%s %s"
+msgstr "Node Socks: [%s]%s, khởi động thất bại %s:%s %s"
+
+msgid "Socks node: [%s]%s, starting %s:%s"
+msgstr "Node Socks: [%s]%s, đang khởi động %s:%s"
+
+msgid "To enable experimental IPv6 transparent proxy (TProxy), please ensure your node and type support IPv6!"
+msgstr "Để bật proxy trong suốt IPv6 thử nghiệm (TProxy), vui lòng đảm bảo node và loại của bạn hỗ trợ IPv6!"
+
+msgid "[%s] process %s error, skip this transparent proxy!"
+msgstr "Lỗi tiến trình [%s] %s, bỏ qua proxy trong suốt này!"
+
+msgid "Analyzing the node configuration of the Socks service..."
+msgstr "Đang phân tích cấu hình node của dịch vụ Socks..."
+
+msgid "Log file is too long, clear it!"
+msgstr "Tệp nhật ký quá lớn, hãy dọn dẹp!"
+
+msgid "The task is currently running automatically as a scheduled task; no reconfiguration of the scheduled task is required."
+msgstr "Tác vụ hiện đang chạy tự động dưới dạng tác vụ định lịch; không cần cấu hình lại tác vụ định lịch."
+
+msgid "Scheduled tasks: Auto stop service."
+msgstr "Tác vụ định lịch: Tự động dừng dịch vụ."
+
+msgid "Scheduled tasks: Auto start service."
+msgstr "Tác vụ định lịch: Tự động khởi động dịch vụ."
+
+msgid "Scheduled tasks: Auto restart service."
+msgstr "Tác vụ định lịch: Tự động khởi động lại dịch vụ."
+
+msgid "Scheduled tasks: Auto update rules."
+msgstr "Tác vụ định lịch: Tự động cập nhật quy tắc."
+
+msgid "Scheduled tasks: Auto update [%s] subscription."
+msgstr "Tác vụ định lịch: Tự động cập nhật đăng ký Sub [%s]."
+
+msgid "Auto updates: Starts a cyclical update process."
+msgstr "Tự động cập nhật: Bắt đầu tiến trình cập nhật theo chu kỳ."
+
+msgid "Running in no proxy mode, it only allows scheduled tasks for starting and stopping services."
+msgstr "Đang chạy ở chế độ không proxy, chỉ cho phép các tác vụ định lịch để khởi động và dừng dịch vụ."
+
+msgid "Clear scheduled commands."
+msgstr "Xóa các lệnh định lịch."
+
+msgid "Unable to resolve [%s], route table addition failed!"
+msgstr "Không thể phân giải [%s], thêm bảng định tuyến thất bại!"
+
+msgid "[%s] was successfully added to the routing table of interface [%s]!"
+msgstr "Đã thêm thành công [%s] vào bảng định tuyến của giao diện [%s]!"
+
+msgid "Adding [%s] to the [%s] routing table failed! The reason is that the [%s] gateway cannot be found."
+msgstr "Thêm [%s] vào bảng định tuyến [%s] thất bại! Lý do là không tìm thấy gateway [%s]."
+
+msgid "Global nodes are not enabled, skip [%s]."
+msgstr "Node toàn cục không được bật, bỏ qua [%s]."
+
+msgid "Direct DNS: %s"
+msgstr "DNS Trực tiếp: %s"
+
+msgid "Remote DNS: %s"
+msgstr "DNS Từ xa: %s"
+
+msgid "The program has started. Please stop it and then restart it!"
+msgstr "Chương trình đã khởi động. Vui lòng dừng lại rồi khởi động lại!"
+
+msgid "Running complete!"
+msgstr "Chạy hoàn tất!"
+
+msgid "Clearing and closing related programs and cache complete."
+msgstr "Xóa và đóng các chương trình cùng bộ nhớ đệm liên quan hoàn tất."
+
+msgid "Incorrect index listing method (%s), execution terminated!"
+msgstr "Phương pháp liệt kê chỉ mục không chính xác (%s), việc thực thi đã bị chấm dứt!"
+
+msgid "parse the traffic splitting rules[%s]-[geoip:%s] add to %s to complete."
+msgstr "phân tích quy tắc phân luồng lưu lượng [%s]-[geoip:%s] thêm vào %s để hoàn tất."
+
+msgid "Access Control:"
+msgstr "Kiểm soát truy cập:"
+
+msgid "Add node to the load balancer is directly connected to %s[%s]."
+msgstr "Thêm node vào bộ cân bằng tải được kết nối trực tiếp đến %s[%s]."
+
+msgid "Add all %s nodes to %s[%s] direct connection complete."
+msgstr "Thêm tất cả %s node vào kết nối trực tiếp %s[%s] hoàn tất."
+
+msgid "Starting to load %s firewall rules..."
+msgstr "Bắt đầu tải các quy tắc tường lửa %s..."
+
+msgid "local network segments (%s) direct connection: %s"
+msgstr "phân đoạn mạng nội bộ (%s) kết nối trực tiếp: %s"
+
+msgid "Add ISP %s DNS to the whitelist: %s"
+msgstr "Thêm DNS nhà mạng ISP %s vào danh sách trắng: %s"
+
+msgid "[%s]"
+msgstr "[%s]"
+
+msgid "[%s],"
+msgstr "[%s],"
+
+msgid "Source iface [%s],"
+msgstr "Giao diện nguồn [%s],"
+
+msgid "IP range [%s],"
+msgstr "Dải IP [%s],"
+
+msgid "All device,"
+msgstr "Tất cả thiết bị,"
+
+msgid "Does not exist, ignore."
+msgstr "Không tồn tại, bỏ qua."
+
+msgid "not proxy %s port [%s]"
+msgstr "không proxy cổng %s [%s]"
+
+msgid "not proxy all %s"
+msgstr "không proxy tất cả %s"
+
+msgid "Use the %s node [%s]"
+msgstr "Sử dụng node %s [%s]"
+
+msgid "DNS will redirected to the dedicated DNS server [%s]."
+msgstr "DNS sẽ được chuyển hướng đến máy chủ DNS chuyên dụng [%s]."
+
+msgid "Add direct DNS to %s: %s"
+msgstr "Thêm DNS trực tiếp vào %s: %s"
+
+msgid "Local"
+msgstr "Cục bộ"
+
+msgid "[Local],"
+msgstr "[Cục bộ],"
+
+msgid "Clear %s."
+msgstr "Xóa %s."
+
+msgid "Delete %s rules is complete."
+msgstr "Xóa quy tắc %s hoàn tất."
+
+msgid "%s firewall rules load complete!"
+msgstr "Tải quy tắc tường lửa %s hoàn tất!"
+
+msgid "main node"
+msgstr "node chính"
+
+msgid "backup node"
+msgstr "node dự phòng"
+
+msgid "next backup node"
+msgstr "node dự phòng tiếp theo"
+
+msgid "Socks switch detection: Port [%s] try %s [%s:%s]."
+msgstr "Phát hiện chuyển mạch Socks: Cổng [%s] thử %s [%s:%s]."
+
+msgid "Socks switch detection: Port [%s] [%s:[%s]] normal, switch to this node!"
+msgstr "Phát hiện chuyển mạch Socks: Cổng [%s] [%s:[%s]] bình thường, chuyển sang node này!"
+
+msgid "Socks switch detection: Port [%s] node switch complete!"
+msgstr "Phát hiện chuyển mạch Socks: Cổng [%s] chuyển node hoàn tất!"
+
+msgid "Socks switch detection: Port [%s] [%s:[%s]] abnormal."
+msgstr "Phát hiện chuyển mạch Socks: Cổng [%s] [%s:[%s]] bất thường."
+
+msgid "Socks switch detection: Port [%s] all nodes are unavailable or switching failed!"
+msgstr "Phát hiện chuyển mạch Socks: Cổng [%s] tất cả các node đều không khả dụng hoặc chuyển đổi thất bại!"
+
+msgid "Socks switch detection: Port [%s] node switch failed, continue trying other nodes!"
+msgstr "Phát hiện chuyển mạch Socks: Cổng [%s] chuyển node thất bại, tiếp tục thử các node khác!"
+
+msgid "Socks switch detection: Port [%s] failed to restore the primary node!"
+msgstr "Phát hiện chuyển mạch Socks: Cổng [%s] khôi phục node chính thất bại!"
+
+msgid "Socks switch detection: Port [%s] Unknown error."
+msgstr "Phát hiện chuyển mạch Socks: Cổng [%s] Lỗi không xác định."
+
+msgid "Socks switch detection: Port [%s] Unable to connect to the network. Please check if the network is working properly!"
+msgstr "Phát hiện chuyển mạch Socks: Cổng [%s] Không thể kết nối mạng. Vui lòng kiểm tra xem mạng có hoạt động bình thường không!"
+
+msgid "Socks switch detection: Port [%s] Primary node [%s: [%s]] is normal. Switch to the primary node!"
+msgstr "Phát hiện chuyển mạch Socks: Cổng [%s] Node chính [%s: [%s]] bình thường. Chuyển sang node chính!"
+
+msgid "Socks switch detection: Port [%s] [%s:[%s]] normal."
+msgstr "Phát hiện chuyển mạch Socks: Cổng [%s] [%s:[%s]] bình thường."
+
+msgid "Socks switch detection: Port [%s] Number of backup nodes: %s"
+msgstr "Phát hiện chuyển mạch Socks: Cổng [%s] Số lượng node dự phòng: %s"
+
+msgid "Restart dnsmasq service."
+msgstr "Khởi động lại dịch vụ dnsmasq."
+
+msgid "Console Port: %s"
+msgstr "Cổng Console: %s"
+
+msgid "Discard one obviously invalid node."
+msgstr "Loại bỏ một node hiển nhiên không hợp lệ."
+
+msgid "Entrance %s:%s"
+msgstr "Lối vào %s:%s"
+
+msgid "Node: %s:%s, Weight: %s"
+msgstr "Node: %s:%s, Trọng số: %s"
+
+msgid "Unable to open the subscription/rule update lock. Exiting."
+msgstr "Không thể mở khóa cập nhật quy tắc/đăng ký Sub. Đang thoát."
+
+msgid "A subscription or rule update is already running. Skipping this request."
+msgstr "Tiến trình cập nhật quy tắc hoặc đăng ký Sub đang chạy. Đang bỏ qua yêu cầu này."
+
+msgid "Unable to acquire the update lock. Scheduled task failed."
+msgstr "Không thể lấy khóa cập nhật. Tác vụ định lịch thất bại."
+
+msgid "Subscription"
+msgstr "Đăng ký Sub"
+
+msgid "Rule Update"
+msgstr "Cập nhật quy tắc"
+
+msgid "Subscription/Rule Update"
+msgstr "Cập nhật đăng ký Sub/Quy tắc"
+
+msgid "[%s] is running; [%s] is queued and waiting..."
+msgstr "[%s] đang chạy; [%s] đang xếp hàng chờ..."
+
+msgid "Start updating the rules..."
+msgstr "Bắt đầu cập nhật các quy tắc..."
+
+msgid "Download file size verification error. Original file size: %sB. Downloaded file size: %sB."
+msgstr "Lỗi xác minh kích thước tệp tải xuống. Kích thước tệp gốc: %sB. Kích thước tệp đã tải: %sB."
+
+msgid "%s SHA256 verification information is invalid. Update failed."
+msgstr "Thông tin xác minh SHA256 của %s không hợp lệ. Cập nhật thất bại."
+
+msgid "%s file format verification failed. Update failed."
+msgstr "Xác minh định dạng tệp %s thất bại. Cập nhật thất bại."
+
+msgid "Downloaded file is empty or an error occurred while reading it."
+msgstr "Tệp tải xuống trống hoặc xảy ra lỗi khi đọc tệp."
+
+msgid "%s Start updating..."
+msgstr "%s Bắt đầu cập nhật..."
+
+msgid "%s version is the same and does not need to be updated."
+msgstr "Phiên bản %s giống nhau và không cần cập nhật."
+
+msgid "%s an error occurred during the file download process. Please try downloading again."
+msgstr "%s xảy ra lỗi trong quá trình tải xuống tệp. Vui lòng thử tải lại."
+
+msgid "%s an error occurred while downloading the file. Please check your network or the download link and try again!"
+msgstr "%s xảy ra lỗi khi tải xuống tệp. Vui lòng kiểm tra lại mạng hoặc liên kết tải xuống và thử lại!"
+
+msgid "%s update success."
+msgstr "%s cập nhật thành công."
+
+msgid "%s update failed, please try again later or change URL."
+msgstr "%s cập nhật thất bại, vui lòng thử lại sau hoặc đổi URL."
+
+msgid "%s update error!"
+msgstr "%s lỗi cập nhật!"
+
+msgid "Restart the service and apply the new rules."
+msgstr "Khởi động lại dịch vụ và áp dụng các quy tắc mới."
+
+msgid "The rules have been updated..."
+msgstr "Các quy tắc đã được cập nhật..."
+
+msgid "Socks node list [%s]"
+msgstr "Danh sách node Socks [%s]"
+
+msgid "Backup node list"
+msgstr "Danh sách node dự phòng"
+
+msgid "HAProxy node list [%s]"
+msgstr "Danh sách node HAProxy [%s]"
+
+msgid "ACL list [%s]"
+msgstr "Danh sách ACL [%s]"
+
+msgid "Shunt [%s] node"
+msgstr "Node phân luồng [%s]"
+
+msgid "Xray Load Balancing node [%s] list"
+msgstr "Danh sách node Cân bằng tải Xray [%s]"
+
+msgid "Xray Load Balancing node [%s] backup node"
+msgstr "Node dự phòng cân bằng tải Xray [%s]"
+
+msgid "Sing-Box URLTest node [%s] list"
+msgstr "Danh sách node URLTest Sing-Box [%s]"
+
+msgid "Node [%s] preproxy node"
+msgstr "Node tiền proxy [%s] của node"
+
+msgid "Node [%s] landing node"
+msgstr "Node đích [%s] của node"
+
+msgid "Skipping the %s node is due to incompatibility with the %s core program or incorrect node usage type settings."
+msgstr "Đang bỏ qua node %s do không tương thích với chương trình lõi %s hoặc cài đặt loại sử dụng node không chính xác."
+
+msgid "Skip node: %s. Because Sing-Box does not support the %s protocol's %s transmission method, Xray needs to be used instead."
+msgstr "Bỏ qua node: %s. Do Sing-Box không hỗ trợ phương thức truyền tải %s của giao thức %s, cần phải sử dụng Xray thay thế."
+
+msgid "%s unsupport SS %s plugin."
+msgstr "%s không hỗ trợ plugin SS %s."
+
+msgid "Plugin options Incomplete."
+msgstr "Tùy chọn plugin chưa đầy đủ."
+
+msgid "Please replace %s to support %s transmission method."
+msgstr "Vui lòng thay thế %s để hỗ trợ phương thức truyền tải %s."
+
+msgid "Please replace Xray or Sing-Box to support more transmission methods in Shadowsocks."
+msgstr "Vui lòng thay thế Xray hoặc Sing-Box để hỗ trợ nhiều phương thức truyền tải hơn trong Shadowsocks."
+
+msgid "unsupport %s plugin."
+msgstr "không hỗ trợ plugin %s."
+
+msgid "Skip the %s node because the %s core program is not installed."
+msgstr "Bỏ qua node %s vì chưa cài đặt chương trình lõi %s."
+
+msgid "Skip the %s node, as %s type nodes require Sing-Box version 1.12 or higher."
+msgstr "Bỏ qua node %s, vì các node loại %s yêu cầu Sing-Box phiên bản 1.12 trở lên."
+
+msgid "%s type node subscriptions are not currently supported, skip this node."
+msgstr "Đăng ký Sub node loại %s hiện không được hỗ trợ, bỏ qua node này."
+
+msgid "Skipping %s node. This node URI format cannot be parsed."
+msgstr "Đang bỏ qua node %s. Không thể phân tích cú pháp định dạng URI của node này."
+
+msgid "Update [%s]"
+msgstr "Cập nhật [%s]"
+
+msgid "Matching node:"
+msgstr "Node khớp:"
+
+msgid "First Matching node:"
+msgstr "Node khớp thứ nhất:"
+
+msgid "Second Matching node:"
+msgstr "Node khớp thứ hai:"
+
+msgid "Third Matching node:"
+msgstr "Node khớp thứ ba:"
+
+msgid "Fourth Matching node:"
+msgstr "Node khớp thứ tư:"
+
+msgid "Fifth Matching node:"
+msgstr "Node khớp thứ năm:"
+
+msgid "Unable to find the best matching node, now replaced with:"
+msgstr "Không tìm thấy node khớp tốt nhất, nay được thay thế bằng:"
+
+msgid "Unable to find a new node. Please confirm and process manually."
+msgstr "Không tìm thấy node mới. Vui lòng xác nhận và xử lý thủ công."
+
+msgid "No node information updates are available."
+msgstr "Không có cập nhật thông tin node nào khả dụng."
+
+msgid "Skip unknown types:"
+msgstr "Bỏ qua các loại không xác định:"
+
+msgid "Discard node: %s, Reason:"
+msgstr "Loại bỏ node: %s, Lý do:"
+
+msgid "No usable binary was found."
+msgstr "Không tìm thấy tệp nhị phân khả dụng."
+
+msgid "Discard filter nodes: %s type node %s"
+msgstr "Loại bỏ các node lọc: node loại %s %s"
+
+msgid "Parsing error, skip this node."
+msgstr "Lỗi phân tích cú pháp, bỏ qua node này."
+
+msgid "Successfully resolved the [%s] node, number: %s"
+msgstr "Đã phân giải thành công node [%s], số lượng: %s"
+
+msgid "Get subscription content for [%s] is empty. This may be due to an invalid subscription address or a network problem. Please diagnose the issue!"
+msgstr "Lấy nội dung đăng ký Sub cho [%s] bị trống. Nguyên nhân có thể do địa chỉ đăng ký Sub không hợp lệ hoặc sự cố mạng. Vui lòng chẩn đoán sự cố!"
+
+msgid "No Proxy"
+msgstr "Không Proxy"
+
+msgid "Proxy"
+msgstr "Proxy"
+
+msgid "Unable to acquire the stop lock. Exiting."
+msgstr "Không thể lấy khóa dừng. Đang thoát."
+
+msgid "Failed or timed out waiting for subscription/rule updates. Restart cancelled."
+msgstr "Thất bại hoặc hết thời gian chờ cập nhật đăng ký Sub/quy tắc. Đã hủy khởi động lại."
+
+msgid "Start subscribing..."
+msgstr "Bắt đầu đăng ký Sub..."
+
+msgid "Start subscribing: %s"
+msgstr "Bắt đầu đăng ký Sub: %s"
+
+msgid "Subscription: [%s] No changes, no update required."
+msgstr "Đăng ký Sub: [%s] Không có thay đổi, không cần cập nhật."
+
+msgid "Refresh subscription [%s] account usage and expiration information."
+msgstr "Làm mới thông tin sử dụng tài khoản và thời hạn đăng ký Sub [%s]."
+
+msgid "[%s] Subscription failed. This could be due to an invalid subscription address or a network issue. Please diagnose the problem! [%s]"
+msgstr "Đăng ký Sub [%s] thất bại. Nguyên nhân có thể do địa chỉ đăng ký Sub không hợp lệ hoặc sự cố mạng. Vui lòng chẩn đoán vấn đề! [%s]"
+
+msgid "An error occurred during subscription."
+msgstr "Đã xảy ra lỗi trong quá trình đăng ký Sub."
+
+msgid "Subscription complete..."
+msgstr "Đăng ký Sub hoàn tất..."
+
+msgid "Processing, please wait…"
+msgstr "Đang xử lý, vui lòng đợi..."
+
+msgid "Invalid Realm URL."
+msgstr "URL Realm không hợp lệ."
+
+msgid "Gecko Packet Size (min)"
+msgstr "Kích thước gói Gecko (tối thiểu)"
+
+msgid "Gecko Packet Size (max)"
+msgstr "Kích thước gói Gecko (tối đa)"
+
+msgid "Enable UPnP/NAT-PMP port mapping on your gateway to improve hole punching success."
+msgstr "Bật ánh xạ cổng UPnP/NAT-PMP trên gateway của bạn để cải thiện tỷ lệ thành công khi đục lỗ tường lửa."
+
+msgid "valid time (hh:mm)"
+msgstr "thời gian hợp lệ (hh:mm)"
+
+msgid "Disable TLS Reuse"
+msgstr "Tắt tái sử dụng TLS"
+
+msgid "Not Set"
+msgstr "Chưa đặt"
+
+msgid "Cipher Suites"
+msgstr "Bộ mật mã (Cipher Suites)"
+
+msgid "Configures the list of supported cipher suites."
+msgstr "Cấu hình danh sách các bộ mật mã được hỗ trợ."
+
+msgid "This username already exists."
+msgstr "Tên người dùng này đã tồn tại."
+
+msgid "Update Options"
+msgstr "Tùy chọn cập nhật"
+
+msgid "MASQUE Path"
+msgstr "Đường dẫn MASQUE"
+
+msgid "Custom HTTP Headers"
+msgstr "Tiêu đề HTTP tùy chỉnh"
+
+msgid "MASQUE Address"
+msgstr "Địa chỉ MASQUE"
+
+msgid "WARP Device Private Key"
+msgstr "Khóa riêng thiết bị WARP"
+
+msgid "WARP Endpoint Public Key"
+msgstr "Khóa công khai Endpoint WARP"
+
+msgid "Installing..."
+msgstr "Đang cài đặt..."
+
+msgid "Do not refresh or switch pages during installation."
+msgstr "Không làm mới hoặc chuyển trang trong quá trình cài đặt."
+
+msgid "Update failed"
+msgstr "Cập nhật thất bại"
+
+msgid "Unknown error"
+msgstr "Lỗi không xác định"
+
+msgid "Click to sort; click again to reverse. Press Save & Apply to keep the order."
+msgstr "Nhấp để sắp xếp; nhấp lần nữa để đảo ngược. Nhấn Lưu & Áp dụng để giữ lại thứ tự."
+
+msgid "Sort by type or protocol, then by name"
+msgstr "Sắp xếp theo loại hoặc giao thức, sau đó theo tên"
+
+msgid "Sort by server address and port"
+msgstr "Sắp xếp theo địa chỉ máy chủ và cổng"
+
+msgid "Restore the saved order"
+msgstr "Khôi phục thứ tự đã lưu"
+
+msgid "The order changed on this page only. Press Save & Apply to store it on the router."
+msgstr "Thứ tự chỉ thay đổi trên trang này. Nhấn Lưu & Áp dụng để lưu vào bộ định tuyến."
+
+msgid "Saved order restored."
+msgstr "Đã khôi phục thứ tự đã lưu."
+
+msgid "Automatic ping is still running (%d left). Sorting will run when it finishes."
+msgstr "Tính năng ping tự động vẫn đang chạy (còn lại %d). Quá trình sắp xếp sẽ chạy khi hoàn tất."
+
+msgid "Automatic ping did not finish within 2 minutes. Sorting was cancelled. Reload the page and try again."
+msgstr "Ping tự động không hoàn thành trong vòng 2 phút. Sắp xếp đã bị hủy. Tải lại trang và thử lại."
+
+msgid "Filter:"
+msgstr "Bộ lọc:"
+
+msgid "(empty)"
+msgstr "(trống)"
+
+msgid "Word in remarks"
+msgstr "Từ trong ghi chú"
+
+msgid "search..."
+msgstr "tìm kiếm..."
+
+msgid "Show only rows that contain this text"
+msgstr "Chỉ hiển thị các hàng chứa văn bản này"
+
+msgid "Shown %s of %t"
+msgstr "Đã hiển thị %s trong tổng số %t"
+
+msgid "Reset"
+msgstr "Đặt lại"
+
+msgid "Show all rows"
+msgstr "Hiển thị tất cả các hàng"
+
+msgid "The filter only hides rows on this page and changes nothing on the router. Select all skips hidden rows."
+msgstr "Bộ lọc chỉ ẩn các hàng trên trang này và không thay đổi gì trên bộ định tuyến. Chọn tất cả sẽ bỏ qua các hàng bị ẩn."
+
+msgid "Subscription conversion: discard SS node %s, unsupported cipher: %s"
+msgstr "Chuyển đổi đăng ký Sub: loại bỏ node SS %s, không hỗ trợ mật mã: %s"
+
+msgid "Subscription conversion: discard SS node %s, unsupported plugin: %s"
+msgstr "Chuyển đổi đăng ký Sub: loại bỏ node SS %s, không hỗ trợ plugin: %s"
+
+msgid "Subscription conversion: discard Hysteria node %s, unsupported transport: %s"
+msgstr "Chuyển đổi đăng ký Sub: loại bỏ node Hysteria %s, không hỗ trợ truyền tải: %s"
+
+msgid "Subscription conversion: discard TUIC node %s, TUIC v4 is not supported."
+msgstr "Chuyển đổi đăng ký Sub: loại bỏ node TUIC %s, TUIC v4 không được hỗ trợ."
+
+msgid "Subscription conversion: discard TUIC node %s, authentication information is incomplete."
+msgstr "Chuyển đổi đăng ký Sub: loại bỏ node TUIC %s, thông tin xác thực chưa đầy đủ."
+
+msgid "Subscription conversion: discard AnyTLS node %s, Sing-Box does not support AnyTLS + %s"
+msgstr "Chuyển đổi đăng ký Sub: loại bỏ node AnyTLS %s, Sing-Box không hỗ trợ AnyTLS + %s"
+
+msgid "Subscription conversion: discard Snell node %s, Sing-Box does not support Snell + %s"
+msgstr "Chuyển đổi đăng ký Sub: loại bỏ node Snell %s, Sing-Box không hỗ trợ Snell + %s"
+
+msgid "Subscription conversion: discard Snell node %s, Sing-Box does not support Snell versions below 4."
+msgstr "Chuyển đổi đăng ký Sub: loại bỏ node Snell %s, Sing-Box không hỗ trợ các phiên bản Snell dưới 4."
+
+msgid "Subscription conversion: discard WireGuard node %s, the current core does not support AmneziaWG."
+msgstr "Chuyển đổi đăng ký Sub: loại bỏ node WireGuard %s, lõi hiện tại không hỗ trợ AmneziaWG."
+
+msgid "Subscription conversion: discard MASQUE node %s, the current core does not support h3-l4proxy transport."
+msgstr "Chuyển đổi đăng ký Sub: loại bỏ node MASQUE %s, lõi hiện tại không hỗ trợ truyền tải h3-l4proxy."
+
+msgid "Subscription conversion: skip a malformed node."
+msgstr "Chuyển đổi đăng ký Sub: bỏ qua một node bị lỗi định dạng."
+
+msgid "Subscription conversion: discard node %s, node information is incomplete."
+msgstr "Chuyển đổi đăng ký Sub: loại bỏ node %s, thông tin node chưa đầy đủ."
+
+msgid "Subscription conversion: discard node %s, invalid bandwidth format."
+msgstr "Chuyển đổi đăng ký Sub: loại bỏ node %s, định dạng băng thông không hợp lệ."
+
+msgid "Subscription conversion: discard unsupported node %s, node type: %s"
+msgstr "Chuyển đổi đăng ký Sub: loại bỏ node không được hỗ trợ %s, loại node: %s"
+
+msgid "Subscription conversion: extracted node domain DNS: %s"
+msgstr "Chuyển đổi đăng ký Sub: đã trích xuất DNS tên miền của node: %s"
+
+msgid "Subscription conversion: YAML parsing failed: %s"
+msgstr "Chuyển đổi đăng ký Sub: phân tích cú pháp YAML thất bại: %s"
+
+msgid "Subscription conversion: Clash subscription detected, converting..."
+msgstr "Chuyển đổi đăng ký Sub: phát hiện đăng ký Sub Clash, đang chuyển đổi..."
+
+msgid "Subscription conversion: discard node %s, conversion failed."
+msgstr "Chuyển đổi đăng ký Sub: loại bỏ node %s, chuyển đổi thất bại."
+
+msgid "Note: Auto tries to extract node DNS from Clash subscriptions. Disable skips extraction."
+msgstr "Lưu ý: Tự động thử trích xuất DNS node từ các đăng ký Sub Clash. Vô hiệu hóa sẽ bỏ qua bước trích xuất."
+
+msgid "Never expires"
+msgstr "Không bao giờ hết hạn"

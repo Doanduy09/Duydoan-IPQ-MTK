@@ -231,6 +231,7 @@ jobs:
           echo ">> [NO-PASSWALL] Nhánh master giữ bản thuần sạch (Không PassWall)..."
           sed -i '/luci-app-passwall/d' .config
           echo "# CONFIG_PACKAGE_luci-app-passwall is not set" >> .config
+          echo "# CONFIG_PACKAGE_luci-app-passwall2 is not set" >> .config
 
           echo "CONFIG_PACKAGE_luci-app-doanduy-modem=y" >> .config
           echo "CONFIG_PACKAGE_luci-i18n-base-vi=y" >> .config

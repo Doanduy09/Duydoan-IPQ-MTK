@@ -1,4 +1,4 @@
-# [VERIFIED-GOLDEN: workflow-qualcomm-nss-25.12-1to1 | 2026-11-26 | DO NOT MODIFY UNLESS TARGETED]
+# [VERIFIED-GOLDEN: workflow-qualcomm-nss-25.12-passwall2-lean-vi | 2026-11-27 | DO NOT MODIFY UNLESS TARGETED]
 name: "[qualcomm-nss-25.12] Build Qualcomm IPQ60xx + IPQ807x (Kernel 6.12 | Full-NSS 12.5)"
 
 run-name: "[qualcomm-nss-25.12] Build ${{ inputs.target || 'all (IPQ60xx + IPQ807x)' }} (Kernel 6.12 | Full-NSS 12.5 | PassWall=${{ inputs.passwall || 'auto' }})"
@@ -221,24 +221,50 @@ jobs:
       - name: Configure Seed & PassWall Toggle (qualcomm-nss-25.12 / ${{ matrix.id }})
         run: |
           cp "${{ matrix.config }}" .config
+          sed -i '/luci-app-passwall/d; /CONFIG_PACKAGE_xray-core/d; /CONFIG_PACKAGE_haproxy/d' .config
           if [ "${{ matrix.passwall }}" = "true" ]; then
-            echo ">> [PASSWALL] Bật PassWall + Xray + Sing-Box + ChinaDNS-NG + Haproxy trên qualcomm-nss-25.12"
+            echo ">> [PASSWALL 2] Bật PassWall 2 (Tinh gọn Sing-Box + Nftables + Tiếng Việt) trên qualcomm-nss-25.12"
             cat << 'EOF' >> .config
-          CONFIG_PACKAGE_luci-app-passwall=y
-          CONFIG_PACKAGE_luci-app-passwall_INCLUDE_Xray=y
-          CONFIG_PACKAGE_luci-app-passwall_INCLUDE_SingBox=y
-          CONFIG_PACKAGE_luci-app-passwall_INCLUDE_ChinaDNS_NG=y
-          CONFIG_PACKAGE_luci-app-passwall_INCLUDE_Haproxy=y
-          CONFIG_PACKAGE_luci-app-passwall_INCLUDE_Geosite=y
-          CONFIG_PACKAGE_luci-app-passwall_INCLUDE_Geoip=y
-          CONFIG_PACKAGE_xray-core=y
+          # CONFIG_PACKAGE_luci-app-passwall is not set
+          CONFIG_LUCI_LANG_vi=y
+          CONFIG_PACKAGE_luci-app-passwall2=y
+          CONFIG_PACKAGE_luci-i18n-passwall2-vi=y
+          CONFIG_PACKAGE_luci-app-passwall2_Basic_Core_SingBox=y
+          # CONFIG_PACKAGE_luci-app-passwall2_Basic_Core_All is not set
+          # CONFIG_PACKAGE_luci-app-passwall2_Basic_Core_Xray is not set
+          CONFIG_PACKAGE_luci-app-passwall2_Nftables_Transparent_Proxy=y
+          # CONFIG_PACKAGE_luci-app-passwall2_Iptables_Transparent_Proxy is not set
+          # CONFIG_PACKAGE_luci-app-passwall2_INCLUDE_Haproxy is not set
+          # CONFIG_PACKAGE_luci-app-passwall2_INCLUDE_Shadowsocks_Rust_Client is not set
+          # CONFIG_PACKAGE_luci-app-passwall2_INCLUDE_Shadowsocks_Rust_Server is not set
+          # CONFIG_PACKAGE_luci-app-passwall2_INCLUDE_ShadowsocksR_Libev_Client is not set
+          # CONFIG_PACKAGE_luci-app-passwall2_INCLUDE_ShadowsocksR_Libev_Server is not set
+          # CONFIG_PACKAGE_luci-app-passwall2_INCLUDE_Simple_Obfs is not set
+          # CONFIG_PACKAGE_luci-app-passwall2_INCLUDE_V2ray_Plugin is not set
+          # CONFIG_PACKAGE_xray-core is not set
+          # CONFIG_PACKAGE_v2ray-plugin is not set
+          # CONFIG_PACKAGE_shadowsocks-rust-sslocal is not set
+          # CONFIG_PACKAGE_shadowsocks-rust-ssserver is not set
+          # CONFIG_PACKAGE_shadowsocksr-libev-ssr-local is not set
+          # CONFIG_PACKAGE_shadowsocksr-libev-ssr-redir is not set
+          # CONFIG_PACKAGE_simple-obfs-client is not set
+          # CONFIG_PACKAGE_haproxy is not set
           CONFIG_PACKAGE_sing-box=y
+          CONFIG_SING_BOX_BUILD_QUIC=y
+          CONFIG_SING_BOX_BUILD_UTLS=y
+          CONFIG_SING_BOX_BUILD_WIREGUARD=y
+          CONFIG_SING_BOX_BUILD_GVISOR=y
+          CONFIG_SING_BOX_BUILD_CLASH_API=y
+          # CONFIG_SING_BOX_BUILD_TAILSCALE is not set
+          # CONFIG_SING_BOX_BUILD_ACME is not set
           CONFIG_PACKAGE_chinadns-ng=y
-          CONFIG_PACKAGE_haproxy=y
+          CONFIG_PACKAGE_geoview=y
+          CONFIG_PACKAGE_v2ray-geoip=y
+          CONFIG_PACKAGE_v2ray-geosite=y
           EOF
           else
-            sed -i '/luci-app-passwall/d' .config
             echo "# CONFIG_PACKAGE_luci-app-passwall is not set" >> .config
+            echo "# CONFIG_PACKAGE_luci-app-passwall2 is not set" >> .config
           fi
 
           echo "CONFIG_PACKAGE_luci-app-doanduy-modem=y" >> .config
@@ -264,6 +290,18 @@ jobs:
           if ! grep -q '^CONFIG_PACKAGE_luci-app-doanduy-modem=y$' .config; then
             echo "::error::CRITICAL — luci-app-doanduy-modem=y dropped by make defconfig!" >&2
             exit 1
+          fi
+          if [ "${{ matrix.passwall }}" = "true" ]; then
+            for req_pw in CONFIG_PACKAGE_luci-app-passwall2=y CONFIG_PACKAGE_luci-i18n-passwall2-vi=y CONFIG_PACKAGE_sing-box=y; do
+              if ! grep -q "^${req_pw}$" .config; then
+                echo "::error::CRITICAL — ${req_pw} dropped by make defconfig!" >&2
+                exit 1
+              fi
+            done
+            if grep -q '^CONFIG_PACKAGE_xray-core=y$' .config; then
+              echo "::error::CRITICAL — bloat xray-core=y still active in PassWall 2 Sing-Box build!" >&2
+              exit 1
+            fi
           fi
           bash .github/scripts/prepare-rust.sh
           echo ">> [qualcomm-nss-25.12] Active target devices count: $(grep -c '^CONFIG_TARGET_DEVICE_.*=y$' .config || echo 0)"
@@ -343,11 +381,12 @@ jobs:
                               if mk:
                                   kernel_ver = mk.group(1)
 
-          core_pkgs = ("luci-app-passwall", "luci-app-passwall2", "xray-core", "xray-plugin", "sing-box", "chinadns-ng", "haproxy")
+          core_pkgs = ("luci-app-passwall2", "luci-i18n-passwall2-vi", "sing-box", "chinadns-ng", "geoview", "luci-app-passwall", "xray-core")
           has_pw = ("luci-app-passwall" in mf_pkgs) or ("luci-app-passwall2" in mf_pkgs)
           has_modem = "luci-app-doanduy-modem" in mf_pkgs
           found_cores = [p for p in core_pkgs if p in mf_pkgs]
-          pw_line = f"✅ **CÓ tích hợp PassWall** (`{', '.join(found_cores)}`)" if has_pw else "❌ **KHÔNG tích hợp PassWall** (Bản Thuần / No-PassWall)"
+          pw_ver = "PassWall 2 (Tinh gọn Sing-Box + Nftables + Tiếng Việt)" if "luci-app-passwall2" in mf_pkgs else "PassWall"
+          pw_line = f"✅ **CÓ tích hợp {pw_ver}** (`{', '.join(found_cores)}`)" if has_pw else "❌ **KHÔNG tích hợp PassWall** (Bản Thuần / No-PassWall)"
 
           accel_parts = []
           if "qca-nss-ecm" in mf_pkgs or "kmod-qca-nss-ecm" in mf_pkgs:
