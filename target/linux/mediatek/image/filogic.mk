@@ -4187,8 +4187,10 @@ define Device/sdmc_mt3053
   KERNEL_INITRAMFS := kernel-bin | lzma | \
 	fit lzma $$(KDIR)/image-$$(firstword $$(DEVICE_DTS)).dtb with-initrd | pad-to 64k
   IMAGE/sysupgrade.bin := sysupgrade-tar | append-metadata
+ifneq ($(CONFIG_TARGET_ROOTFS_INITRAMFS),)
   ARTIFACTS := factory.ubi
   ARTIFACT/factory.ubi := append-image-stage initramfs-kernel.bin | ubinize-kernel
+endif
   DEVICE_PACKAGES := kmod-usb3
 endef
 TARGET_DEVICES += sdmc_mt3053
