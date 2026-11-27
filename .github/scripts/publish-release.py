@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 # SPDX-License-Identifier: MIT
-# [VERIFIED-GOLDEN: gh-release-batched-publisher | 2026-11-26 | DO NOT MODIFY UNLESS TARGETED]
+# [VERIFIED-GOLDEN: gh-release-batched-publisher-passwall2 | 2026-11-27 | DO NOT MODIFY UNLESS TARGETED]
 """
 Atomic & Secondary-Rate-Limit-Resilient GitHub Release Publisher for OpenWrt CI.
 1. Filters only top-level regular files in FIRMWARE_DIR (skips u-boot-* dirs & release_notes.md).
@@ -34,7 +34,12 @@ def compute_doanduy_prefix(tag: str, fw_dir: str) -> str:
             try:
                 with open(os.path.join(fw_dir, name), "r", encoding="utf-8", errors="replace") as mf:
                     txt = mf.read()
-                if "\nluci-app-passwall " in txt or txt.startswith("luci-app-passwall ") or "\nluci-app-passwall2 " in txt:
+                if (
+                    "\nluci-app-passwall " in txt
+                    or txt.startswith("luci-app-passwall ")
+                    or "\nluci-app-passwall2 " in txt
+                    or txt.startswith("luci-app-passwall2 ")
+                ):
                     has_pw = True
                 else:
                     has_pw = False
@@ -159,6 +164,13 @@ def verify_rom_release_gate(fw_dir: str, tag: str) -> None:
         missing = [p for p in required_pkgs if p not in mf_pkgs]
         if missing:
             raise RuntimeError(f"[FATAL ROM GATE] Manifest missing required core package(s): {', '.join(missing)}")
+        if "luci-app-passwall2" in mf_pkgs:
+            for pw2_pkg in ("luci-i18n-passwall2-vi", "sing-box"):
+                if pw2_pkg not in mf_pkgs:
+                    raise RuntimeError(f"[FATAL ROM GATE] PassWall 2 manifest missing required package: {pw2_pkg}!")
+            if "xray-core" in mf_pkgs:
+                raise RuntimeError("[FATAL ROM GATE] Bloat xray-core leaked into lean PassWall 2 Sing-Box ROM!")
+            print(">> [ROM GATE PASS] Verified PassWall 2 Lean (Sing-Box + Nftables + Tiếng Việt) clean in manifest!", flush=True)
         print(f">> [ROM GATE PASS] Manifest verified ({len(mf_pkgs)} common packages, all {len(required_pkgs)} core 5G/Mesh tools present).", flush=True)
 
     # Verify sdmc_mt3053 factory.ubi & sysupgrade.bin when sdmc_mt3053 profile is in this build

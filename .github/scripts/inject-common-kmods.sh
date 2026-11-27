@@ -259,6 +259,15 @@ if grep -q '^CONFIG_PACKAGE_luci-app-passwall=y$' "$CFG"; then
   echo "CONFIG_PACKAGE_kmod-ipt-tproxy=y" >> "$CFG"
 fi
 
+# PassWall 2 pure Nftables transparent proxy kmods (fw4 native)
+if grep -q '^CONFIG_PACKAGE_luci-app-passwall2=y$' "$CFG"; then
+  cat << 'EOF' >> "$CFG"
+CONFIG_PACKAGE_kmod-nft-nat=y
+CONFIG_PACKAGE_kmod-nft-socket=y
+CONFIG_PACKAGE_kmod-nft-tproxy=y
+EOF
+fi
+
 # ==============================================================================
 # [B] QUALCOMM IPQ (IPQ60xx / IPQ807x) MANDATORY HARDWARE & NSS KMODS
 # ==============================================================================
@@ -415,8 +424,14 @@ cfg_path = sys.argv[1]
 if os.path.isfile(cfg_path):
     with open(cfg_path, "r", encoding="utf-8", errors="replace") as f:
         cfg_txt = f.read()
-    has_pw = bool(re.search(r"^CONFIG_PACKAGE_luci-app-passwall2?=y$", cfg_txt, re.M))
-    min_kb = 60416 if has_pw else 16384  # 59 MB min for Full PassWall (Xray+SingBox); 16 MB min for NoPassWall
+    has_pw1 = bool(re.search(r"^CONFIG_PACKAGE_luci-app-passwall=y$", cfg_txt, re.M))
+    has_pw2 = bool(re.search(r"^CONFIG_PACKAGE_luci-app-passwall2=y$", cfg_txt, re.M))
+    if has_pw1:
+        min_kb, tier = 60416, "PassWall1 (>=59MB)"
+    elif has_pw2:
+        min_kb, tier = 40960, "PassWall2-SingBox (>=40MB)"
+    else:
+        min_kb, tier = 16384, "NoPassWall (>=16MB)"
 
     def parse_kb(raw: str):
         s = raw.strip().lower()
@@ -458,6 +473,5 @@ if os.path.isfile(cfg_path):
         if dropped:
             with open(cfg_path, "w", encoding="utf-8", newline="\n") as f:
                 f.write("\n".join(out_lines) + "\n")
-            tier = "PassWall (>=59MB)" if has_pw else "NoPassWall (>=16MB)"
             print(f">> [FLASH GUARD] Auto-skipped {len(dropped)} small-flash profile(s) for {tier}: {', '.join(sorted(dropped))}")
 PYEOF
