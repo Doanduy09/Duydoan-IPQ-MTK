@@ -27,11 +27,18 @@ if grep -qiE "mediatek|mt798" /proc/cpuinfo /sys/firmware/devicetree/base/compat
         fi
     fi
 elif grep -qiE "ipq807|ipq60|qualcomm" /proc/cpuinfo /sys/firmware/devicetree/base/compatible 2>/dev/null; then
-    # Qualcomm IPQ NSS: BAT BUOC tat fw4 nf_flow_table & packet_steering de qca-nss-ecm doc quyen tang toc phan cung
-    uci -q set network.globals.packet_steering='0'
-    uci -q set firewall.@defaults[0].flow_offloading='0'
-    uci -q set firewall.@defaults[0].flow_offloading_hw='0'
-    [ -x /etc/init.d/qca-nss-ecm ] && /etc/init.d/qca-nss-ecm enable >/dev/null 2>&1
+    if [ -x /etc/init.d/qca-nss-ecm ] || [ -d /sys/module/qca_nss_drv ] || ls /etc/modules.d/*qca-nss* >/dev/null 2>&1; then
+        # Qualcomm IPQ Full-NSS: BAT BUOC tat fw4 nf_flow_table & packet_steering de qca-nss-ecm doc quyen tang toc phan cung
+        uci -q set network.globals.packet_steering='0'
+        uci -q set firewall.@defaults[0].flow_offloading='0'
+        uci -q set firewall.@defaults[0].flow_offloading_hw='0'
+        [ -x /etc/init.d/qca-nss-ecm ] && /etc/init.d/qca-nss-ecm enable >/dev/null 2>&1
+    else
+        # Qualcomm IPQ Mainline (Khong NSS - master K6.18): BAT fw4 nft-offload + packet_steering
+        uci -q set network.globals.packet_steering='1'
+        uci -q set firewall.@defaults[0].flow_offloading='1'
+        uci -q set firewall.@defaults[0].flow_offloading_hw='0'
+    fi
 else
     uci -q set network.globals.packet_steering='1'
     uci -q set firewall.@defaults[0].flow_offloading='1'
