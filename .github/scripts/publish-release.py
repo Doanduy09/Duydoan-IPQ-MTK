@@ -169,6 +169,11 @@ def verify_rom_release_gate(fw_dir: str, tag: str) -> None:
                 if ubi_sz < 14.0 or ubi_sz > 33.5:
                     raise RuntimeError(f"[FATAL ROM GATE] sdmc_mt3053-factory.ubi size {ubi_sz:.2f} MB out of safe 34MB mtd7 bounds!")
                 print(f">> [ROM GATE PASS] Verified {f_ubi[0]} ({ubi_sz:.2f} MB) + {sysup[0]} ready for U-Boot & LuCI!", flush=True)
+        if "jdcloud_re-cs-02" in profs and mf_pkgs:
+            for apkg in ("athena-led", "luci-app-athena-led"):
+                if apkg not in mf_pkgs:
+                    raise RuntimeError(f"[FATAL ROM GATE] IPQ60xx manifest missing {apkg} for JDCloud RE-CS-02!")
+            print(">> [ROM GATE PASS] Verified athena-led + luci-app-athena-led present for JDCloud RE-CS-02!", flush=True)
 
 
 def run_gh(args, timeout=300):

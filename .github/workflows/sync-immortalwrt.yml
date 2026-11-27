@@ -79,6 +79,7 @@ jobs:
             "package/base-files/files/etc/uci-defaults/zzz-doanduy-branding.sh"
             "package/base-files/files/usr/bin/ati"
             "package/base-files/files/bin/ati"
+            "package/athena-led"
             "package/luci-app-athena-led"
             "package/utils/atinout"
             "target/linux/mediatek/dts/mt7981b-wirelesstag-zx7981pd.dts"
