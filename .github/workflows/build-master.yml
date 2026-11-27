@@ -1,7 +1,7 @@
 # [VERIFIED-GOLDEN: workflow-master-v2 | 2026-11-26 | DO NOT MODIFY UNLESS TARGETED]
-name: "[master] Build IPQ60xx + IPQ807x + Filogic (SNAPSHOT Kernel 6.18) [Không PassWall]"
+name: "[master] Build IPQ60xx + IPQ807x + Filogic (SNAPSHOT K6.18 | Không NSS | nft-offload) [Không PassWall]"
 
-run-name: "[master] Build ${{ inputs.target || 'all (IPQ60xx + IPQ807x + Filogic)' }} (SNAPSHOT Kernel 6.18) [Không PassWall]"
+run-name: "[master] Build ${{ inputs.target || 'all (IPQ60xx + IPQ807x + Filogic)' }} (K6.18 | Không NSS | nft-offload) [Không PassWall]"
 
 on:
   push:
@@ -388,6 +388,12 @@ jobs:
           ]
           for p in profiles:
               lines.append(f"- `{p}`")
+          lines.extend([
+              "",
+              "#### ⚠️ Lưu Ý Flash An Toàn:",
+              "- **Không giữ cấu hình cũ (`Keep settings`)** khi chuyển từ bản **Full-NSS** sang **Không NSS** hoặc đổi giữa các nhánh Kernel khác nhau.",
+              "- Đối chiếu mã kiểm tra trong tệp `sha256sums` đi kèm trước khi nạp firmware.",
+          ])
 
           with open("release_notes.md", "w", encoding="utf-8") as out:
               out.write("\n".join(lines) + "\n")
