@@ -249,6 +249,7 @@ jobs:
           echo "CONFIG_PACKAGE_wget-ssl=y" >> .config
 
           bash .github/scripts/prepare-build-host.sh
+          bash .github/scripts/inject-common-kmods.sh
           make defconfig
           if grep -q '^CONFIG_USE_LLVM_BUILD=y$' .config; then
             echo "ERROR: CONFIG_USE_LLVM_BUILD=y still active!" >&2
