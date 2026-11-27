@@ -213,7 +213,7 @@ jobs:
           sed -i '/wwand-datapath-rmnet_nss/d' .config
           echo "CONFIG_CCACHE=y" >> .config
 
-          # Nhánh master chạy ImmortalWrt Master SNAPSHOT (Kernel 6.18, APK) -> Mainline Flow Offload + Mainline 5G MHI/WWAN/T7xx
+          # Nhánh master chạy ImmortalWrt Master SNAPSHOT (Kernel 6.18, APK) -> Không NSS; toàn bộ kmod IPQ/MTK thống nhất tại .github/scripts/inject-common-kmods.sh
           sed -i '/kmod-qca-nss/d; /nss-firmware/d; /nss-utils/d; /pcie_mhi/d; /qmi_wwan_q/d; /fibocom_QMI_WWAN/d; /simcom_QMI_WWAN/d; /quectel_QMI_WWAN/d; /luci-app-turboacc/d' .config
           cat << 'EOF' >> .config
           # CONFIG_PACKAGE_kmod-qca-nss-drv is not set
@@ -223,19 +223,6 @@ jobs:
           # CONFIG_PACKAGE_kmod-fibocom_QMI_WWAN is not set
           # CONFIG_PACKAGE_kmod-simcom_QMI_WWAN is not set
           # CONFIG_PACKAGE_kmod-quectel_QMI_WWAN is not set
-          CONFIG_PACKAGE_kmod-nft-offload=y
-          CONFIG_PACKAGE_kmod-nf-flow=y
-          CONFIG_PACKAGE_kmod-tcp-bbr=y
-          CONFIG_PACKAGE_kmod-usb-net-qmi-wwan=y
-          CONFIG_PACKAGE_kmod-usb-net-cdc-mbim=y
-          CONFIG_PACKAGE_kmod-usb-net-rndis=y
-          CONFIG_PACKAGE_kmod-usb-net-cdc-ether=y
-          CONFIG_PACKAGE_kmod-usb-serial-option=y
-          CONFIG_PACKAGE_kmod-usb-serial-wwan=y
-          CONFIG_PACKAGE_kmod-mhi-bus=y
-          CONFIG_PACKAGE_kmod-mhi-pci-generic=y
-          CONFIG_PACKAGE_kmod-mhi-net=y
-          CONFIG_PACKAGE_kmod-mtk-t7xx=y
           EOF
           if [ "${{ matrix.id }}" = "mediatek-filogic" ]; then
             echo "CONFIG_PACKAGE_bridger=y" >> .config
