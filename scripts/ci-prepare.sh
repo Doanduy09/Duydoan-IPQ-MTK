@@ -184,6 +184,33 @@ if os.path.isfile(filogic_mk):
                 mk_txt = mk_txt[:m_fit.start()] + fblk_new + mk_txt[m_fit.end():]
                 print(f"  [FIXED] Cleaned FIT-only IMAGES := sysupgrade.itb on Device/{fit_dev}.")
 
+    # B4. Guard upstream unguarded initramfs ARTIFACTS (asus_rt-ax52, asus_rt-ax57m, openwrt_one) when CONFIG_TARGET_ROOTFS_INITRAMFS is disabled (PassWall builds)
+    for ax_dev in ("asus_rt-ax52", "asus_rt-ax57m"):
+        m_ax = re.search(rf"(define Device/{re.escape(ax_dev)}\b.*?\nendef)", mk_txt, re.S)
+        if m_ax and "CONFIG_TARGET_ROOTFS_INITRAMFS" not in m_ax.group(1):
+            ablk = m_ax.group(1)
+            ablk_new = re.sub(
+                r"(ifeq \(\$\(IB\),\)\n)([ \t]*ARTIFACTS\s*:=\s*initramfs\.trx\n.*?\n)(endif)",
+                r"\1ifneq ($(CONFIG_TARGET_ROOTFS_INITRAMFS),)\n\2endif\n\3",
+                ablk,
+                flags=re.S,
+            )
+            if ablk_new != ablk:
+                mk_txt = mk_txt[:m_ax.start()] + ablk_new + mk_txt[m_ax.end():]
+                print(f"  [FIXED] Guarded ARTIFACTS := initramfs.trx with CONFIG_TARGET_ROOTFS_INITRAMFS on Device/{ax_dev}.")
+
+    m_ow1 = re.search(r"(define Device/openwrt_one\b.*?\nendef)", mk_txt, re.S)
+    if m_ow1 and "CONFIG_TARGET_ROOTFS_INITRAMFS" not in m_ow1.group(1):
+        oblk = m_ow1.group(1)
+        oblk_new = re.sub(
+            r"([ \t]*ARTIFACTS\s*:=\s*\\\n(?:[ \t]*[^\n]+\\\n)*[ \t]*factory\.ubi[^\n]*\n)",
+            r"ifneq ($(CONFIG_TARGET_ROOTFS_INITRAMFS),)\n\1endif\n",
+            oblk,
+        )
+        if oblk_new != oblk:
+            mk_txt = mk_txt[:m_ow1.start()] + oblk_new + mk_txt[m_ow1.end():]
+            print("  [FIXED] Guarded initramfs-dependent ARTIFACTS with CONFIG_TARGET_ROOTFS_INITRAMFS on Device/openwrt_one.")
+
     if mk_txt != orig_mk:
         with open(filogic_mk, "w", encoding="utf-8", newline="\n") as f:
             f.write(mk_txt)
