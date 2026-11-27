@@ -119,45 +119,22 @@ rm -f package/base-files/files/etc/init.d/all package/base-files/files/etc/init.
       files/etc/init.d/all files/etc/init.d/all.enc 2>/dev/null || true
 
 echo "=========================================================="
-echo ">> [2/4] Enforcing MediaTek sdmc_mt3053 NAND Partition & factory.ubi Guard..."
+echo ">> [2/4] Enforcing MediaTek sdmc_mt3053 NAND Partition, factory.ubi & FIT Image Guard..."
 echo "=========================================================="
 python3 - << 'PYEOF'
 import os, re, sys
 
-# A. Enforce sdmc,mt3053 in platform_do_upgrade (ubi_kernel + ubi) and platform_pre_upgrade (xiaomi_initial_setup)
-plat_sh = "target/linux/mediatek/filogic/base-files/lib/upgrade/platform.sh"
-if os.path.isfile(plat_sh):
-    with open(plat_sh, "r", encoding="utf-8") as f:
-        s = f.read()
-    orig = s
-    # Check if sdmc,mt3053 is wired to CI_KERN_UBIPART
-    m_upg = re.search(r"([ \t]*xiaomi,mi-router-ax3000t\|\\\n(?:.*\n){0,4}?[ \t]*CI_KERN_UBIPART=)", s)
-    if m_upg:
-        window_start = max(0, m_upg.start() - 120)
-        if "sdmc,mt3053" not in s[window_start:m_upg.end()]:
-            s = s[:m_upg.start()] + "\tsdmc,mt3053|\\\n" + s[m_upg.start():]
-            print("  [FIXED] Restored sdmc,mt3053 -> CI_KERN_UBIPART=ubi_kernel in platform.sh")
-    # Check if sdmc,mt3053 is wired to xiaomi_initial_setup
-    m_pre = re.search(r"([ \t]*xiaomi,mi-router-ax3000t\|\\\n(?:.*\n){0,4}?[ \t]*xiaomi_initial_setup)", s)
-    if m_pre:
-        window_start = max(0, m_pre.start() - 120)
-        if "sdmc,mt3053" not in s[window_start:m_pre.end()]:
-            s = s[:m_pre.start()] + "\tsdmc,mt3053|\\\n" + s[m_pre.start():]
-            print("  [FIXED] Restored sdmc,mt3053 -> xiaomi_initial_setup in platform.sh")
-    if s != orig:
-        with open(plat_sh, "w", encoding="utf-8", newline="\n") as f:
-            f.write(s)
-    if s.count("sdmc,mt3053") < 3:
-        print(f"[FATAL] sdmc,mt3053 appears only {s.count('sdmc,mt3053')} time(s) in {plat_sh} (expected >= 3)!", file=sys.stderr)
-        sys.exit(1)
-    print(f"  [PASS] {plat_sh}: sdmc,mt3053 verified in all 3 NAND upgrade hooks.")
-
-# B. Enforce guarded factory.ubi on Device/sdmc_mt3053 in filogic.mk
 filogic_mk = "target/linux/mediatek/image/filogic.mk"
+filogic_ext_mk = "target/linux/mediatek/image/filogic-ext.mk"
+has_sdmc_mt3053 = False
 if os.path.isfile(filogic_mk):
     with open(filogic_mk, "r", encoding="utf-8") as f:
         mk_txt = f.read()
+    has_sdmc_mt3053 = bool(re.search(r"^define Device/sdmc_mt3053\b", mk_txt, re.M))
+
+    # B1. Enforce guarded factory.ubi on Device/sdmc_mt3053 in filogic.mk (only on MediaTek branches where sdmc_mt3053 exists)
     m_dev = re.search(r"(define Device/sdmc_mt3053\b.*?\nendef)", mk_txt, re.S)
+    orig_mk = mk_txt
     if m_dev:
         blk = m_dev.group(1)
         new_blk = blk
@@ -177,10 +154,76 @@ if os.path.isfile(filogic_mk):
             )
         if new_blk != blk:
             mk_txt = mk_txt[:m_dev.start()] + new_blk + mk_txt[m_dev.end():]
-            with open(filogic_mk, "w", encoding="utf-8", newline="\n") as f:
-                f.write(mk_txt)
             print("  [FIXED] Enforced guarded factory.ubi recipe in Device/sdmc_mt3053.")
         print("  [PASS] Device/sdmc_mt3053 factory.ubi recipe verified.")
+
+    # B2. If filogic-ext.mk already defines Device/viettel_nr3053, remove duplicate Device/viettel_nr3053 from filogic.mk
+    ext_has_nr3053 = False
+    if os.path.isfile(filogic_ext_mk):
+        with open(filogic_ext_mk, "r", encoding="utf-8") as ef:
+            ext_has_nr3053 = bool(re.search(r"^define Device/viettel_nr3053\b", ef.read(), re.M))
+    if ext_has_nr3053:
+        mk_txt2 = re.sub(
+            r"\n*define Device/viettel_nr3053\b.*?\nendef\s*\nTARGET_DEVICES \+= viettel_nr3053\s*\n",
+            "\n",
+            mk_txt,
+            flags=re.S,
+        )
+        if mk_txt2 != mk_txt:
+            mk_txt = mk_txt2
+            print("  [FIXED] Removed duplicate Device/viettel_nr3053 from filogic.mk (canonical in filogic-ext.mk).")
+
+    # B3. Ensure ubootmod FIT devices (viettel_nr3053 & wirelesstag_zx7981pd-ubootmod) do NOT emit sysupgrade-tar sysupgrade.bin
+    for fit_dev in ("viettel_nr3053", "wirelesstag_zx7981pd-ubootmod"):
+        m_fit = re.search(rf"(define Device/{re.escape(fit_dev)}\b.*?\nendef)", mk_txt, re.S)
+        if m_fit:
+            fblk = m_fit.group(1)
+            fblk_new = re.sub(r"IMAGES\s*:=\s*sysupgrade\.itb\s+sysupgrade\.bin", "IMAGES := sysupgrade.itb", fblk)
+            fblk_new = re.sub(r"[ \t]*IMAGE/sysupgrade\.bin\s*:=\s*sysupgrade-tar[^\n]*\n", "", fblk_new)
+            if fblk_new != fblk:
+                mk_txt = mk_txt[:m_fit.start()] + fblk_new + mk_txt[m_fit.end():]
+                print(f"  [FIXED] Cleaned FIT-only IMAGES := sysupgrade.itb on Device/{fit_dev}.")
+
+    if mk_txt != orig_mk:
+        with open(filogic_mk, "w", encoding="utf-8", newline="\n") as f:
+            f.write(mk_txt)
+
+# A. Enforce sdmc,mt3053 in all 3 NAND upgrade hooks in platform.sh ONLY when Device/sdmc_mt3053 is part of this branch
+plat_sh = "target/linux/mediatek/filogic/base-files/lib/upgrade/platform.sh"
+if has_sdmc_mt3053 and os.path.isfile(plat_sh):
+    with open(plat_sh, "r", encoding="utf-8") as f:
+        s = f.read()
+    orig = s
+    # Hook 1: xiaomi_initial_setup fw_setenv mtdparts
+    m_mtd = re.search(r"([ \t]*xiaomi,mi-router-ax3000t\|\\\n(?:.*\n){0,4}?[ \t]*fw_setenv mtdparts)", s)
+    if m_mtd:
+        window_start = max(0, m_mtd.start() - 120)
+        if "sdmc,mt3053" not in s[window_start:m_mtd.end()]:
+            s = s[:m_mtd.start()] + "\tsdmc,mt3053|\\\n" + s[m_mtd.start():]
+            print("  [FIXED] Restored sdmc,mt3053 -> fw_setenv mtdparts in platform.sh")
+    # Hook 2: platform_do_upgrade CI_KERN_UBIPART
+    m_upg = re.search(r"([ \t]*xiaomi,mi-router-ax3000t\|\\\n(?:.*\n){0,4}?[ \t]*CI_KERN_UBIPART=)", s)
+    if m_upg:
+        window_start = max(0, m_upg.start() - 120)
+        if "sdmc,mt3053" not in s[window_start:m_upg.end()]:
+            s = s[:m_upg.start()] + "\tsdmc,mt3053|\\\n" + s[m_upg.start():]
+            print("  [FIXED] Restored sdmc,mt3053 -> CI_KERN_UBIPART=ubi_kernel in platform.sh")
+    # Hook 3: platform_pre_upgrade xiaomi_initial_setup
+    m_pre = re.search(r"([ \t]*xiaomi,mi-router-ax3000t\|\\\n(?:.*\n){0,4}?[ \t]*xiaomi_initial_setup)", s)
+    if m_pre:
+        window_start = max(0, m_pre.start() - 120)
+        if "sdmc,mt3053" not in s[window_start:m_pre.end()]:
+            s = s[:m_pre.start()] + "\tsdmc,mt3053|\\\n" + s[m_pre.start():]
+            print("  [FIXED] Restored sdmc,mt3053 -> xiaomi_initial_setup in platform.sh")
+    if s != orig:
+        with open(plat_sh, "w", encoding="utf-8", newline="\n") as f:
+            f.write(s)
+    if s.count("sdmc,mt3053") < 3:
+        print(f"[FATAL] sdmc,mt3053 appears only {s.count('sdmc,mt3053')} time(s) in {plat_sh} (expected >= 3)!", file=sys.stderr)
+        sys.exit(1)
+    print(f"  [PASS] {plat_sh}: sdmc,mt3053 verified in all 3 NAND upgrade hooks.")
+else:
+    print("  [SKIP] Target branch does not build MediaTek sdmc_mt3053 (Qualcomm-only branch).")
 PYEOF
 
 echo "=========================================================="
