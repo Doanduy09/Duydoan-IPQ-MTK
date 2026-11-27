@@ -1,7 +1,7 @@
 # [VERIFIED-GOLDEN: workflow-master-v2 | 2026-11-26 | DO NOT MODIFY UNLESS TARGETED]
-name: "[master] Build IPQ60xx + IPQ807x + Filogic (SNAPSHOT K6.18 | Không NSS | nft-offload) [Không PassWall]"
+name: "[master] Build IPQ (Không NSS) + Filogic (PPE HNAT/WED) (K6.18) [Không PassWall]"
 
-run-name: "[master] Build ${{ inputs.target || 'all (IPQ60xx + IPQ807x + Filogic)' }} (K6.18 | Không NSS | nft-offload) [Không PassWall]"
+run-name: "[master] Build ${{ inputs.target || 'all (IPQ Không NSS + Filogic PPE HNAT/WED)' }} (SNAPSHOT K6.18) [Không PassWall]"
 
 on:
   push:
@@ -70,8 +70,8 @@ jobs:
               {
                   "ref": branch_ref,
                   "id": "qualcomm-ipq60xx",
-                  "title": f"Qualcomm IPQ60xx (SNAPSHOT Kernel 6.18){badge}",
-                  "job_title": f"[master] Qualcomm IPQ60xx (SNAPSHOT Kernel 6.18){badge}",
+                  "title": f"Qualcomm IPQ60xx (K6.18 | Không NSS | nft-offload){badge}",
+                  "job_title": f"[master] Qualcomm IPQ60xx (K6.18 | Không NSS | nft-offload){badge}",
                   "config": "qualcomm_ipq60xx_all.config",
                   "target_dir": "bin/targets/qualcommax/ipq60xx",
                   "tag_prefix": f"{prefix}-Qualcomm-IPQ60xx-All",
@@ -81,8 +81,8 @@ jobs:
               {
                   "ref": branch_ref,
                   "id": "qualcomm-ipq807x",
-                  "title": f"Qualcomm IPQ807x (SNAPSHOT Kernel 6.18){badge}",
-                  "job_title": f"[master] Qualcomm IPQ807x (SNAPSHOT Kernel 6.18){badge}",
+                  "title": f"Qualcomm IPQ807x (K6.18 | Không NSS | nft-offload){badge}",
+                  "job_title": f"[master] Qualcomm IPQ807x (K6.18 | Không NSS | nft-offload){badge}",
                   "config": "qualcomm_ipq807x_all.config",
                   "target_dir": "bin/targets/qualcommax/ipq807x",
                   "tag_prefix": f"{prefix}-Qualcomm-IPQ807x-All",
@@ -92,12 +92,12 @@ jobs:
               {
                   "ref": branch_ref,
                   "id": "mediatek-filogic",
-                  "title": f"MediaTek Filogic (SNAPSHOT Kernel 6.18){badge}",
-                  "job_title": f"[master] MediaTek Filogic (SNAPSHOT Kernel 6.18){badge}",
+                  "title": f"MediaTek Filogic (K6.18 | mt76 + PPE HNAT/WED){badge}",
+                  "job_title": f"[master] MediaTek Filogic (K6.18 | mt76 + PPE HNAT/WED){badge}",
                   "config": "mediatek_filogic_all.config",
                   "target_dir": "bin/targets/mediatek/filogic",
                   "tag_prefix": f"{prefix}-MediaTek-Filogic-All",
-                  "release_title": f"[master] Duydoan-SNAPSHOT-K6.18 MediaTek Filogic [nft-offload]{badge} Unified All-Devices Release",
+                  "release_title": f"[master] Duydoan-SNAPSHOT-K6.18 MediaTek Filogic [mt76 + PPE HNAT/WED]{badge} Unified All-Devices Release",
                   "copy_itb_to_bin": True
               }
           ]
