@@ -223,6 +223,7 @@ jobs:
           cp "${{ matrix.config }}" .config
           if [ "${{ matrix.passwall }}" = "true" ]; then
             echo ">> [PASSWALL] Bật PassWall + Xray + Sing-Box + ChinaDNS-NG + Haproxy trên filogic-wed-25.12"
+            sed -i '/CONFIG_TARGET_ROOTFS_INITRAMFS/d' .config
             cat << 'EOF' >> .config
           CONFIG_PACKAGE_luci-app-passwall=y
           CONFIG_PACKAGE_luci-app-passwall_INCLUDE_Xray=y
@@ -235,6 +236,8 @@ jobs:
           CONFIG_PACKAGE_sing-box=y
           CONFIG_PACKAGE_chinadns-ng=y
           CONFIG_PACKAGE_haproxy=y
+          # Prevent 56MB+ PassWall initramfs from overflowing 44MB BPi-R3 SDCard / 34MB mtd7 recovery slots
+          # CONFIG_TARGET_ROOTFS_INITRAMFS is not set
           EOF
           else
             sed -i '/luci-app-passwall/d' .config

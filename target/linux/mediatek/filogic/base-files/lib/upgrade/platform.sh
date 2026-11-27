@@ -304,6 +304,7 @@ platform_do_upgrade() {
 		nand_do_upgrade "$1"
 		;;
 	buffalo,wsr-3000ax4p|\
+	sdmc,mt3053|\
 	xiaomi,mi-router-ax3000t|\
 	xiaomi,mi-router-wr30u-stock|\
 	xiaomi,redmi-router-ax6000-stock)
@@ -606,6 +607,7 @@ platform_pre_upgrade() {
 	jiorouter,ax6000-jidu6j01)
 		jiorouter_initial_setup
 		;;
+	sdmc,mt3053|\
 	xiaomi,mi-router-ax3000t|\
 	xiaomi,mi-router-wr30u-stock|\
 	xiaomi,redmi-router-ax6000-stock)
