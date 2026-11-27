@@ -256,6 +256,8 @@ jobs:
           echo "CONFIG_PACKAGE_luci-i18n-base-vi=y" >> .config
           echo "CONFIG_PACKAGE_luci-i18n-firewall-vi=y" >> .config
           echo "CONFIG_PACKAGE_luci-i18n-package-manager-vi=y" >> .config
+          echo "CONFIG_PACKAGE_mkf2fs=y" >> .config
+          echo "CONFIG_PACKAGE_f2fsck=y" >> .config
           echo "CONFIG_PACKAGE_curl=y" >> .config
           echo "CONFIG_PACKAGE_wget-ssl=y" >> .config
 
