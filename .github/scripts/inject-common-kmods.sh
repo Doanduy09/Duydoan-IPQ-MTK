@@ -406,3 +406,58 @@ if os.path.isfile(vmk):
         with open(vmk, "w", encoding="utf-8") as f:
             f.write(s2)
 PYEOF
+
+# --- [D] Physical Flash Capacity Guard: Auto-skip tiny-flash profiles that cannot physically fit the selected ROM tier ---
+python3 - "$CFG" << 'PYEOF'
+import glob, os, re, sys
+
+cfg_path = sys.argv[1]
+if os.path.isfile(cfg_path):
+    with open(cfg_path, "r", encoding="utf-8", errors="replace") as f:
+        cfg_txt = f.read()
+    has_pw = bool(re.search(r"^CONFIG_PACKAGE_luci-app-passwall2?=y$", cfg_txt, re.M))
+    min_kb = 60416 if has_pw else 16384  # 59 MB min for Full PassWall (Xray+SingBox); 16 MB min for NoPassWall
+
+    def parse_kb(raw: str):
+        s = raw.strip().lower()
+        m = re.match(r"^(\d+)\s*([km]?)$", s)
+        if not m:
+            return None
+        v, u = int(m.group(1)), m.group(2)
+        return v * 1024 if u == "m" else (v if u == "k" else v // 1024)
+
+    blocks = {}
+    for mk in sorted(glob.glob("target/linux/*/image/*.mk")):
+        with open(mk, "r", encoding="utf-8", errors="replace") as mf:
+            txt = mf.read()
+        for m in re.finditer(r"define Device/([^\s\n]+)\n(.*?)\nendef", txt, re.S):
+            blocks[m.group(1)] = m.group(2)
+
+    too_small = set()
+    for dev, blk in blocks.items():
+        merged = blk
+        for parent in re.findall(r"\$\(call Device/([^\)]+)\)", blk):
+            if parent in blocks:
+                merged = blocks[parent] + "\n" + merged
+        msz = re.findall(r"^\s*IMAGE_SIZE\s*:=\s*([^\n]+)", merged, re.M)
+        if msz:
+            kb = parse_kb(msz[-1])
+            if kb is not None and kb < min_kb:
+                too_small.add(dev)
+
+    if too_small:
+        dropped = []
+        out_lines = []
+        for ln in cfg_txt.splitlines():
+            m = re.match(r"^(CONFIG_TARGET_DEVICE_[^=]+_DEVICE_([^=]+))=y$", ln)
+            if m and m.group(2) in too_small:
+                dropped.append(m.group(2))
+                out_lines.append(f"# {m.group(1)} is not set")
+                continue
+            out_lines.append(ln)
+        if dropped:
+            with open(cfg_path, "w", encoding="utf-8", newline="\n") as f:
+                f.write("\n".join(out_lines) + "\n")
+            tier = "PassWall (>=59MB)" if has_pw else "NoPassWall (>=16MB)"
+            print(f">> [FLASH GUARD] Auto-skipped {len(dropped)} small-flash profile(s) for {tier}: {', '.join(sorted(dropped))}")
+PYEOF
