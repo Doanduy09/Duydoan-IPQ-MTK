@@ -366,7 +366,7 @@ jobs:
               f"* **Source Branch**: `filogic-wed-25.12`",
               f"* **Base Version**: ImmortalWrt 25.12 Next-Gen (Kernel {kernel_ver})",
               f"* **PassWall**: {pw_line}",
-              f"* **Modem 5G & SmartHome Suite**: {'✅ `luci-app-doanduy-modem` v2.5.0+ (tích hợp sẵn)' if has_modem else '⚠️ Không thấy trong manifest'}",
+              f"* **Modem 5G & SmartHome Suite**: {'✅ `luci-app-doanduy-modem` v2.6.4+ & `quectel-cm` + `atinout` + Auto-Mesh Đa Chip (tích hợp sẵn)' if has_modem else '⚠️ Không thấy trong manifest'}",
               f"* **Hardware Acceleration**: {accel_line}",
               f"* **Compilation Mode**: Unified Multi-Device Build (**{len(profiles)} thiết bị**)",
               "",

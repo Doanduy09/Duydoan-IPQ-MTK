@@ -206,6 +206,7 @@ define Device/viettel_nr3053
   BLOCKSIZE := 128k
   PAGESIZE := 2048
   IMAGE_SIZE := 229376k
+  DEVICE_PACKAGES := kmod-usb3
   KERNEL_IN_UBI := 1
   UBOOTENV_IN_UBI := 1
   IMAGES := sysupgrade.itb

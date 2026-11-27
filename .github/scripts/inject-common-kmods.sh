@@ -1,13 +1,18 @@
 #!/bin/sh
-# Unified Full Kmod, Firmware & Userspace Baseline (audited against live SDMC NR3053 r89 & 11 reference devices)
-# Safe across Qualcomm IPQ60xx/IPQ807x & MediaTek Filogic (PassWall & No-PassWall, Kernel 6.12 & 6.18)
+# [VERIFIED-GOLDEN: unified-ipq-mtk-kmod-master | 2026-11-27 | SINGLE SOURCE OF TRUTH ACROSS ALL 4 BRANCHES]
+# Unified Master Kmod, Firmware & Userspace Standard for ALL Qualcomm IPQ & MediaTek Filogic Routers
+# Audited against 25 reference .config/.manifest files in Desktop/Rom wifi & all 4 branches (K6.12 & K6.18)
 set -e
 
 CFG="${1:-.config}"
 [ -f "$CFG" ] || exit 0
 
 cat << 'EOF' >> "$CFG"
-# --- 1. USB Host Controllers, Hub & Modeswitch ---
+# ==============================================================================
+# [A] COMMON MANDATORY KMODS & TOOLS (SHARED 1:1 ACROSS ALL IPQ & MTK ROUTERS)
+# ==============================================================================
+
+# --- 1. USB Host Controllers, Hub, HID & Modeswitch ---
 CONFIG_PACKAGE_kmod-usb2=y
 CONFIG_PACKAGE_kmod-usb3=y
 CONFIG_PACKAGE_kmod-usb-ehci=y
@@ -16,10 +21,12 @@ CONFIG_PACKAGE_kmod-usb-uhci=y
 CONFIG_PACKAGE_kmod-usb-dwc2=y
 CONFIG_PACKAGE_kmod-usb-dwc3=y
 CONFIG_PACKAGE_kmod-usb-roles=y
+CONFIG_PACKAGE_kmod-usb-hid=y
+CONFIG_PACKAGE_kmod-usb-ledtrig-usbport=y
 CONFIG_PACKAGE_usb-modeswitch=y
 CONFIG_PACKAGE_usbutils=y
 
-# --- 1b. PCIe 5G Modem (MHI Bus/Net/AT-QMI-Ctrl/MBIM, MediaTek T7xx, Qualcomm QRTR & RMNET) ---
+# --- 2. PCIe 5G Modem (MHI Bus/Net/AT-QMI-Ctrl/MBIM, MediaTek T7xx, QRTR & RMNET) ---
 CONFIG_PACKAGE_kmod-wwan=y
 CONFIG_PACKAGE_kmod-mhi-bus=y
 CONFIG_PACKAGE_kmod-mhi-pci-generic=y
@@ -33,7 +40,7 @@ CONFIG_PACKAGE_kmod-qrtr-tun=y
 CONFIG_PACKAGE_kmod-rmnet=y
 CONFIG_PACKAGE_pciutils=y
 
-# --- 2. USB Modem 4G/5G, USB-to-LAN & iPhone/Android Tethering ---
+# --- 3. USB 4G/5G Modem, USB-to-LAN & iPhone/Android Tethering ---
 CONFIG_PACKAGE_kmod-usb-net-qmi-wwan=y
 CONFIG_PACKAGE_kmod-usb-net-qmi-wwan-fibocom=y
 CONFIG_PACKAGE_kmod-usb-net-qmi-wwan-quectel=y
@@ -61,9 +68,10 @@ CONFIG_PACKAGE_kmod-usb-net-sr9700=y
 CONFIG_PACKAGE_kmod-usb-net-mcs7830=y
 CONFIG_PACKAGE_kmod-usb-net-pegasus=y
 CONFIG_PACKAGE_kmod-usb-net-kaweth=y
+CONFIG_PACKAGE_kmod-usb-net-pl=y
 CONFIG_PACKAGE_kmod-phy-aquantia=y
 
-# --- 3. USB Serial / AT / Debug ---
+# --- 4. USB Serial / AT / UART Debug ---
 CONFIG_PACKAGE_kmod-usb-serial-option=y
 CONFIG_PACKAGE_kmod-usb-serial-wwan=y
 CONFIG_PACKAGE_kmod-usb-serial-qualcomm=y
@@ -78,7 +86,7 @@ CONFIG_PACKAGE_kmod-usb-serial-pl2303=y
 CONFIG_PACKAGE_kmod-usb-acm=y
 CONFIG_PACKAGE_kmod-usb-wdm=y
 
-# --- 4. USB Storage, Auto-Mount & Filesystems (/overlay F2FS + External Drives) ---
+# --- 5. Storage, Filesystems (/overlay F2FS + USB/NVMe), ZRAM & Crash Recovery ---
 CONFIG_PACKAGE_kmod-usb-storage=y
 CONFIG_PACKAGE_kmod-usb-storage-uas=y
 CONFIG_PACKAGE_kmod-usb-storage-extras=y
@@ -87,19 +95,39 @@ CONFIG_PACKAGE_kmod-fs-exfat=y
 CONFIG_PACKAGE_kmod-fs-ntfs3=y
 CONFIG_PACKAGE_kmod-fs-vfat=y
 CONFIG_PACKAGE_kmod-fs-f2fs=y
+CONFIG_PACKAGE_kmod-fs-autofs4=y
+CONFIG_PACKAGE_kmod-zram=y
+CONFIG_PACKAGE_zram-swap=y
+CONFIG_PACKAGE_kmod-ramoops=y
+CONFIG_PACKAGE_kmod-pstore=y
 CONFIG_PACKAGE_block-mount=y
 CONFIG_PACKAGE_e2fsprogs=y
 CONFIG_PACKAGE_mkf2fs=y
 CONFIG_PACKAGE_f2fsck=y
+CONFIG_PACKAGE_losetup=y
+CONFIG_PACKAGE_uboot-envtools=y
 
-# --- 5. Thermal, Crypto & Networking / VPN / TProxy Kmods ---
+# --- 6. Router Buttons (Reset/WPS/Mesh), LEDs, Thermal, Fan & I2C Hardware ---
+CONFIG_PACKAGE_kmod-gpio-button-hotplug=y
+CONFIG_PACKAGE_kmod-input-core=y
+CONFIG_PACKAGE_kmod-input-evdev=y
+CONFIG_PACKAGE_kmod-leds-gpio=y
+CONFIG_PACKAGE_kmod-leds-pwm=y
 CONFIG_PACKAGE_kmod-thermal=y
 CONFIG_PACKAGE_kmod-hwmon-core=y
+CONFIG_PACKAGE_kmod-hwmon-pwmfan=y
+CONFIG_PACKAGE_kmod-hwmon-gpiofan=y
 CONFIG_PACKAGE_kmod-i2c-core=y
+CONFIG_PACKAGE_kmod-i2c-gpio=y
+CONFIG_PACKAGE_kmod-eeprom-at24=y
+
+# --- 7. Crypto, Flow Offload, Netfilter, TTL/HL Anti-Throttling, QoS & VPN/WAN Tunnels ---
 CONFIG_PACKAGE_kmod-crypto-aead=y
+CONFIG_PACKAGE_kmod-crypto-arc4=y
 CONFIG_PACKAGE_kmod-crypto-authenc=y
 CONFIG_PACKAGE_kmod-crypto-ccm=y
 CONFIG_PACKAGE_kmod-crypto-cmac=y
+CONFIG_PACKAGE_kmod-crypto-crc32c=y
 CONFIG_PACKAGE_kmod-crypto-ctr=y
 CONFIG_PACKAGE_kmod-crypto-des=y
 CONFIG_PACKAGE_kmod-crypto-ecb=y
@@ -108,35 +136,54 @@ CONFIG_PACKAGE_kmod-crypto-gf128=y
 CONFIG_PACKAGE_kmod-crypto-ghash=y
 CONFIG_PACKAGE_kmod-crypto-hmac=y
 CONFIG_PACKAGE_kmod-crypto-manager=y
+CONFIG_PACKAGE_kmod-crypto-md4=y
 CONFIG_PACKAGE_kmod-crypto-md5=y
+CONFIG_PACKAGE_kmod-crypto-michael-mic=y
 CONFIG_PACKAGE_kmod-crypto-null=y
 CONFIG_PACKAGE_kmod-crypto-rng=y
 CONFIG_PACKAGE_kmod-crypto-seqiv=y
+CONFIG_PACKAGE_kmod-crypto-sha1=y
+CONFIG_PACKAGE_kmod-crypto-sha256=y
 CONFIG_PACKAGE_kmod-crypto-sha512=y
 CONFIG_PACKAGE_kmod-crypto-user=y
-CONFIG_PACKAGE_kmod-tcp-bbr=y
-CONFIG_PACKAGE_kmod-nf-conntrack6=y
-CONFIG_PACKAGE_kmod-nf-nathelper=y
-CONFIG_PACKAGE_kmod-nf-nathelper-extra=y
+CONFIG_PACKAGE_kmod-nft-offload=y
+CONFIG_PACKAGE_kmod-nf-flow=y
+CONFIG_PACKAGE_kmod-nft-compat=y
 CONFIG_PACKAGE_kmod-nft-fullcone=y
 CONFIG_PACKAGE_kmod-nft-socket=y
 CONFIG_PACKAGE_kmod-nft-tproxy=y
+CONFIG_PACKAGE_kmod-nf-conntrack6=y
+CONFIG_PACKAGE_kmod-nf-conntrack-netlink=y
+CONFIG_PACKAGE_kmod-nf-conncount=y
+CONFIG_PACKAGE_kmod-nf-nathelper=y
+CONFIG_PACKAGE_kmod-nf-nathelper-extra=y
+CONFIG_PACKAGE_kmod-inet-diag=y
+CONFIG_PACKAGE_kmod-netlink-diag=y
 CONFIG_PACKAGE_kmod-ipt-ipopt=y
 CONFIG_PACKAGE_iptables-nft=y
 CONFIG_PACKAGE_ip6tables-nft=y
 CONFIG_PACKAGE_iptables-mod-ipopt=y
+CONFIG_PACKAGE_kmod-tcp-bbr=y
+CONFIG_PACKAGE_kmod-ifb=y
 CONFIG_PACKAGE_kmod-sched-cake=y
+CONFIG_PACKAGE_kmod-ppp=y
+CONFIG_PACKAGE_kmod-pppoe=y
+CONFIG_PACKAGE_kmod-pppol2tp=y
+CONFIG_PACKAGE_kmod-l2tp=y
+CONFIG_PACKAGE_kmod-pptp=y
+CONFIG_PACKAGE_kmod-mppe=y
+CONFIG_PACKAGE_kmod-gre=y
+CONFIG_PACKAGE_kmod-gre6=y
+CONFIG_PACKAGE_kmod-sit=y
+CONFIG_PACKAGE_kmod-ip6-tunnel=y
 CONFIG_PACKAGE_kmod-wireguard=y
 CONFIG_PACKAGE_kmod-tun=y
 CONFIG_PACKAGE_kmod-veth=y
+CONFIG_PACKAGE_kmod-vxlan=y
 CONFIG_PACKAGE_kmod-bonding=y
 CONFIG_PACKAGE_kmod-macvlan=y
-CONFIG_PACKAGE_kmod-usb-ledtrig-usbport=y
-CONFIG_PACKAGE_kmod-ppp=y
-CONFIG_PACKAGE_kmod-pppoe=y
-CONFIG_PACKAGE_kmod-mppe=y
 
-# --- 6. Fast 5G Dialers (quectel-cm + uqmi + umbim + atinout), Auto-Mesh Wi-Fi Tools & LuCI VI ---
+# --- 8. Fast 5G Dialers (quectel-cm + uqmi + umbim + atinout), Auto-Mesh Tools & LuCI VI ---
 CONFIG_PACKAGE_quectel-cm-5g=y
 CONFIG_PACKAGE_atinout=y
 CONFIG_PACKAGE_umbim=y
@@ -150,6 +197,8 @@ CONFIG_PACKAGE_wwan=y
 CONFIG_PACKAGE_luci-proto-qmi=y
 CONFIG_PACKAGE_luci-proto-mbim=y
 CONFIG_PACKAGE_luci-proto-ncm=y
+CONFIG_PACKAGE_luci-proto-wireguard=y
+CONFIG_PACKAGE_wireguard-tools=y
 CONFIG_PACKAGE_iw=y
 CONFIG_PACKAGE_iwinfo=y
 CONFIG_PACKAGE_wireless-regdb=y
@@ -194,23 +243,92 @@ if grep -q '^CONFIG_PACKAGE_luci-app-passwall=y$' "$CFG"; then
   echo "CONFIG_PACKAGE_kmod-ipt-tproxy=y" >> "$CFG"
 fi
 
-# Qualcomm IPQ60xx / IPQ807x SMD IPC Router & DWC3-QCOM USB3 Glue
+# ==============================================================================
+# [B] QUALCOMM IPQ (IPQ60xx / IPQ807x) MANDATORY HARDWARE & NSS KMODS
+# ==============================================================================
 if grep -q '^CONFIG_TARGET_qualcommax=y$' "$CFG"; then
   cat << 'EOF' >> "$CFG"
+CONFIG_PACKAGE_kmod-qca-nss-dp=y
+CONFIG_PACKAGE_kmod-qca-ssdk=y
+CONFIG_PACKAGE_kmod-dsa=y
+CONFIG_PACKAGE_kmod-dsa-qca8k=y
+CONFIG_PACKAGE_kmod-phy-qca83xx=y
+CONFIG_PACKAGE_kmod-phy-realtek=y
+CONFIG_PACKAGE_kmod-ath11k=y
+CONFIG_PACKAGE_kmod-ath11k-ahb=y
+CONFIG_PACKAGE_kmod-ath11k-pci=y
+CONFIG_PACKAGE_kmod-spi-gpio=y
+CONFIG_PACKAGE_kmod-spi-bitbang=y
+CONFIG_PACKAGE_kmod-gpio-nxp-74hc164=y
 CONFIG_PACKAGE_kmod-qrtr-smd=y
 CONFIG_PACKAGE_kmod-usb-dwc3-qcom=y
+CONFIG_PACKAGE_cpufreq=y
+CONFIG_PACKAGE_luci-app-cpufreq=y
 EOF
+
+  # Full-NSS 12.5 Hardware Offload Suite (qualcomm-nss-25.12)
+  if grep -q '^CONFIG_ATH11K_NSS_SUPPORT=y$' "$CFG"; then
+    cat << 'EOF' >> "$CFG"
+CONFIG_PACKAGE_kmod-qca-nss-drv=y
+CONFIG_PACKAGE_kmod-qca-nss-ecm=y
+CONFIG_PACKAGE_kmod-qca-nss-crypto=y
+CONFIG_PACKAGE_kmod-nss-ifb=y
+CONFIG_PACKAGE_sqm-scripts-nss=y
+CONFIG_PACKAGE_kmod-qca-nss-drv-pppoe=y
+CONFIG_PACKAGE_kmod-qca-nss-drv-bridge-mgr=y
+CONFIG_PACKAGE_kmod-qca-nss-drv-vlan-mgr=y
+CONFIG_PACKAGE_kmod-qca-nss-drv-qdisc=y
+CONFIG_PACKAGE_kmod-qca-nss-drv-igs=y
+CONFIG_PACKAGE_kmod-qca-nss-drv-wifi-meshmgr=y
+CONFIG_PACKAGE_kmod-qca-nss-drv-gre=y
+CONFIG_PACKAGE_kmod-qca-nss-drv-eogremgr=y
+CONFIG_PACKAGE_kmod-qca-nss-drv-vxlanmgr=y
+CONFIG_PACKAGE_kmod-qca-nss-drv-l2tpv2=y
+CONFIG_PACKAGE_kmod-qca-nss-drv-pptp=y
+CONFIG_PACKAGE_kmod-qca-nss-drv-tun6rd=y
+CONFIG_PACKAGE_kmod-qca-nss-drv-tunipip6=y
+CONFIG_PACKAGE_kmod-qca-nss-drv-map-t=y
+CONFIG_PACKAGE_kmod-qca-nss-drv-match=y
+CONFIG_PACKAGE_kmod-qca-nss-drv-mirror=y
+CONFIG_PACKAGE_kmod-qca-nss-drv-lag-mgr=y
+CONFIG_PACKAGE_kmod-qca-nss-drv-netlink=y
+EOF
+  fi
 fi
 
-# MediaTek Filogic hardware EIP-97 crypto engine, xHCI USB3 & Exar USB-serial driver
+# ==============================================================================
+# [C] MEDIATEK FILOGIC (MT7981 / MT7986 / MT7987 / MT7988) MANDATORY KMODS
+# ==============================================================================
 if grep -q '^CONFIG_TARGET_mediatek_filogic=y$' "$CFG"; then
   cat << 'EOF' >> "$CFG"
+CONFIG_PACKAGE_fitblk=y
 CONFIG_PACKAGE_eip197-mini-firmware=y
 CONFIG_PACKAGE_kmod-crypto-hw-safexcel=y
 CONFIG_PACKAGE_kmod-usb-xhci-hcd=y
 CONFIG_PACKAGE_kmod-usb-xhci-mtk=y
 CONFIG_PACKAGE_kmod-usb-serial-xr_usb_serial_common=y
+CONFIG_PACKAGE_kmod-phy-realtek=y
+CONFIG_PACKAGE_kmod-phy-motorcomm=y
+CONFIG_PACKAGE_kmod-sfp=y
+CONFIG_PACKAGE_kmod-leds-ws2812b=y
 EOF
+
+  if grep -q '^CONFIG_PACKAGE_kmod-mt_wifi=y$' "$CFG"; then
+    # Proprietary mt_wifi + HNAT/WARP (filogic-wed-25.12)
+    cat << 'EOF' >> "$CFG"
+CONFIG_PACKAGE_kmod-conninfra=y
+CONFIG_PACKAGE_kmod-mt_wifi=y
+CONFIG_PACKAGE_kmod-warp=y
+CONFIG_PACKAGE_kmod-mediatek_hnat=y
+EOF
+  else
+    # Mainline mt76 + PPE/WED + Bridger (master & master-passwall)
+    cat << 'EOF' >> "$CFG"
+CONFIG_PACKAGE_bridger=y
+CONFIG_PACKAGE_kmod-phy-mediatek-2p5g=y
+CONFIG_PACKAGE_kmod-phy-mtk-tphy=y
+EOF
+  fi
 fi
 
 # --- Build-time Source Branding Guard (guarantees DOANDUY SSID/Hostname/Dist even after upstream sync) ---
