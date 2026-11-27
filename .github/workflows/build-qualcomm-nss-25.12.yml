@@ -368,6 +368,12 @@ jobs:
           ]
           for p in profiles:
               lines.append(f"- `{p}`")
+          lines.extend([
+              "",
+              "#### ⚠️ Lưu Ý Flash An Toàn:",
+              "- **Không giữ cấu hình cũ (`Keep settings`)** khi chuyển từ bản **Không NSS** sang **Full-NSS 12.5** hoặc đổi giữa các nhánh Kernel khác nhau.",
+              "- Đối chiếu mã kiểm tra trong tệp `sha256sums` đi kèm trước khi nạp firmware.",
+          ])
 
           with open("release_notes.md", "w", encoding="utf-8") as out:
               out.write("\n".join(lines) + "\n")
