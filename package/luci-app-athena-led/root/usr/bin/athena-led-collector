@@ -1,0 +1,162 @@
+#!/bin/sh
+# [VERIFIED-GOLDEN: athena-led-async-collector | 2026-11-27 | DO NOT MODIFY UNLESS TARGETED]
+# Non-blocking background collector for 5G Data/Signal, Vietnam Weather, and Custom URL.
+# Writes atomically to /tmp/athena_led_live.cache so C matrix driver never stalls on I/O.
+
+export PATH=/usr/sbin:/usr/bin:/sbin:/bin
+export TZ='ICT-7'
+
+CACHE_FILE="/tmp/athena_led_live.cache"
+
+city_coords() {
+	case "$1" in
+		HaNoi)     echo "21.0285 105.8542" ;;
+		DaNang)    echo "16.0544 108.2022" ;;
+		CanTho)    echo "10.0452 105.7469" ;;
+		HaiPhong)  echo "20.8449 106.6881" ;;
+		NhaTrang)  echo "12.2388 109.1967" ;;
+		DaLat)     echo "11.9404 108.4583" ;;
+		Hue)       echo "16.4637 107.5909" ;;
+		VungTau)   echo "10.3460 107.0843" ;;
+		*)         echo "10.8231 106.6297" ;; # HoChiMinh default
+	esac
+}
+
+calc_wan_data_total() {
+	local total_b=0 iface rx tx mb gb_i gb_d
+	for iface in /sys/class/net/wwan* /sys/class/net/rmnet* /sys/class/net/usb* /sys/class/net/ccmni* /sys/class/net/mhi* /sys/class/net/eth1 /sys/class/net/wan; do
+		[ -f "$iface/statistics/rx_bytes" ] || continue
+		rx=$(cat "$iface/statistics/rx_bytes" 2>/dev/null || echo 0)
+		tx=$(cat "$iface/statistics/tx_bytes" 2>/dev/null || echo 0)
+		total_b=$((total_b + rx + tx))
+	done
+	mb=$((total_b / 1048576))
+	if [ "$mb" -ge 1024 ]; then
+		gb_i=$((mb / 1024))
+		gb_d=$(( (mb % 1024) * 10 / 1024 ))
+		echo "${gb_i}.${gb_d}GB"
+	else
+		echo "${mb}MB"
+	fi
+}
+
+collect_modem_5g() {
+	local data_str carrier="" rsrp="" model=""
+	data_str=$(calc_wan_data_total)
+
+	# Read non-intrusively from existing DoanDuy 5G caches (ZERO AT port contention)
+	if [ -f /tmp/duydoan5g_modem_meta ]; then
+		. /tmp/duydoan5g_modem_meta 2>/dev/null || true
+		model="${META_MODEL:-}"
+	fi
+	if [ -f /tmp/duydoan5g_signal_cache_json ]; then
+		carrier=$(jsonfilter -i /tmp/duydoan5g_signal_cache_json -e '@.operator' 2>/dev/null | tr -cd 'A-Za-z0-9 ')
+		rsrp=$(jsonfilter -i /tmp/duydoan5g_signal_cache_json -e '@.rsrp' 2>/dev/null | tr -cd '0-9-')
+	fi
+	if [ -z "$rsrp" ] && [ -f /tmp/rf_signal_stats.json ]; then
+		rsrp=$(jsonfilter -i /tmp/rf_signal_stats.json -e '@.rsrp' 2>/dev/null | tr -cd '0-9-')
+	fi
+
+	if [ -n "$rsrp" ]; then
+		echo "${carrier:-5G} ${rsrp}DB | ${data_str}"
+	elif [ -n "$model" ]; then
+		echo "5G | DATA ${data_str}"
+	else
+		echo "DATA ${data_str}"
+	fi
+}
+
+collect_weather_vn() {
+	local city="$1" coords lat lon raw temp pop uv
+	coords=$(city_coords "$city")
+	lat="${coords%% *}"
+	lon="${coords#* }"
+
+	raw=$(timeout 4 wget -qO- "https://api.open-meteo.com/v1/forecast?latitude=${lat}&longitude=${lon}&current=temperature_2m,uv_index&hourly=precipitation_probability&forecast_days=1&timezone=Asia%2FHo_Chi_Minh" 2>/dev/null || true)
+	[ -n "$raw" ] || return 1
+
+	temp=$(printf '%s' "$raw" | jsonfilter -e '@.current.temperature_2m' 2>/dev/null | awk '{printf "%.0f", $1}')
+	uv=$(printf '%s' "$raw" | jsonfilter -e '@.current.uv_index' 2>/dev/null | awk '{printf "%.0f", $1}')
+	local hr
+	hr=$(date +%H | sed 's/^0//')
+	[ -z "$hr" ] && hr=0
+	pop=$(printf '%s' "$raw" | jsonfilter -e "@.hourly.precipitation_probability[$hr]" 2>/dev/null | tr -cd '0-9')
+
+	[ -n "$temp" ] || return 1
+	echo "${temp}℃ | MUA ${pop:-0}% | UV ${uv:-0}"
+}
+
+collect_custom_url() {
+	local url="$1" out=""
+	[ -n "$url" ] || return 1
+	case "$url" in
+		file://*)
+			local fpath="${url#file://}"
+			[ -f "$fpath" ] && out=$(head -c 240 "$fpath" 2>/dev/null | tr '\r\n\t' '   ')
+			;;
+		/*)
+			[ -f "$url" ] && out=$(head -c 240 "$url" 2>/dev/null | tr '\r\n\t' '   ')
+			;;
+		http://*|https://*)
+			out=$(timeout 4 wget -qO- "$url" 2>/dev/null | head -c 240 | tr '\r\n\t' '   ')
+			;;
+	esac
+	[ -n "$out" ] || return 1
+	printf '%s\n' "$out"
+}
+
+update_once() {
+	local opts city url m5g="" wvn="" utxt="" prev_w=""
+	opts=$(uci -q get athena_led.config.option || echo "")
+	city=$(uci -q get athena_led.config.city || echo "HoChiMinh")
+	url=$(uci -q get athena_led.config.url || echo "")
+
+	[ -f "$CACHE_FILE" ] && prev_w=$(sed -n 's/^WEATHER=//p' "$CACHE_FILE" 2>/dev/null | head -n 1)
+
+	m5g=$(collect_modem_5g)
+
+	case " ${opts} " in
+		*" weatherVN "*)
+			local now_s last_w=0
+			now_s=$(date +%s)
+			[ -f /tmp/athena_led_weather.ts ] && last_w=$(cat /tmp/athena_led_weather.ts 2>/dev/null || echo 0)
+			if [ -z "$prev_w" ] || [ $((now_s - last_w)) -ge 600 ] || [ "${1:-}" = "force" ]; then
+				wvn=$(collect_weather_vn "$city" || true)
+				if [ -n "$wvn" ]; then
+					echo "$now_s" > /tmp/athena_led_weather.ts
+				else
+					wvn="$prev_w"
+				fi
+			else
+				wvn="$prev_w"
+			fi
+			;;
+	esac
+
+	case " ${opts} " in
+		*" getByUrl "*)
+			utxt=$(collect_custom_url "$url" || true)
+			;;
+	esac
+
+	{
+		[ -n "$m5g" ] && printf 'MODEM5G=%s\n' "$m5g"
+		[ -n "$wvn" ] && printf 'WEATHER=%s\n' "$wvn"
+		[ -n "$utxt" ] && printf 'URLTEXT=%s\n' "$utxt"
+	} > "${CACHE_FILE}.tmp"
+	mv -f "${CACHE_FILE}.tmp" "$CACHE_FILE" 2>/dev/null || true
+}
+
+case "${1:-once}" in
+	daemon)
+		update_once force
+		while true; do
+			sleep 20
+			update_once
+		done
+		;;
+	force|once|*)
+		update_once force
+		;;
+esac
+# [/VERIFIED-GOLDEN]

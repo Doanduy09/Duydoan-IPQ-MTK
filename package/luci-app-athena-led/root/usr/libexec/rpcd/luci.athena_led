@@ -1,0 +1,58 @@
+#!/bin/sh
+# [VERIFIED-GOLDEN: rpcd-luci-athena-led | 2026-11-27 | DO NOT MODIFY UNLESS TARGETED]
+
+. /usr/share/libubox/jshn.sh
+
+case "$1" in
+	list)
+		echo '{"getStatus":{},"cycleBrightness":{},"refreshLive":{}}'
+		;;
+	call)
+		case "$2" in
+			getStatus)
+				bname="$(cat /tmp/sysinfo/board_name 2>/dev/null || echo unknown)"
+				bmodel="$(cat /tmp/sysinfo/model 2>/dev/null || echo Unknown)"
+				state="$(cat /tmp/athena_led.state 2>/dev/null || echo OFF)"
+				running=0
+				pidof athena-led >/dev/null 2>&1 && running=1
+				supported=0
+				case "$bname" in *re-cs-02*) supported=1 ;; esac
+
+				m5g=""
+				wvn=""
+				if [ -f /tmp/athena_led_live.cache ]; then
+					m5g="$(sed -n 's/^MODEM5G=//p' /tmp/athena_led_live.cache | head -n 1)"
+					wvn="$(sed -n 's/^WEATHER=//p' /tmp/athena_led_live.cache | head -n 1)"
+				fi
+
+				json_init
+				json_add_boolean "running" "$running"
+				json_add_boolean "supported" "$supported"
+				json_add_string "board_name" "$bname"
+				json_add_string "model" "$bmodel"
+				json_add_string "brightness_state" "$state"
+				json_add_string "live_modem5g" "$m5g"
+				json_add_string "live_weather" "$wvn"
+				json_dump
+				;;
+			cycleBrightness)
+				if pidof athena-led >/dev/null 2>&1; then
+					killall -USR1 athena-led 2>/dev/null || true
+					usleep 150000 2>/dev/null || sleep 1
+				fi
+				state="$(cat /tmp/athena_led.state 2>/dev/null || echo OFF)"
+				json_init
+				json_add_boolean "ok" 1
+				json_add_string "brightness_state" "$state"
+				json_dump
+				;;
+			refreshLive)
+				[ -x /usr/bin/athena-led-collector ] && /usr/bin/athena-led-collector force >/dev/null 2>&1
+				json_init
+				json_add_boolean "ok" 1
+				json_dump
+				;;
+		esac
+		;;
+esac
+# [/VERIFIED-GOLDEN]

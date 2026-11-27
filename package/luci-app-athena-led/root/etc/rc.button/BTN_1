@@ -1,0 +1,41 @@
+#!/bin/sh
+# [VERIFIED-GOLDEN: athena-led-btn1-hotplug | 2026-11-27 | DO NOT MODIFY UNLESS TARGETED]
+# Physical 'screen' button (GPIO 71 -> BTN_1) handler on JDCloud RE-CS-02:
+#  - Short press (< 3s): Cycle Brightness (Normal -> Dim 1 -> Off -> Normal) via SIGUSR1
+#  - Long press (>= 3s): Permanently toggle athena_led.config.enable in UCI
+
+BOARD_NAME="$(cat /tmp/sysinfo/board_name 2>/dev/null)"
+case "$BOARD_NAME" in
+	*re-cs-02*) ;;
+	*) exit 0 ;;
+esac
+
+[ "$ACTION" = "released" ] || exit 0
+
+SEEN="${SEEN:-0}"
+if [ "$SEEN" -ge 3 ]; then
+	CUR_EN="$(uci -q get athena_led.config.enable || echo 1)"
+	if [ "$CUR_EN" = "1" ]; then
+		uci -q set athena_led.config.enable='0'
+		uci -q commit athena_led
+		/etc/init.d/athena_led stop >/dev/null 2>&1 &
+		logger -t athena-led "Screen button long-press (${SEEN}s): Disabled LED service"
+	else
+		uci -q set athena_led.config.enable='1'
+		uci -q commit athena_led
+		/etc/init.d/athena_led restart >/dev/null 2>&1 &
+		logger -t athena-led "Screen button long-press (${SEEN}s): Enabled LED service"
+	fi
+else
+	if pidof athena-led >/dev/null 2>&1; then
+		killall -USR1 athena-led 2>/dev/null || true
+		logger -t athena-led "Screen button short-press: Cycled LED brightness mode"
+	else
+		uci -q set athena_led.config.enable='1'
+		uci -q commit athena_led
+		/etc/init.d/athena_led restart >/dev/null 2>&1 &
+	fi
+fi
+
+exit 0
+# [/VERIFIED-GOLDEN]
