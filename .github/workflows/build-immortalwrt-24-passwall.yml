@@ -252,12 +252,27 @@ jobs:
           CONFIG_PACKAGE_kmod-nft-offload=y
           CONFIG_PACKAGE_kmod-nf-flow=y
           CONFIG_PACKAGE_kmod-tcp-bbr=y
-          # CONFIG_TARGET_ROOTFS_INITRAMFS is not set
           EOF
           fi
 
-          echo ">> [PASSWALL AUTO-INJECT] Kích hoạt đầy đủ Passwall Suite cho nhánh immortalwrt-24-passwall..."
-          cat << 'EOF' >> .config
+          echo ">> [PASSWALL AUTO-INJECT] Kích hoạt Passwall Suite cho nhánh immortalwrt-24-passwall..."
+          if [ "${{ matrix.id }}" = "mediatek-filogic" ]; then
+            # Keep INITRAMFS enabled for sdmc_mt3053-factory.ubi while staying under BPi-R3/R4 44MB limit (use xray-core; sing-box/offline geoip/geosite exceed 44MB)
+            cat << 'EOF' >> .config
+          CONFIG_PACKAGE_luci-app-passwall=y
+          CONFIG_PACKAGE_luci-app-passwall_INCLUDE_Xray=y
+          # CONFIG_PACKAGE_luci-app-passwall_INCLUDE_SingBox is not set
+          CONFIG_PACKAGE_luci-app-passwall_INCLUDE_ChinaDNS_NG=y
+          CONFIG_PACKAGE_luci-app-passwall_INCLUDE_Haproxy=y
+          # CONFIG_PACKAGE_luci-app-passwall_INCLUDE_Geosite is not set
+          # CONFIG_PACKAGE_luci-app-passwall_INCLUDE_Geoip is not set
+          CONFIG_PACKAGE_xray-core=y
+          # CONFIG_PACKAGE_sing-box is not set
+          CONFIG_PACKAGE_chinadns-ng=y
+          CONFIG_PACKAGE_haproxy=y
+          EOF
+          else
+            cat << 'EOF' >> .config
           CONFIG_PACKAGE_luci-app-passwall=y
           CONFIG_PACKAGE_luci-app-passwall_INCLUDE_Xray=y
           CONFIG_PACKAGE_luci-app-passwall_INCLUDE_SingBox=y
@@ -270,8 +285,11 @@ jobs:
           CONFIG_PACKAGE_chinadns-ng=y
           CONFIG_PACKAGE_haproxy=y
           EOF
+          fi
 
           echo "CONFIG_PACKAGE_luci-app-doanduy-modem=y" >> .config
+          echo "CONFIG_PACKAGE_luci-i18n-base-vi=y" >> .config
+          echo "CONFIG_PACKAGE_luci-i18n-firewall-vi=y" >> .config
           echo "CONFIG_PACKAGE_curl=y" >> .config
           echo "CONFIG_PACKAGE_wget-ssl=y" >> .config
 
