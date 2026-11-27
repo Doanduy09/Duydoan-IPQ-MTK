@@ -1,7 +1,7 @@
 # SPDX-License-Identifier: MIT
 # [VERIFIED-GOLDEN: upstream-sync-master-618-and-2410 | 2026-11-26 | DO NOT MODIFY UNLESS TARGETED]
-name: Sync Upstream ImmortalWrt (master->SNAPSHOT & 24.10->immortalwrt-24)
-run-name: "[Hệ Thống] Sync Upstream ImmortalWrt (master=SNAPSHOT 6.18 | immortalwrt-24=24.10)"
+name: Sync Upstream ImmortalWrt (master->SNAPSHOT)
+run-name: "[Hệ Thống] Sync Upstream ImmortalWrt (master=SNAPSHOT 6.18)"
 
 on:
   schedule:
@@ -36,10 +36,6 @@ jobs:
             upstream_ref: master
           - branch: master-passwall
             upstream_ref: master
-          - branch: immortalwrt-24
-            upstream_ref: openwrt-24.10
-          - branch: immortalwrt-24-passwall
-            upstream_ref: openwrt-24.10
     steps:
       - name: Checkout Source Branch ${{ matrix.branch }}
         uses: actions/checkout@v5
