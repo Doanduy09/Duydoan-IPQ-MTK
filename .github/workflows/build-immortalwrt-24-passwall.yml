@@ -75,7 +75,7 @@ jobs:
                   "config": "qualcomm_ipq60xx_all.config",
                   "target_dir": "bin/targets/qualcommax/ipq60xx",
                   "tag_prefix": f"{prefix}-Qualcomm-IPQ60xx-All",
-                  "release_title": f"[immortalwrt-24-passwall] Duydoan-24.10-Passwall Qualcomm IPQ60xx{badge} Unified All-Devices Release",
+                  "release_title": f"[immortalwrt-24-passwall] Duydoan-24.10-Passwall Qualcomm IPQ60xx (Full-NSS 12.5){badge} Unified All-Devices Release",
                   "copy_itb_to_bin": False
               },
               {
@@ -86,7 +86,7 @@ jobs:
                   "config": "qualcomm_ipq807x_all.config",
                   "target_dir": "bin/targets/qualcommax/ipq807x",
                   "tag_prefix": f"{prefix}-Qualcomm-IPQ807x-All",
-                  "release_title": f"[immortalwrt-24-passwall] Duydoan-24.10-Passwall Qualcomm IPQ807x{badge} Unified All-Devices Release",
+                  "release_title": f"[immortalwrt-24-passwall] Duydoan-24.10-Passwall Qualcomm IPQ807x (Full-NSS 12.5){badge} Unified All-Devices Release",
                   "copy_itb_to_bin": False
               },
               {
@@ -97,7 +97,7 @@ jobs:
                   "config": "mediatek_filogic_all.config",
                   "target_dir": "bin/targets/mediatek/filogic",
                   "tag_prefix": f"{prefix}-MediaTek-Filogic-All",
-                  "release_title": f"[immortalwrt-24-passwall] Duydoan-24.10-Passwall MediaTek Filogic{badge} Unified All-Devices Release",
+                  "release_title": f"[immortalwrt-24-passwall] Duydoan-24.10-Passwall MediaTek Filogic (HNAT/Offload){badge} Unified All-Devices Release",
                   "copy_itb_to_bin": True
               }
           ]
