@@ -1,13 +1,17 @@
 {
 	"luci-app-athena-led": {
-		"description": "Grant access to Athena LED configuration and service control",
+		"description": "Grant access to JDCloud Athena LED Pro configuration and live controls",
 		"read": {
 			"ubus": {
-				"service": [ "list" ]
+				"service": [ "list" ],
+				"luci.athena_led": [ "getStatus" ]
 			},
 			"uci": [ "athena_led" ]
 		},
 		"write": {
+			"ubus": {
+				"luci.athena_led": [ "cycleBrightness", "refreshLive" ]
+			},
 			"uci": [ "athena_led" ]
 		}
 	}
