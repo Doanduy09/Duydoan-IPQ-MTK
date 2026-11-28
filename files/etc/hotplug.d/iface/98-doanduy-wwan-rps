@@ -1,0 +1,21 @@
+#!/bin/sh
+# [VERIFIED-GOLDEN: doanduy-wwan-rps-multicore | 2026-11-26 | DO NOT MODIFY UNLESS TARGETED]
+# Ensures 5G WWAN interfaces retain multi-core RPS steering (CPUs 1..3 = 0xe on 4-core IPQ/Filogic)
+# even after OpenWrt packet-steering.uc runs on ifup/ifupdate, keeping CPU0 free for xHCI USB3/PCIe IRQs.
+[ "$ACTION" = "ifup" ] || [ "$ACTION" = "ifupdate" ] || exit 0
+NPROCS="$(grep -c '^processor' /proc/cpuinfo 2>/dev/null || echo 1)"
+if [ "$NPROCS" -ge 4 ]; then
+    MASK="e"
+elif [ "$NPROCS" -ge 2 ]; then
+    MASK="2"
+else
+    exit 0
+fi
+for q in /sys/class/net/wwan*/queues/rx-*/rps_cpus \
+         /sys/class/net/rmnet*/queues/rx-*/rps_cpus \
+         /sys/class/net/usb*/queues/rx-*/rps_cpus \
+         /sys/class/net/mhi*/queues/rx-*/rps_cpus; do
+    [ -f "$q" ] && echo "$MASK" > "$q" 2>/dev/null || true
+done
+exit 0
+# [/VERIFIED-GOLDEN]
