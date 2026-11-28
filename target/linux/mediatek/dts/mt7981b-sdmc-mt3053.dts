@@ -415,7 +415,7 @@
 			compatible = "mediatek,mt7981-auxadc", "mediatek,mt7986-auxadc", "mediatek,mt7622-auxadc";
 			reg = <0x00 0x1100d000 0x00 0x1000>;
 			clocks = <0x02 0x30 0x02 0x31>;
-			clock-names = [6d 61 69 6e 1a 6b 00];
+			clock-names = "main";
 			#io-channel-cells = <0x01>;
 			phandle = <0x09>;
 		};
@@ -936,9 +936,10 @@
 	};
 
 	aliases {
+		label-mac-device = "/soc/ethernet@15100000/mac@0";
 		serial0 = "/soc/serial@11002000";
 		led-boot = "/leds/led-status-red";
-		led-failsafe = "/leds/led-status-green";
+		led-failsafe = "/leds/led-status-red";
 		led-running = "/leds/led-status-green";
 		led-upgrade = "/leds/led-status-green";
 	};
