@@ -25,31 +25,55 @@ update_leds() {
         fi
     done
 
-    local rf_json="/tmp/rf_signal_stats.json"
+    local rf_json="/tmp/duydoan5g_signal_cache_json"
+    [ -f "$rf_json" ] || rf_json="/tmp/rf_signal_stats.json"
     local has_5g=0
     local has_4g=0
     local grade_5g="good"
     local grade_4g="good"
 
     if [ -f "$rf_json" ]; then
+        local status=$(jsonfilter -i "$rf_json" -e '$.status' 2>/dev/null)
+        local rat=$(jsonfilter -i "$rf_json" -e '$.rat' 2>/dev/null)
+        local band=$(jsonfilter -i "$rf_json" -e '$.band' 2>/dev/null)
         local nr_band=$(jsonfilter -i "$rf_json" -e '$.nr5g.band' 2>/dev/null)
         local lte_band=$(jsonfilter -i "$rf_json" -e '$.lte.band' 2>/dev/null)
-        local status=$(jsonfilter -i "$rf_json" -e '$.status' 2>/dev/null)
         local score=$(jsonfilter -i "$rf_json" -e '$.score' 2>/dev/null || echo 100)
 
         if [ "$status" = "ok" ]; then
-            if [ -n "$nr_band" ] && [ "$nr_band" != "--" ] && [ "$nr_band" != "Không có thiết bị" ]; then
-                has_5g=1
-            fi
-            if [ -n "$lte_band" ] && [ "$lte_band" != "--" ] && [ "$lte_band" != "Không có thiết bị" ]; then
-                has_4g=1
-            fi
+            case "$rat|$band|$nr_band" in
+                *5G*|*NR*|*n[0-9]*) has_5g=1 ;;
+            esac
+            [ -n "$nr_band" ] && [ "$nr_band" != "--" ] && [ "$nr_band" != "Không có thiết bị" ] && has_5g=1
+            case "$rat|$band|$lte_band" in
+                *4G*|*LTE*|*NSA*|*B[0-9]*) has_4g=1 ;;
+            esac
+            [ -n "$lte_band" ] && [ "$lte_band" != "--" ] && [ "$lte_band" != "Không có thiết bị" ] && has_4g=1
             case "$score" in ''|*[!0-9]*) score=100 ;; esac
-            if [ "$score" -lt 60 ]; then
+            if [ "$score" -lt 40 ]; then
                 grade_5g="weak"
                 grade_4g="weak"
             fi
         fi
+    else
+        for cf in /tmp/duydoan5g_signal_cache_*; do
+            [ -f "$cf" ] || continue
+            case "$cf" in *.tmp|*_json) continue ;; esac
+            local C_RAT="" C_BAND="" C_PCT=""
+            . "$cf" 2>/dev/null || continue
+            case "$C_RAT|$C_BAND" in
+                *5G*|*NR*|*n[0-9]*) has_5g=1 ;;
+            esac
+            case "$C_RAT|$C_BAND" in
+                *4G*|*LTE*|*NSA*|*B[0-9]*) has_4g=1 ;;
+            esac
+            case "$C_PCT" in ''|*[!0-9]*) C_PCT=100 ;; esac
+            if [ "$C_PCT" -lt 40 ]; then
+                grade_5g="weak"
+                grade_4g="weak"
+            fi
+            break
+        done
     fi
 
     if [ -n "$cell_if" ] && [ $has_5g -eq 0 ] && [ $has_4g -eq 0 ]; then

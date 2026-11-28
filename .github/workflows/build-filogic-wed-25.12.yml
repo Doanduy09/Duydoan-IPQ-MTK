@@ -32,12 +32,12 @@ on:
       passwall:
         description: 'Biến thể PassWall (false = Không PassWall, true = Có PassWall, both = Cả hai)'
         required: true
-        default: 'false'
+        default: 'both'
         type: choice
         options:
+          - 'both'
           - 'false'
           - 'true'
-          - 'both'
       release:
         description: 'Xuất bản lên GitHub Releases'
         required: false
@@ -64,20 +64,17 @@ jobs:
         id: set-matrix
         env:
           PLAT: ${{ inputs.target || 'all' }}
-          PW_OPT: ${{ inputs.passwall || 'false' }}
+          PW_OPT: ${{ inputs.passwall || 'both' }}
           EVENT_NAME: ${{ github.event_name }}
         run: |
           python3 - << 'PYEOF' > matrix.json
           import json, os
-          from datetime import datetime, timedelta, timezone
 
           plat = os.environ.get("PLAT", "all")
-          pw_opt = os.environ.get("PW_OPT", "false")
+          pw_opt = os.environ.get("PW_OPT", "both")
           event_name = os.environ.get("EVENT_NAME", "")
           if event_name == "schedule":
-              # Chủ Nhật (ICT) -> Có PassWall; Ngày thường -> Không PassWall
-              is_sunday_vn = datetime.now(timezone(timedelta(hours=7))).weekday() == 6
-              pw_modes = [True] if is_sunday_vn else [False]
+              pw_modes = [False, True]
           elif event_name == "push":
               pw_modes = [False]
           else:

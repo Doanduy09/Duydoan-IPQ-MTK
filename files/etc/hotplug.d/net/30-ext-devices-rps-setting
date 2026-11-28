@@ -9,7 +9,11 @@ esac
 
 NPROCS="$(grep -c '^processor' /proc/cpuinfo 2>/dev/null || echo 1)"
 [ "$NPROCS" -gt 1 ] || exit 0
-[ "$NPROCS" -gt 2 ] && MASK="c" || MASK="2"
+if [ "$NPROCS" -ge 4 ]; then
+    MASK="e"
+else
+    MASK="2"
+fi
 
 for q in "/sys/class/net/${INTERFACE}"/queues/rx-*/rps_cpus; do
     [ -f "$q" ] && echo "$MASK" > "$q" 2>/dev/null || true

@@ -211,6 +211,21 @@ if os.path.isfile(filogic_mk):
             mk_txt = mk_txt[:m_ow1.start()] + oblk_new + mk_txt[m_ow1.end():]
             print("  [FIXED] Guarded initramfs-dependent ARTIFACTS with CONFIG_TARGET_ROOTFS_INITRAMFS on Device/openwrt_one.")
 
+    # Guard IMAGE/factory.bin blocks that pack $(KERNEL_INITRAMFS_IMAGE) (e.g. tplink_tl-7dr7230-v1) so disabled initramfs never emits 10KB empty factory.bin
+    def _guard_initramfs_factory(m_blk):
+        blk = m_blk.group(0)
+        if "KERNEL_INITRAMFS_IMAGE" in blk and "IMAGE/factory.bin" in blk and "CONFIG_TARGET_ROOTFS_INITRAMFS" not in blk:
+            blk_new = re.sub(
+                r"([ \t]*IMAGES\s*\+=\s*factory\.bin\s*\n[ \t]*IMAGE/factory\.bin\s*:=\s*(?:[^\n]*\\\n)*[^\n]*\n)",
+                r"ifneq ($(CONFIG_TARGET_ROOTFS_INITRAMFS),)\n\1endif\n",
+                blk,
+            )
+            if blk_new != blk:
+                print("  [FIXED] Guarded KERNEL_INITRAMFS_IMAGE factory.bin with CONFIG_TARGET_ROOTFS_INITRAMFS.")
+                return blk_new
+        return blk
+    mk_txt = re.sub(r"define Device/[^\n]+\n.*?\nendef", _guard_initramfs_factory, mk_txt, flags=re.S)
+
     # B5. Move vendor post-packers (iptime-crc32, zyimage, zyxel-nwa-fit-filogic, netgear-encrypted-factory) BEFORE check-size
     # so Build/check-size's 'rm -f $@' on oversized images never crashes a downstream packer with 'No such file or directory'
     mk_fixed_pipe = re.sub(

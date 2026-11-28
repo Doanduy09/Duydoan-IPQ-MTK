@@ -55,7 +55,10 @@ start_service() {
         done
     fi
 
-    for iface in eth0 eth1 eth2 lan1 lan2 wan br-lan phy0-ap0 phy1-ap0; do
+    for iface in eth0 eth1 eth2 eth3 lan0 lan1 lan2 lan3 lan4 lan5 lan6 lan7 lan8 wan wan_sfp \
+                 10g-1 10g-2 10g-sfp 10g-copper sfp0 sfp1 br-lan \
+                 phy0-ap0 phy1-ap0 phy2-ap0 ra0 rai0 rax0 \
+                 wwan0 mhi_hwip0 rmnet_mhi0 rmnet_mhi0.1; do
         [ -d "/sys/class/net/$iface" ] && ip link set "$iface" txqueuelen 2048 2>/dev/null
     done
 }
