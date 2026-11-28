@@ -6,6 +6,10 @@ board=$(board_name)
 board_config_update
 
 case $board in
+sdmc,mt3053|\
+viettel,nr3053)
+	ucidef_set_led_netdev "status" "STATUS" "green:status" "wan" "link tx rx"
+	;;
 clx,s20l|\
 clx,s20p)
 	ucidef_set_led_netdev "wlan5g" "5G" "blue:wlan-5ghz" "rax0"
@@ -16,13 +20,13 @@ clx,s20m)
 	ucidef_set_led_timer "sys" "SYS" "blue:status" "1000" "2000"
 	;;
 airpi,ap3000m)
-	ucidef_set_led_netdev "wlan2g" "WLAN2G" "orange:wlan-2ghz" "phy0-ap0" "link tx rx"
-	ucidef_set_led_netdev "wlan5g" "WLAN5G" "white:wlan-5ghz" "phy1-ap0" "link tx rx"
+	ucidef_set_led_netdev "wlan2g" "WLAN2G" "orange:wlan-2ghz" "ra0" "link tx rx"
+	ucidef_set_led_netdev "wlan5g" "WLAN5G" "white:wlan-5ghz" "rax0" "link tx rx"
 	;;
 abt,asr3000)
 	ucidef_set_led_netdev "wan" "WAN" "green:wan" "eth1"
-	ucidef_set_led_netdev "wlan2g" "WLAN2G" "green:wlan-2ghz" "phy0-ap0"
-	ucidef_set_led_netdev "wlan5g" "WLAN5G" "green:wlan-5ghz" "phy1-ap0"
+	ucidef_set_led_netdev "wlan2g" "WLAN2G" "green:wlan-2ghz" "ra0"
+	ucidef_set_led_netdev "wlan5g" "WLAN5G" "green:wlan-5ghz" "rax0"
 	;;
 acer,predator-w6|\
 acer,predator-w6d)
@@ -55,8 +59,8 @@ bananapi,bpi-r3-mini)
 	ucidef_set_led_netdev "lan2" "LAN" "mdio-bus:0e:yellow:lan" "eth0" "link_2500 link_100 tx rx"
 	ucidef_set_led_netdev "wan1" "WAN" "mdio-bus:0f:green:wan" "eth1" "link_2500 link_1000 tx rx"
 	ucidef_set_led_netdev "wan2" "WAN" "mdio-bus:0f:yellow:wan" "eth1" "link_2500 link_100 tx rx"
-	ucidef_set_led_netdev "wlan2g" "WLAN2G" "blue:wlan-1" "phy0-ap0"
-	ucidef_set_led_netdev "wlan5g" "WLAN5G" "blue:wlan-2" "phy1-ap0"
+	ucidef_set_led_netdev "wlan2g" "WLAN2G" "blue:wlan-1" "ra0"
+	ucidef_set_led_netdev "wlan5g" "WLAN5G" "blue:wlan-2" "rax0"
 	;;
 bananapi,bpi-r4|\
 bananapi,bpi-r4-2g5|\
@@ -126,8 +130,8 @@ glinet,gl-xe3000)
 	ucidef_set_led_netdev "5g_2" "5G_2" "green:5g:led2" "wwan0"
 	ucidef_set_led_netdev "5g_3" "5G_3" "green:5g:led3" "wwan0"
 	ucidef_set_led_netdev "5g_4" "5G_4" "green:5g:led4" "wwan0"
-	ucidef_set_led_netdev "wlan2g" "WLAN2G" "green:wifi2g" "phy0-ap0"
-	ucidef_set_led_netdev "wlan5g" "WLAN5G" "green:wifi5g" "phy1-ap0"
+	ucidef_set_led_netdev "wlan2g" "WLAN2G" "green:wifi2g" "ra0"
+	ucidef_set_led_netdev "wlan5g" "WLAN5G" "green:wifi5g" "rax0"
 	;;
 hiveton,h5000m)
 	ucidef_set_led_netdev "wlan2g" "wlan-2ghz" "amber:wlan-2ghz" "phy0.0-ap0" "link tx rx"
@@ -135,19 +139,19 @@ hiveton,h5000m)
 	;;
 huasifei,wh3000-emmc)
 	ucidef_set_led_netdev "wan" "WAN" "red:wan" "eth1"
-	ucidef_set_led_netdev "wlan" "WLAN" "white:wlan" "phy1-ap0"
+	ucidef_set_led_netdev "wlan" "WLAN" "white:wlan" "rax0"
 	;;
 imou,hx21|\
 nokia,ea0326gmp)
 	ucidef_set_led_netdev "wan" "WAN" "green:wan" "eth1" "link"
 	ucidef_set_led_netdev "lan" "LAN" "green:lan" "br-lan" "link"
-	ucidef_set_led_netdev "wlan" "WLAN" "green:wlan" "phy1-ap0" "link"
+	ucidef_set_led_netdev "wlan" "WLAN" "green:wlan" "rax0" "link"
 	;;
 livinet,zr-3020|\
 livinet,zr-3020-ubootmod)
 	ucidef_set_led_netdev "internet" "INTERNET" "blue:internet" "wan"
-	ucidef_set_led_netdev "wlan2g" "WLAN2G" "blue:wlan2g" "phy0-ap0"
-	ucidef_set_led_netdev "wlan5g" "WLAN5G" "blue:wlan5g" "phy1-ap0"
+	ucidef_set_led_netdev "wlan2g" "WLAN2G" "blue:wlan2g" "ra0"
+	ucidef_set_led_netdev "wlan5g" "WLAN5G" "blue:wlan5g" "rax0"
 	;;
 huasifei,wh3000r-nand)
 	ucidef_set_led_netdev "wan" "WAN" "blue:wan-online" "wan" "link"
@@ -172,8 +176,8 @@ keenetic,kn-3811)
 	ucidef_set_led_netdev "internet" "internet" "green:wan" "wan" "link"
 	;;
 livinet,li320)
-	ucidef_set_led_netdev "wlan2g" "WLAN2G" "green:wlan-2ghz" "phy0-ap0"
-	ucidef_set_led_netdev "wlan5g" "WLAN5G" "green:wlan-5ghz" "phy1-ap0"
+	ucidef_set_led_netdev "wlan2g" "WLAN2G" "green:wlan-2ghz" "ra0"
+	ucidef_set_led_netdev "wlan5g" "WLAN5G" "green:wlan-5ghz" "rax0"
 	ucidef_set_led_netdev "lan-1" "lan-1" "green:lan-1" "lan1" "link tx rx"
 	ucidef_set_led_netdev "lan-2" "lan-2" "green:lan-2" "lan2" "link tx rx"
 	ucidef_set_led_netdev "lan-3" "lan-3" "green:lan-3" "lan3" "link tx rx"
@@ -238,7 +242,7 @@ netis,nx32u)
 	ucidef_set_led_netdev "internet" "internet" "green:wan-online" "wan" "link"
 	;;
 nradio,c8-668gl)
-	ucidef_set_led_netdev "wifi" "WIFI" "blue:wlan" "phy1-ap0" "link"
+	ucidef_set_led_netdev "wifi" "WIFI" "blue:wlan" "rax0" "link"
 	ucidef_set_led_netdev "5g" "5G" "blue:indicator-0" "eth1" "link"
 	;;
 openembed,som7981)
@@ -347,7 +351,7 @@ tplink,be450)
 tplink,fr365-v1)
 	ucidef_set_led_netdev "port2-green-act" "port-2" "green:port2_act" "port2" "link tx rx"
 	ucidef_set_led_netdev "port1-green-act" "port-1" "green:sfp" "port1" "link tx rx"
-	ucidef_set_led_netdev "wlan" "wlan" "green:wlan" "phy1-ap0"
+	ucidef_set_led_netdev "wlan" "wlan" "green:wlan" "rax0"
 	;;
 tplink,re6000xd)
 	ucidef_set_led_netdev "lan-1" "lan-1" "blue:lan-0" "lan1" "link tx rx"
@@ -385,7 +389,6 @@ wirelesstag,zx7981pd|\
 wirelesstag,zx7981pd-ubootmod)
 	ucidef_set_led_default "power" "POWER" "wt:power:blue" "1"
 	ucidef_set_led_netdev "wlan2g" "WLAN2G" "wt:wifi:blue" "ra0" "link tx rx"
-	ucidef_set_led_netdev "wlan5g" "WLAN5G" "wt:5g:blue" "rai0" "link tx rx"
 	;;
 xiaomi,mi-router-wr30u-stock|\
 xiaomi,mi-router-wr30u-mtkuboot|\
@@ -418,8 +421,8 @@ zyxel,ex5601-t0-ubootmod)
 	ucidef_set_led_netdev "wan" "2.5G-WAN" "mdio-bus:06:green:wan" "wan" "link_2500"
 	ucidef_set_led_netdev "lan" "LAN" "green:lan" "eth0" "link tx rx"
 	ucidef_set_led_netdev "internet" "INTERNET" "green:inet" "wan" "link tx rx"
-	ucidef_set_led_netdev "wifi-24g" "WIFI-2.4G" "green:wifi24g" "phy0-ap0" "link tx rx"
-	ucidef_set_led_netdev "wifi-5g" "WIFI-5G" "green:wifi5g" "phy1-ap0" "link tx rx"
+	ucidef_set_led_netdev "wifi-24g" "WIFI-2.4G" "green:wifi24g" "ra0" "link tx rx"
+	ucidef_set_led_netdev "wifi-5g" "WIFI-5G" "green:wifi5g" "rax0" "link tx rx"
 	;;
 zyxel,nwa50ax-pro)
 	ucidef_set_led_netdev "uplink" "UPLINK" "mdio-bus:05:amber:wan" "eth0" "link_10 link_100 link_2500 tx rx"
@@ -434,7 +437,7 @@ zyxel,ex5700-telenor)
 zyxel,wx5600-t0-ubootmod)
 	ucidef_set_led_netdev "lan1" "LAN1" "mdio-bus:06:green:lan" "lan1" "link tx rx"
 	ucidef_set_led_netdev "lan2" "LAN2" "mdio-bus:05:green:lan" "lan2" "link tx rx"
-	ucidef_set_led_netdev "wlan5" "wlan5" "green:wlan-0" "phy1-ap0" "link tx rx"
+	ucidef_set_led_netdev "wlan5" "wlan5" "green:wlan-0" "rax0" "link tx rx"
 	;;
 esac
 

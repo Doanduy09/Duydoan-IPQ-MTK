@@ -69,6 +69,10 @@ def normalize_firmware_filenames(fw_dir: str, tag: str) -> None:
         full = os.path.join(fw_dir, name)
         if not os.path.isfile(full):
             continue
+        if os.path.getsize(full) > 0 and is_corrupt_tiny_firmware(full):
+            print(f"  [PURGE-TINY] Removed broken sub-4MB firmware file: {name} ({os.path.getsize(full)} bytes)", flush=True)
+            os.remove(full)
+            continue
         m = TARGET_TAIL_RE.search(name)
         if m:
             new_name = f"{prefix}-{m.group(1)}"
@@ -303,6 +307,18 @@ def ensure_draft_release(repo: str, tag: str, title: str, notes_file: str) -> No
     raise RuntimeError(f"Failed to create release {tag}: {err}")
 
 
+MIN_FW_IMAGE_BYTES = 4 * 1024 * 1024
+FW_IMAGE_RE = re.compile(
+    r"(?:-squashfs-[^/]+|-(?:factory|sysupgrade|initramfs[^/]*)\.(?:bin|itb|ubi|trx|img))$",
+    re.I,
+)
+
+
+def is_corrupt_tiny_firmware(path: str) -> bool:
+    name = os.path.basename(path)
+    return bool(FW_IMAGE_RE.search(name)) and os.path.getsize(path) < MIN_FW_IMAGE_BYTES
+
+
 def collect_assets(fw_dir: str):
     if not os.path.isdir(fw_dir):
         raise RuntimeError(f"FIRMWARE_DIR does not exist: {fw_dir}")
@@ -317,6 +333,9 @@ def collect_assets(fw_dir: str):
         if not os.path.isfile(full):
             continue
         if os.path.getsize(full) == 0:
+            continue
+        if is_corrupt_tiny_firmware(full):
+            print(f"  [SKIP-TINY] Ignoring broken sub-4MB firmware file: {name} ({os.path.getsize(full)} bytes)", flush=True)
             continue
         if name in ("profiles.json", "sha256sums") or name.endswith(".manifest") or name.endswith(".buildinfo"):
             meta_first.append(full)
