@@ -45,8 +45,8 @@
 		compatible = "gpio-leds";
 
 		led-0 {
-			label = "wt:4g:green";
-			color = <LED_COLOR_ID_GREEN>;
+			label = "wt:mesh:blue";
+			color = <LED_COLOR_ID_BLUE>;
 			gpios = <&pio 11 GPIO_ACTIVE_HIGH>;
 			default-state = "off";
 		};
