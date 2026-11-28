@@ -287,6 +287,7 @@ CONFIG_PACKAGE_kmod-spi-bitbang=y
 CONFIG_PACKAGE_kmod-gpio-nxp-74hc164=y
 CONFIG_PACKAGE_kmod-qrtr-smd=y
 CONFIG_PACKAGE_kmod-usb-dwc3-qcom=y
+CONFIG_PACKAGE_kmod-sfp=y
 CONFIG_PACKAGE_cpufreq=y
 CONFIG_PACKAGE_luci-app-cpufreq=y
 EOF
@@ -429,7 +430,7 @@ if os.path.isfile(cfg_path):
     if has_pw1:
         min_kb, tier = 60416, "PassWall1 (>=59MB)"
     elif has_pw2:
-        min_kb, tier = 40960, "PassWall2-SingBox (>=40MB)"
+        min_kb, tier = 47104, "PassWall2-SingBox (>=46MB)"
     else:
         min_kb, tier = 16384, "NoPassWall (>=16MB)"
 
